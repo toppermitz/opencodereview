@@ -5,4 +5,6 @@
 ### Fixed
 
 - Repository onboarding lists namespaces from projects you can access, not only from `groups?membership=true`, so direct project membership under groups like `web/` or `bshop/` appears in Pick your repositories.
-- `glab api --paginate` output that concatenates pages as `][` is merged before parsing, so large project lists no longer fail with a JSON error.
+- `glab api --paginate` output that concatenates pages as successive JSON arrays is merged by parsing each page, so titles containing `][` stay intact and empty pages do not break the list.
+- OAuth device-flow errors no longer echo raw token response bodies to the browser.
+- Stored OAuth credentials are bound to the GitLab host and application ID; git uses a freshly resolved token (with refresh) instead of a stale cache; sign-out also clears a legacy `glab` session; refresh keeps the store across transient network failures.

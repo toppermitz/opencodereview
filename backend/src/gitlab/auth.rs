@@ -157,30 +157,17 @@ pub(crate) fn apply_gitlab_host(command: &mut Command) -> Result<(), String> {
         // glab 1.128 still sends OAUTH_TOKEN as Private-Token unless told it is OAuth2.
         command.env("OAUTH_TOKEN", &token);
         command.env("GLAB_IS_OAUTH2", "true");
-        if let Ok(mut cached) = GIT_TOKEN.lock() {
-            *cached = Some(token);
-        }
     }
     Ok(())
 }
 
 pub(crate) fn clear_token_cache() {
-    if let Ok(mut cached) = GIT_TOKEN.lock() {
-        *cached = None;
-    }
+    // OAuth resolution always reads the store (and refreshes when needed); nothing to drop.
 }
 
 pub(crate) fn git_token() -> Option<String> {
-    if let Ok(cached) = GIT_TOKEN.lock() {
-        if let Some(token) = cached.as_ref() {
-            return Some(token.clone());
-        }
-    }
-    let token = resolve_git_token();
-    if let (Some(token), Ok(mut cached)) = (&token, GIT_TOKEN.lock()) {
-        *cached = Some(token.clone());
-    }
-    token
+    // Always resolve so an expired access token is refreshed before git clone/fetch.
+    resolve_git_token()
 }
 
 pub(crate) fn resolve_git_token() -> Option<String> {
@@ -278,15 +265,13 @@ pub fn sign_out() -> Result<(), String> {
         return Err("GitLab is connected through GITLAB_TOKEN in the environment. Remove it from the OpenCodeReview configuration to sign out.".into());
     }
     let path = crate::gitlab::oauth::oauth_store_path();
-    let had_oauth = path.is_file();
     crate::gitlab::oauth::clear_stored(&path);
     clear_token_cache();
-    forget_identity();
-    if had_oauth {
-        return Ok(());
-    }
+    // Capture any legacy glab session before clearing identity caches, then always
+    // log it out too — upgrades may still have credentials in glab's config.
     let host = require_gitlab_host()?;
     let login = current_login();
+    forget_identity();
     let mut command = Command::new("glab");
     command.args(["auth", "logout", "--hostname", &host]);
     if let Some(login) = &login {
@@ -299,6 +284,7 @@ pub fn sign_out() -> Result<(), String> {
         .output()
         .map_err(|error| format!("Could not run glab: {error}. Is the GitLab CLI installed?"))?;
     forget_identity();
+    clear_token_cache();
     sign_out_result(output.status.success(), &String::from_utf8_lossy(&output.stderr))
 }
 

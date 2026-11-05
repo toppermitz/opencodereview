@@ -11,7 +11,6 @@ static GL_LOGIN: Mutex<Option<String>> = Mutex::new(None);
 static GL_TEAM_SLUGS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 static GL_HOST: OnceLock<String> = OnceLock::new();
 static GLAB_CONFIG_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
-static GIT_TOKEN: Mutex<Option<String>> = Mutex::new(None);
 
 mod activation;
 pub(crate) use activation::{activation_pr, conversation_comments_page, unedited_author_command, ConversationComment};

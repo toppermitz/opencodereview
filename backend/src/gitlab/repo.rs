@@ -1,8 +1,7 @@
 use super::*;
 
 /// `glab api --paginate` is supposed to merge REST array pages into one flat JSON
-/// array; on large result sets it still concatenates pages as `][`, so normalize
-/// that before parsing.
+/// array; on large result sets it still concatenates pages as successive arrays.
 pub(crate) fn api_paginate(route: &str) -> Result<Vec<serde_json::Value>, String> {
     let bytes = transport::glab_capture(&["api", "--paginate", route])?;
     parse_glab_paginate_json(&bytes).map_err(|e| format!("glab --paginate {route}: {e}"))
@@ -10,12 +9,23 @@ pub(crate) fn api_paginate(route: &str) -> Result<Vec<serde_json::Value>, String
 
 pub(crate) fn parse_glab_paginate_json(bytes: &[u8]) -> Result<Vec<serde_json::Value>, String> {
     let text = String::from_utf8_lossy(bytes);
-    let normalized = text.replace("][", ",");
-    let value: serde_json::Value = serde_json::from_str(normalized.trim()).map_err(|e| e.to_string())?;
-    match value {
-        serde_json::Value::Array(items) => Ok(items),
-        other => Err(format!("expected a JSON array from glab --paginate, got {other}")),
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Ok(Vec::new());
     }
+    let mut items = Vec::new();
+    let stream = serde_json::Deserializer::from_str(trimmed).into_iter::<serde_json::Value>();
+    for page in stream {
+        match page.map_err(|e| e.to_string())? {
+            serde_json::Value::Array(page) => items.extend(page),
+            other => {
+                return Err(format!(
+                    "expected a JSON array from glab --paginate, got {other}"
+                ))
+            }
+        }
+    }
+    Ok(items)
 }
 
 pub fn list_workspaces() -> Result<Vec<WorkspaceInput>, String> {

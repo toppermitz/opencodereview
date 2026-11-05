@@ -7,6 +7,14 @@ fn glab_paginate_joins_concatenated_array_pages() {
     assert_eq!(items.len(), 3);
     assert_eq!(items[0]["id"], 1);
     assert_eq!(items[2]["id"], 3);
+
+    let with_empty = br#"[{"id":1}][][{"id":2}]"#;
+    let items = repo::parse_glab_paginate_json(with_empty).expect("empty page");
+    assert_eq!(items.len(), 2);
+
+    let title_with_brackets = br#"[{"title":"fixes ][ join"}]"#;
+    let items = repo::parse_glab_paginate_json(title_with_brackets).expect("literal ][");
+    assert_eq!(items[0]["title"], "fixes ][ join");
 }
 
 #[test]

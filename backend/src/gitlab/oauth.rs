@@ -3,6 +3,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -13,6 +14,9 @@ pub(crate) const DEVICE_SCOPES: &str = "api read_api read_user write_repository 
 const DEVICE_GRANT: &str = "urn:ietf:params:oauth:grant-type:device_code";
 const NEAR_EXPIRY_SECS: u64 = 120;
 
+/// Serializes load / refresh / save / clear of `oauth.json` across concurrent GitLab callers.
+static OAUTH_STORE_LOCK: Mutex<()> = Mutex::new(());
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct StoredOAuth {
     pub access_token: String,
@@ -22,6 +26,12 @@ pub(crate) struct StoredOAuth {
     pub expires_at: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
+    /// Host that issued the tokens; empty in pre-binding stores (treated as a mismatch).
+    #[serde(default)]
+    pub host: String,
+    /// OAuth Application ID that issued the tokens.
+    #[serde(default)]
+    pub client_id: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -96,7 +106,7 @@ pub(crate) fn verification_url(auth: &DeviceAuthorization) -> String {
         .to_string()
 }
 
-pub(crate) fn stored_from_token(token: &TokenSuccess) -> StoredOAuth {
+pub(crate) fn stored_from_token(token: &TokenSuccess, host: &str, client_id: &str) -> StoredOAuth {
     let expires_at = token.expires_in.map(|secs| {
         let base = token.created_at.unwrap_or_else(now_epoch);
         base.saturating_add(secs)
@@ -106,7 +116,16 @@ pub(crate) fn stored_from_token(token: &TokenSuccess) -> StoredOAuth {
         refresh_token: token.refresh_token.clone(),
         expires_at,
         scope: token.scope.clone(),
+        host: host.to_string(),
+        client_id: client_id.to_string(),
     }
+}
+
+fn store_matches_install(stored: &StoredOAuth, host: &str, client_id: &str) -> bool {
+    !stored.host.is_empty()
+        && !stored.client_id.is_empty()
+        && stored.host == host
+        && stored.client_id == client_id
 }
 
 fn now_epoch() -> u64 {
@@ -123,12 +142,26 @@ pub(crate) fn is_expired(stored: &StoredOAuth) -> bool {
     }
 }
 
+fn is_hard_expired(stored: &StoredOAuth) -> bool {
+    match stored.expires_at {
+        Some(at) => now_epoch() >= at,
+        None => false,
+    }
+}
+
 pub(crate) fn load_stored(path: &Path) -> Option<StoredOAuth> {
     let bytes = std::fs::read(path).ok()?;
     serde_json::from_slice(&bytes).ok()
 }
 
 pub(crate) fn save_stored(path: &Path, stored: &StoredOAuth) -> Result<(), String> {
+    let _guard = OAUTH_STORE_LOCK
+        .lock()
+        .map_err(|_| "GitLab OAuth store lock poisoned".to_string())?;
+    save_stored_unlocked(path, stored)
+}
+
+fn save_stored_unlocked(path: &Path, stored: &StoredOAuth) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         create_private_dir(parent).map_err(|e| format!("Could not create GitLab credential directory: {e}"))?;
     }
@@ -137,6 +170,11 @@ pub(crate) fn save_stored(path: &Path, stored: &StoredOAuth) -> Result<(), Strin
 }
 
 pub(crate) fn clear_stored(path: &Path) {
+    let _guard = OAUTH_STORE_LOCK.lock();
+    clear_stored_unlocked(path);
+}
+
+fn clear_stored_unlocked(path: &Path) {
     let _ = std::fs::remove_file(path);
 }
 
@@ -255,23 +293,22 @@ pub(crate) fn refresh_access_token(
 }
 
 fn oauth_http_error(what: &str, status: u16, body: &str) -> String {
+    // Structured OAuth errors are safe to surface; never echo a raw body that may hold tokens.
     if let Ok(err) = serde_json::from_str::<TokenError>(body) {
         return err
             .error_description
             .filter(|d| !d.is_empty())
             .unwrap_or(err.error);
     }
-    let snippet = body.trim();
-    let snippet = if snippet.len() > 200 {
-        format!("{}…", &snippet[..200])
-    } else {
-        snippet.to_string()
-    };
-    if snippet.is_empty() {
-        format!("GitLab {what} failed (HTTP {status})")
-    } else {
-        format!("GitLab {what} failed (HTTP {status}): {snippet}")
-    }
+    format!("GitLab {what} failed (HTTP {status})")
+}
+
+fn is_definitive_auth_failure(message: &str) -> bool {
+    let message = message.to_ascii_lowercase();
+    message.contains("invalid_grant")
+        || message.contains("invalid_token")
+        || message.contains("revoked")
+        || message.contains("expired") && message.contains("refresh")
 }
 
 fn urlencoding(value: &str) -> String {
@@ -332,7 +369,11 @@ pub fn run_device_flow(cancel: &AtomicBool, emit: &mut dyn FnMut(serde_json::Val
         }
         match poll_device_token(&host, &client_id, &auth.device_code) {
             Ok(Ok(token)) => {
-                let stored = stored_from_token(&token);
+                if cancel.load(Ordering::Relaxed) {
+                    emit(serde_json::json!({ "kind": "done", "success": false, "message": "Cancelled." }));
+                    return;
+                }
+                let stored = stored_from_token(&token, &host, &client_id);
                 if let Err(message) = save_stored(&oauth_store_path(), &stored) {
                     emit(serde_json::json!({ "kind": "done", "success": false, "message": message }));
                     return;
@@ -401,26 +442,37 @@ pub(crate) fn resolve_oauth_access_token() -> Option<String> {
         }
     }
     let path = oauth_store_path();
+    let host = require_gitlab_host().ok()?;
+    let client_id = gitlab_client_id().ok()?;
+    let _guard = OAUTH_STORE_LOCK.lock().ok()?;
+    // Reload under the lock so concurrent callers share one refresh.
     let mut stored = load_stored(&path)?;
+    if !store_matches_install(&stored, &host, &client_id) {
+        clear_stored_unlocked(&path);
+        return None;
+    }
     if is_expired(&stored) {
-        match (&stored.refresh_token, require_gitlab_host().ok(), gitlab_client_id().ok()) {
-            (Some(refresh), Some(host), Some(client_id)) => match refresh_access_token(&host, &client_id, refresh) {
+        match &stored.refresh_token {
+            Some(refresh) => match refresh_access_token(&host, &client_id, refresh) {
                 Ok(token) => {
-                    stored = stored_from_token(&token);
-                    if save_stored(&path, &stored).is_err() {
-                        clear_stored(&path);
+                    stored = stored_from_token(&token, &host, &client_id);
+                    if save_stored_unlocked(&path, &stored).is_err() {
+                        clear_stored_unlocked(&path);
                         return None;
                     }
                 }
-                Err(_) => {
-                    clear_stored(&path);
+                Err(error) if is_definitive_auth_failure(&error) => {
+                    clear_stored_unlocked(&path);
                     return None;
                 }
+                Err(_) if is_hard_expired(&stored) => return None,
+                Err(_) => {} // Keep the store; the access token may still work until hard expiry.
             },
-            _ => {
-                clear_stored(&path);
+            None if is_hard_expired(&stored) => {
+                clear_stored_unlocked(&path);
                 return None;
             }
+            None => {} // Near expiry without refresh: keep using until hard expiry.
         }
     }
     Some(stored.access_token)
@@ -468,10 +520,46 @@ mod tests {
             "created_at":1593096829
         }"#;
         let token: TokenSuccess = serde_json::from_str(raw).unwrap();
-        let stored = stored_from_token(&token);
+        let stored = stored_from_token(&token, "gitlab.example.com", "app-id");
         assert_eq!(stored.access_token, "TOKEN");
         assert!(stored.refresh_token.is_none());
         assert_eq!(stored.expires_at, Some(1593096829 + 7200));
+        assert_eq!(stored.host, "gitlab.example.com");
+        assert_eq!(stored.client_id, "app-id");
+    }
+
+    #[test]
+    fn oauth_http_error_keeps_structured_errors_not_raw_bodies() {
+        let structured = r#"{"error":"access_denied","error_description":"The resource owner denied"}"#;
+        assert_eq!(
+            oauth_http_error("token poll", 400, structured),
+            "The resource owner denied"
+        );
+        assert_eq!(
+            oauth_http_error("token poll", 500, r#"{"access_token":"SECRET","token_type":"Bearer"}"#),
+            "GitLab token poll failed (HTTP 500)"
+        );
+    }
+
+    #[test]
+    fn rejects_stores_from_another_host_or_client() {
+        let stored = StoredOAuth {
+            access_token: "t".into(),
+            refresh_token: None,
+            expires_at: None,
+            scope: None,
+            host: "old.example.com".into(),
+            client_id: "old-app".into(),
+        };
+        assert!(!store_matches_install(&stored, "new.example.com", "old-app"));
+        assert!(!store_matches_install(&stored, "old.example.com", "new-app"));
+        assert!(store_matches_install(&stored, "old.example.com", "old-app"));
+        let legacy = StoredOAuth {
+            host: String::new(),
+            client_id: String::new(),
+            ..stored.clone()
+        };
+        assert!(!store_matches_install(&legacy, "old.example.com", "old-app"));
     }
 
     #[test]
@@ -497,11 +585,15 @@ mod tests {
             refresh_token: Some("refresh".into()),
             expires_at: Some(9_999_999_999),
             scope: Some("api".into()),
+            host: "gitlab.example.com".into(),
+            client_id: "app-id".into(),
         };
         save_stored(&path, &stored).unwrap();
         let loaded = load_stored(&path).unwrap();
         assert_eq!(loaded.access_token, "access");
         assert_eq!(loaded.refresh_token.as_deref(), Some("refresh"));
+        assert_eq!(loaded.host, "gitlab.example.com");
+        assert_eq!(loaded.client_id, "app-id");
         clear_stored(&path);
         assert!(load_stored(&path).is_none());
         let _ = std::fs::remove_dir_all(&dir);
@@ -514,14 +606,28 @@ mod tests {
             refresh_token: None,
             expires_at: Some(1),
             scope: None,
+            host: "gitlab.example.com".into(),
+            client_id: "app".into(),
         };
         assert!(is_expired(&stored));
+        assert!(is_hard_expired(&stored));
         let fresh = StoredOAuth {
             access_token: "t".into(),
             refresh_token: None,
             expires_at: Some(now_epoch() + 10_000),
             scope: None,
+            host: "gitlab.example.com".into(),
+            client_id: "app".into(),
         };
         assert!(!is_expired(&fresh));
+        assert!(!is_hard_expired(&fresh));
+    }
+
+    #[test]
+    fn definitive_auth_failures_are_recognized() {
+        assert!(is_definitive_auth_failure("invalid_grant"));
+        assert!(is_definitive_auth_failure("The refresh token was revoked"));
+        assert!(!is_definitive_auth_failure("connection timed out"));
+        assert!(!is_definitive_auth_failure("502 Bad Gateway"));
     }
 }

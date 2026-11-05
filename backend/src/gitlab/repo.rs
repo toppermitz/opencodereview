@@ -18,11 +18,7 @@ pub(crate) fn parse_glab_paginate_json(bytes: &[u8]) -> Result<Vec<serde_json::V
     for page in stream {
         match page.map_err(|e| e.to_string())? {
             serde_json::Value::Array(page) => items.extend(page),
-            other => {
-                return Err(format!(
-                    "expected a JSON array from glab --paginate, got {other}"
-                ))
-            }
+            other => return Err(format!("expected a JSON array from glab --paginate, got {other}")),
         }
     }
     Ok(items)

@@ -428,10 +428,7 @@ pub(super) fn run<T>(
         if transcript.exists() {
             // Keep the execution engine with the first transcript so repair's write does not
             // overwrite it and leave the original Codex tokens as generic "codex".
-            super::usage::rename_transcript_with_engine(
-                transcript,
-                &directory.join("transcript.retry-1.json"),
-            )?;
+            super::usage::rename_transcript_with_engine(transcript, &directory.join("transcript.retry-1.json"))?;
         }
         fs::remove_file(&report_path).map_err(|error| error.to_string())?;
         if decisions.is_some() {

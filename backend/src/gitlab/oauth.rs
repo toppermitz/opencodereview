@@ -122,10 +122,7 @@ pub(crate) fn stored_from_token(token: &TokenSuccess, host: &str, client_id: &st
 }
 
 fn store_matches_install(stored: &StoredOAuth, host: &str, client_id: &str) -> bool {
-    !stored.host.is_empty()
-        && !stored.client_id.is_empty()
-        && stored.host == host
-        && stored.client_id == client_id
+    !stored.host.is_empty() && !stored.client_id.is_empty() && stored.host == host && stored.client_id == client_id
 }
 
 fn now_epoch() -> u64 {
@@ -258,11 +255,7 @@ pub(crate) fn poll_device_token(
     Err(oauth_http_error("token poll", status.as_u16(), &body))
 }
 
-pub(crate) fn refresh_access_token(
-    host: &str,
-    client_id: &str,
-    refresh_token: &str,
-) -> Result<TokenSuccess, String> {
+pub(crate) fn refresh_access_token(host: &str, client_id: &str, refresh_token: &str) -> Result<TokenSuccess, String> {
     let client = http_client()?;
     let url = format!("{}/oauth/token", https_base(host));
     let response = client
@@ -283,11 +276,7 @@ pub(crate) fn refresh_access_token(
         }
     }
     if let Ok(err) = serde_json::from_str::<TokenError>(&body) {
-        return Err(err
-            .error_description
-            .unwrap_or(err.error)
-            .trim()
-            .to_string());
+        return Err(err.error_description.unwrap_or(err.error).trim().to_string());
     }
     Err(oauth_http_error("token refresh", status.as_u16(), &body))
 }
@@ -295,10 +284,7 @@ pub(crate) fn refresh_access_token(
 fn oauth_http_error(what: &str, status: u16, body: &str) -> String {
     // Structured OAuth errors are safe to surface; never echo a raw body that may hold tokens.
     if let Ok(err) = serde_json::from_str::<TokenError>(body) {
-        return err
-            .error_description
-            .filter(|d| !d.is_empty())
-            .unwrap_or(err.error);
+        return err.error_description.filter(|d| !d.is_empty()).unwrap_or(err.error);
     }
     format!("GitLab {what} failed (HTTP {status})")
 }
@@ -570,7 +556,8 @@ mod tests {
             ("expired_token", false),
             ("access_denied", false),
         ] {
-            let err: TokenError = serde_json::from_str(&format!(r#"{{"error":"{error}","error_description":"…"}}"#)).unwrap();
+            let err: TokenError =
+                serde_json::from_str(&format!(r#"{{"error":"{error}","error_description":"…"}}"#)).unwrap();
             assert_eq!(err.error, error);
         }
     }

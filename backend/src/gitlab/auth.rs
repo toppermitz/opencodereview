@@ -332,7 +332,10 @@ pub fn auth_status() -> GitLabAuthStatus {
             detail: "GitLab credentials are present but the API user could not be read. Connect again.".into(),
         };
     }
-    let detail = if std::env::var_os("OCR_GITLAB_CLIENT_ID").map(|v| !v.is_empty()).unwrap_or(false) {
+    let detail = if std::env::var_os("OCR_GITLAB_CLIENT_ID")
+        .map(|v| !v.is_empty())
+        .unwrap_or(false)
+    {
         "Not connected. Use Connect GitLab to authorize with a device code.".into()
     } else {
         "Not connected. Set OCR_GITLAB_CLIENT_ID to your GitLab OAuth Application ID, then Connect GitLab.".into()

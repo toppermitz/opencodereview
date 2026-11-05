@@ -367,7 +367,7 @@ fn a_push_with_only_content_excluded_files_keeps_the_previous_outcome() {
     };
     let output = crate::review::execute(&input, &AtomicBool::new(false), &mut |_, _| {}).unwrap();
     assert!(output.no_new_changes, "{}", output.body);
-    assert!(output.body.contains("fixture.txt") && output.body.contains("not a new clean review"));
+    assert!(output.body.contains("fixture.txt") && output.body.contains("não é uma revisão limpa nova"));
     assert_eq!(db.review_run_by_id(run).unwrap().unwrap().status, "running");
     let ids: String = conn
         .query_row(
@@ -452,8 +452,8 @@ fn legacy_merge_with_only_excluded_delta_finishes_without_inference() {
     };
     let output = crate::review::execute(&input, &AtomicBool::new(false), &mut |_, _| {}).unwrap();
     assert!(output.no_new_changes);
-    assert!(output.body.contains("pnpm-lock.yaml") && output.body.contains("excluded, not reviewed"));
-    assert!(output.body.contains("not a new clean review"));
+    assert!(output.body.contains("pnpm-lock.yaml") && output.body.contains("não revisadas"));
+    assert!(output.body.contains("não é uma revisão limpa nova"));
     assert!(!output.body.contains("Suggestions"), "{}", output.body);
     let audit = db.load_finding_audit(run).unwrap().unwrap();
     assert!(!audit.original_body.contains("Suggestions"));

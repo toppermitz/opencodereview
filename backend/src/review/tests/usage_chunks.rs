@@ -634,7 +634,7 @@ fn a_waiting_batch_does_not_show_the_final_phase_as_queued_while_another_runs() 
     // hidden behind batch 0's running phase. What follows depends on which Done arrives first.
     let (_, phase) = shown.iter().find(|(tail, _)| tail == "batch 1 waits").unwrap();
     assert!(
-        phase.contains(r#""id":"final","label":"Final integration","status":"running""#),
+        phase.contains(r#""id":"final","label":"Integração final","status":"running""#),
         "{shown:?}"
     );
 }
@@ -685,7 +685,7 @@ fn a_batch_waiting_again_no_longer_counts_as_running() {
     let (tail, phase) = shown.last().unwrap();
     assert_eq!(tail, "1 waits");
     assert!(
-        phase.contains(r#""id":"final","label":"Final integration","status":"queued""#),
+        phase.contains(r#""id":"final","label":"Integração final","status":"queued""#),
         "every batch waits, so the phase shows queued: {shown:?}"
     );
 }
@@ -723,7 +723,7 @@ fn the_final_phase_shows_queued_once_the_last_running_batch_finishes() {
         },
     )
     .unwrap();
-    let queued = r#""id":"final","label":"Final integration","status":"queued""#;
+    let queued = r#""id":"final","label":"Integração final","status":"queued""#;
     assert!(!shown[1].1.contains(queued), "hidden while batch 0 runs: {shown:?}");
     let (tail, phase) = shown.last().unwrap();
     assert_eq!(tail, "1 waits");

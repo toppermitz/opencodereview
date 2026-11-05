@@ -167,7 +167,7 @@ pub(crate) fn focus_files(changed: &mut Vec<String>, diff: &str, cap: usize) -> 
 
 pub(crate) fn reprocess_files(previous: &[String], current: &[String]) -> Result<Vec<String>, String> {
     if previous.is_empty() || previous.iter().collect::<std::collections::HashSet<_>>().len() != previous.len() {
-        return Err("Previous analysis scope is empty or duplicated; choose Re-run full".into());
+        return Err("O escopo de análise anterior está vazio ou duplicado; escolha Reexecutar completa".into());
     }
     for path in previous {
         crate::review_archive::safe_path(path).map_err(|error| error.to_string())?;
@@ -178,7 +178,7 @@ pub(crate) fn reprocess_files(previous: &[String], current: &[String]) -> Result
         .cloned()
         .collect::<Vec<_>>();
     if files.is_empty() {
-        return Err("Previous analysis scope is no longer in the current PR; choose Re-run full".into());
+        return Err("O escopo de análise anterior não está mais no MR atual; escolha Reexecutar completa".into());
     }
     Ok(files)
 }

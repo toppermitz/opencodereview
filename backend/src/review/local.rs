@@ -99,7 +99,7 @@ pub(crate) fn no_change_phase_json() -> String {
         if phase["id"] == "review" || phase["id"] == "validate" {
             phase["status"] = "skipped".into();
             phase["inferenceSkipped"] = true.into();
-            phase["detail"] = "No new reviewable PR-owned changes; no model execution needed".into();
+            phase["detail"] = "Nenhuma mudança nova do MR para revisar; sem execução de modelo".into();
         }
     }
     serde_json::to_string(&phases).unwrap_or_default()
@@ -114,11 +114,11 @@ pub(crate) fn phase_json(active: &str, status: &str) -> String {
         active,
         status,
         &[
-            ("index", "Prepare repository"),
-            ("context", "Context ready"),
-            ("review", "Reviewed"),
-            ("validate", "Validated"),
-            ("ready", "Ready"),
+            ("index", "Preparar repositório"),
+            ("context", "Contexto"),
+            ("review", "Revisão"),
+            ("validate", "Validar"),
+            ("ready", "Pronto"),
         ],
     )
 }
@@ -149,7 +149,7 @@ pub(crate) fn chunk_planning_failure_phase() -> String {
             phase["inferenceSkipped"] = true.into();
         }
         if phase["id"] == "chunks" {
-            phase["detail"] = "Chunk preparation failed before model execution.".into();
+            phase["detail"] = "Preparação dos chunks falhou antes da execução do modelo.".into();
             phase["chunks"] = serde_json::json!([]);
         }
     }
@@ -161,13 +161,13 @@ pub(crate) fn sharded_phase_json(active: &str, status: &str) -> String {
         active,
         status,
         &[
-            ("index", "Prepare repository"),
-            ("context", "Context ready"),
-            ("chunks", "Chunk reviews"),
-            ("merge", "Merged findings"),
-            ("final", "Final integration"),
-            ("validate", "Validated"),
-            ("ready", "Ready"),
+            ("index", "Preparar repositório"),
+            ("context", "Contexto"),
+            ("chunks", "Chunks de revisão"),
+            ("merge", "Mesclar achados"),
+            ("final", "Integração final"),
+            ("validate", "Validar"),
+            ("ready", "Pronto"),
         ],
     )
 }

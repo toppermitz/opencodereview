@@ -23,7 +23,9 @@ pub fn execute(
             if live.state != "OPEN"
                 || !crate::review::scope::equivalent(&inputs.repo_path, expected, &live.review_scope(), cancel)
             {
-                return Err("PR base/head scope changed during review. Refresh the PR and run a full review.".into());
+                return Err(
+                    "Escopo base/head do MR mudou durante a revisão. Atualize o MR e rode uma revisão completa.".into(),
+                );
             }
         }
         let db = inputs.open_db()?;
@@ -103,10 +105,7 @@ pub(crate) fn run_inner(
     progress: &mut dyn FnMut(&str, &str),
     run_dir: &Path,
 ) -> Result<ReviewOutput, String> {
-    progress(
-        &phase_json("context", "running"),
-        "Fetching PR branch via git (no GitHub API)...",
-    );
+    progress(&phase_json("context", "running"), "Buscando branch do MR via git...");
     check_cancel(cancel)?;
 
     // Fetch the PR head into local git objects via the git transport (github.com),
@@ -127,7 +126,7 @@ pub(crate) fn run_inner(
         .as_ref()
         .is_some_and(|scope| scope.head_sha != head_sha)
     {
-        return Err("PR head changed before review preparation. Refresh the PR and retry.".into());
+        return Err("Head do MR mudou antes da preparação. Atualize o MR e tente de novo.".into());
     }
 
     // Changed files + diff. For an incremental re-review we want ONLY the author's
@@ -137,7 +136,7 @@ pub(crate) fn run_inner(
     // delta but NOT in the PR diff (they're in base now), so they're excluded.
     progress(
         &phase_json("context", "running"),
-        "Computing changed files (local git)...",
+        "Calculando arquivos alterados (git local)...",
     );
     // ALWAYS diff against the FRESH remote base (`origin/<base>`), never a bare local
     // branch name. The PR's base may be ANOTHER PR's branch (a stacked PR) whose local
@@ -161,7 +160,7 @@ pub(crate) fn run_inner(
         .is_some_and(|expected| !crate::review::scope::equivalent(&inputs.repo_path, expected, &current_scope, cancel))
     {
         return Err(
-            "PR base/head scope changed while fetching its snapshot. Refresh the PR and run a full review.".into(),
+            "Escopo base/head do MR mudou ao buscar o snapshot. Atualize o MR e rode uma revisão completa.".into(),
         );
     }
     let reviewed_base_sha = Some(base_rev.clone());
@@ -197,7 +196,7 @@ pub(crate) fn run_inner(
         if cancel.load(Ordering::Relaxed) {
             "cancelled".into()
         } else {
-            format!("Cannot safely reuse the previous review: {error}. Choose Re-run full to review the entire PR. No inference started.")
+            format!("Não é seguro reutilizar a revisão anterior: {error}. Escolha Reexecutar completa para revisar o MR inteiro. Nenhuma inferência iniciada.")
         }
     };
     if should_reuse_review_coverage(inputs)
@@ -419,7 +418,7 @@ pub(crate) fn run_inner(
     progress(
         &phase_json("context", "running"),
         &format!(
-            "{} changed file(s) ({scope}). Computing diff (local git)...",
+            "{} arquivo(s) alterado(s) ({scope}). Calculando diff (git local)...",
             changed.len()
         ),
     );
@@ -427,7 +426,7 @@ pub(crate) fn run_inner(
     // Index-backed selection of related context (own DB connection in this thread).
     progress(
         &phase_json("context", "running"),
-        "Selecting related files from the index...",
+        "Selecionando arquivos relacionados no índice...",
     );
     let plan = {
         let (mut plan, base_sha) =
@@ -446,17 +445,17 @@ pub(crate) fn run_inner(
         plan.reviewed_base_sha = Some(base_rev.clone());
         plan.merge_base_sha = Some(merge_base_sha.clone());
         plan.scope_reason = Some(if reprocessed_source.is_some() {
-            "Explicit re-run: repeat the previous analysis scope against the current base; result cache disabled"
+            "Reexecução explícita: repetir o escopo de análise anterior contra a base atual; cache de resultados desativado"
         } else if selection.mode == "content_reuse" {
-            "Content-verified reuse: compare the previous and current base/head; reanalyze changed or unproven files regardless of commit order"
+            "Reuso verificado por conteúdo: comparar base/head anterior e atual; reanalisar arquivos alterados ou não comprovados, independente da ordem dos commits"
         } else if scope_reuse.is_some() {
-            "Base synchronized: review affected files against the current base; reuse content-verified coverage for unchanged files"
+            "Base sincronizada: revisar arquivos afetados contra a base atual; reutilizar cobertura verificada por conteúdo nos inalterados"
         } else if reviewed_since.is_some() {
-            "Incremental PR changes with verified review coverage"
+            "Mudanças incrementais do MR com cobertura de revisão verificada"
         } else if inputs.force_full {
-            "Full review explicitly requested; coverage reuse disabled"
+            "Revisão completa pedida explicitamente; reuso de cobertura desativado"
         } else {
-            "First review against the immediate PR base"
+            "Primeira revisão contra a base imediata do MR"
         }.into());
         plan.scope_selection = Some(selection.clone());
         plan.incremental = reviewed_since.is_some();
@@ -504,12 +503,12 @@ pub(crate) fn run_inner(
     if (reviewed_since.is_some() || scope_reuse.is_some() || !stacked_sources.is_empty()) && changed.is_empty() {
         progress(
             &no_change_phase_json(),
-            "No new reviewable PR-owned changes. Previous outcome preserved; policy exclusions are not reviewed.",
+            "Nenhuma mudança nova do MR para revisar. Resultado anterior preservado; exclusões de política não entram na revisão.",
         );
         let excluded = selection
             .excluded_files
             .iter()
-            .map(|file| format!("\n- `{}`: {:?} — excluded, not reviewed", file.path, file.reason))
+            .map(|file| format!("\n- `{}`: {:?} — excluído, não revisado", file.path, file.reason))
             .collect::<String>();
         return Ok(preserved_outcome(
             inputs,
@@ -566,7 +565,7 @@ pub(crate) fn run_inner(
     progress(
         &phase_json("context", "running"),
         &format!(
-            "Reading {} changed + {} related file(s) (local git)...",
+            "Lendo {} alterados + {} relacionados (git local)...",
             changed.len(),
             plan.related_files.len()
         ),
@@ -585,12 +584,12 @@ pub(crate) fn run_inner(
     let mut prepared_inputs = inputs.clone();
     progress(
         &phase_json("context", "running"),
-        "Freezing the complete permitted code archive before inference",
+        "Congelando o arquivo de código permitido antes da inferência",
     );
     prepared_inputs.frozen = Some(frozen::capture(inputs, &plan, &head_sha, cancel).inspect_err(|_| {
         progress(
             &preparation_failure_phase(false, cancel.load(Ordering::Relaxed)),
-            "Archive preparation failed before inference",
+            "Preparação do arquivo falhou antes da inferência",
         )
     })?);
     let inputs = &prepared_inputs;
@@ -603,7 +602,7 @@ pub(crate) fn run_inner(
         if reviewed_since.is_some() || scope_reuse.is_some() || !stacked_sources.is_empty() {
             progress(
                 &no_change_phase_json(),
-                "No new reviewable PR-owned changes. Previous outcome preserved; policy exclusions are not reviewed.",
+                "Nenhuma mudança nova do MR para revisar. Resultado anterior preservado; exclusões de política não entram na revisão.",
             );
             // Nothing was reviewed, so this run covers no patch, like a re-review whose files were
             // excluded before the freeze.
@@ -625,7 +624,7 @@ pub(crate) fn run_inner(
                 })?;
             let excluded = changed
                 .iter()
-                .map(|path| format!("\n- `{path}`: excluded from review evidence, not reviewed"))
+                .map(|path| format!("\n- `{path}`: excluído da evidência de revisão, não revisado"))
                 .collect::<String>();
             return Ok(preserved_outcome(
                 inputs,
@@ -644,7 +643,7 @@ pub(crate) fn run_inner(
     progress(
         &phase_json("context", "ok"),
         &format!(
-            "Context ready: {} file(s) to review, {} reused, {} related, {} packages.",
+            "Contexto pronto: {} arquivo(s) para revisar, {} reutilizados, {} relacionados, {} pacotes.",
             plan.changed_files.len(),
             selection.reused_files.len(),
             plan.related_files.len(),
@@ -670,7 +669,7 @@ pub(crate) fn run_inner(
         .inspect_err(|_| {
             progress(
                 &preparation_failure_phase(false, cancel.load(Ordering::Relaxed)),
-                "Assigned sources failed preflight; no inference started",
+                "Fontes atribuídas falharam no preflight; nenhuma inferência iniciada",
             )
         })?;
     }
@@ -691,12 +690,15 @@ pub(crate) fn run_inner(
         output.risk = score_review_risk(&risk_plan, &full_pr_diff, output.comments_json.as_deref());
         output.body.push_str(&deferred_note);
         output.evidence_warnings.extend(deferred_files_warning(&deferred));
-        progress(&sharded_phase_json("ready", "ok"), "Sharded review ready for approval.");
+        progress(
+            &sharded_phase_json("ready", "ok"),
+            "Revisão em chunks pronta para aprovação.",
+        );
         return Ok(output);
     }
     progress(
         &phase_json("review", "queued"),
-        "Waiting for a free review runner. Reviews share the runners and start in turn.",
+        "Aguardando um runner livre. As revisões compartilham os runners e começam na vez.",
     );
 
     let summary_path = run_dir.join("summary.md");
@@ -733,7 +735,7 @@ pub(crate) fn run_inner(
     .inspect_err(|_| {
         progress(
             &preparation_failure_phase(false, cancel.load(Ordering::Relaxed)),
-            "Snapshot preflight failed before inference",
+            "Preflight do snapshot falhou antes da inferência",
         )
     })?;
     let stage_started_at = now_millis();
@@ -757,10 +759,10 @@ pub(crate) fn run_inner(
     // Parse artifacts. The summary is required; comments are optional.
     let mut lens_usage = RunUsage::default();
     let artifacts = execution.and_then(|()| {
-        progress(&phase_json("review", "ok"), "AI output generated");
+        progress(&phase_json("review", "ok"), "Saída da IA gerada");
         progress(
             &phase_json("validate", "running"),
-            "Validating coverage, quoted evidence and diff anchors",
+            "Validando cobertura, evidências citadas e âncoras do diff",
         );
         if context_fingerprint(&context_dir)? != context_hash {
             return Err("Incomplete review: reviewer modified the evidence snapshot.".into());
@@ -889,11 +891,11 @@ pub(crate) fn run_inner(
     progress(
         &phase_json("validate", "ok"),
         &format!(
-            "Review completed with {} inline findings. Output processed and risk scored.",
+            "Revisão concluída com {} achados inline. Saída processada e risco pontuado.",
             review_comment_count(comments_json.as_deref())
         ),
     );
-    progress(&phase_json("ready", "ok"), "Review ready for approval.");
+    progress(&phase_json("ready", "ok"), "Revisão pronta para aprovação.");
     Ok(ReviewOutput {
         body: body + &deferred_note,
         comments_json,
@@ -916,11 +918,11 @@ fn preserved_outcome(
     risk_plan: &crate::db::ReviewContextPlan,
     full_pr_diff: &str,
 ) -> ReviewOutput {
-    let pending = inputs.unresolved_review_body.as_deref().map(|body| format!("\n\nPreviously pending review\nThis PR still has an unresolved generated review from `{}`. Keep it in mind before marking this PR reviewed.\n\n{}", inputs.unresolved_review_head.as_deref().unwrap_or("previous head"), body.trim())).unwrap_or_default();
+    let pending = inputs.unresolved_review_body.as_deref().map(|body| format!("\n\nRevisão pendente anterior\nEste MR ainda tem uma revisão gerada sem resolver de `{}`. Leve isso em conta antes de marcar o MR como revisado.\n\n{}", inputs.unresolved_review_head.as_deref().unwrap_or("head anterior"), body.trim())).unwrap_or_default();
     let comments_json = format!(r#"{{"commit_id":"{head_sha}","comments":[]}}"#);
     ReviewOutput {
         body: format!(
-            "fe-review report — PR #{} incremental re-review\n\nSummary\n- Head SHA: {head_sha}\n- No new reviewable PR-owned changes; unchanged files reuse verified coverage.\n- No model executed and no new findings were validated.\n\nPolicy exclusions (not reviewed){excluded}\n\nClosing\n- Previous review outcome preserved; this is not a new clean review.{pending}",
+            "OpenCodeReview — re-revisão incremental do MR #{}\n\nResumo\n- Head SHA: {head_sha}\n- Nenhuma mudança nova do MR para revisar; arquivos inalterados reutilizam cobertura verificada.\n- Nenhum modelo executado e nenhum achado novo validado.\n\nExclusões de política (não revisadas){excluded}\n\nEncerramento\n- Resultado da revisão anterior preservado; isto não é uma revisão limpa nova.{pending}",
             inputs.number,
         ),
         risk: score_review_risk(risk_plan, full_pr_diff, Some(comments_json.as_str())),
@@ -1047,7 +1049,7 @@ pub(crate) fn run_claude(
             "queued",
             now_millis(),
         ),
-        "Waiting for a review process slot",
+        "Aguardando uma vaga de processo de revisão",
     );
     let _permit = crate::review::policy::acquire(
         crate::review::policy::MAX_PROCESSES,
@@ -1110,7 +1112,7 @@ fn supervise_claude(
             "running",
             now_millis(),
         ),
-        &format!("Claude process started using {}", inputs.model),
+        &format!("Processo Claude iniciado com {}", inputs.model),
     );
     let started = Instant::now();
     let mut saw_output = false;
@@ -1145,7 +1147,7 @@ fn supervise_claude(
                                 "validating",
                                 now_millis(),
                             ),
-                            "Validating chunk coverage, evidence and anchors",
+                            "Validando cobertura, evidências e âncoras do chunk",
                         );
                     }
                     return Ok(());

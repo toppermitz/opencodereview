@@ -498,7 +498,7 @@ impl Database {
             )
             .map_err(|error| error.to_string())?;
         let reason = format!(
-            "Skipped: {} reviewable changed files exceeds the {}-file review limit. Change Maximum PR files in Settings.",
+            "Ignorado: {} arquivos alterados revisáveis excedem o limite de {} arquivos. Altere Máximo de arquivos do MR em Configurações.",
             count.unwrap_or_default(),
             limit
         );

@@ -46,7 +46,7 @@ pub(crate) fn run_sharded_review(
 ) -> Result<ReviewOutput, String> {
     progress(
         &sharded_phase_json("chunks", "running"),
-        "Creating risk-aware review chunks...",
+        "Criando chunks de revisão com base em risco...",
     );
     let chunk_size = if inputs.review_chunk_size == 0 {
         DEFAULT_REVIEW_CHUNK_SIZE
@@ -71,7 +71,7 @@ pub(crate) fn run_sharded_review(
     let chunks = planned.inspect_err(|_| {
         progress(
             &chunk_planning_failure_phase(),
-            "Chunk preparation failed before model execution.",
+            "Preparação dos chunks falhou antes da execução do modelo.",
         );
     })?;
     harness_log(
@@ -149,7 +149,7 @@ pub(crate) fn run_sharded_review(
         progress(
             &sharded_phase_json("chunks", "running"),
             &format!(
-                "chunks progress: {}/{} done, 0 running\n\nqueueing {} chunks: {}",
+                "progresso dos chunks: {}/{} concluídos, 0 em execução\n\nenfileirando {} chunks: {}",
                 results.len(),
                 total_chunks,
                 batch.len(),
@@ -194,7 +194,7 @@ pub(crate) fn run_sharded_review(
     progress(
         &sharded_phase_json("chunks", "ok"),
         &format!(
-            "Completed {} chunk reviews across {} reviewable files.",
+            "Concluídas {} revisões de chunk em {} arquivos revisáveis.",
             results.len(),
             review_map.reviewable_files.len()
         ),
@@ -262,7 +262,7 @@ pub(crate) fn run_sharded_review(
     );
     progress(
         &sharded_phase_json("final", "queued"),
-        "Preparing final integration and boundary verification...",
+        "Preparando integração final e verificação de limites...",
     );
     let final_summary = run_dir.join("summary.md");
     let final_comments = run_dir.join("comments.json");
@@ -283,7 +283,7 @@ pub(crate) fn run_sharded_review(
         }
         progress(
             &serde_json::to_string(&phases).unwrap_or_default(),
-            "Final inputs exceeded preflight limits; final inference did not start",
+            "Entradas finais excederam os limites do preflight; a inferência final não começou",
         );
     })?;
     let transcript = merge_dir.join("transcript.json");
@@ -293,10 +293,10 @@ pub(crate) fn run_sharded_review(
     let final_started_at = now_millis();
     let mut final_progress = |phase: &str, tail: &str| {
         let detail = if tail.trim().is_empty() {
-            "final integration: reading review map, full diff, chunk summaries, and dedupe candidates\n\nWaiting for Claude output from final pass...".to_string()
+            "integração final: lendo mapa de revisão, diff completo, resumos dos chunks e candidatos a dedupe\n\nAguardando saída do Claude na passagem final...".to_string()
         } else {
             format!(
-                "final integration: reading review map, full diff, chunk summaries, and dedupe candidates\n\n{tail}"
+                "integração final: lendo mapa de revisão, diff completo, resumos dos chunks e candidatos a dedupe\n\n{tail}"
             )
         };
         progress(phase, &detail);
@@ -316,8 +316,8 @@ pub(crate) fn run_sharded_review(
         },
     );
     let artifacts = execution.and_then(|()| {
-        progress(&sharded_phase_json("final", "ok"), "Claude integration finished. The output is ready for anchor and template validation.");
-        progress(&sharded_phase_json("validate", "running"), "Validating coverage, quoted evidence, decisions and diff anchors");
+        progress(&sharded_phase_json("final", "ok"), "Integração do Claude concluída. A saída está pronta para validação de âncoras e templates.");
+        progress(&sharded_phase_json("validate", "running"), "Validando cobertura, evidências citadas, decisões e âncoras do diff");
         let mut evidence_warnings = results.iter().flat_map(|result| result.evidence_warnings.clone()).collect::<Vec<_>>();
         if context_fingerprint(context_dir)? != final_context_hash {
             return Err("Incomplete review: verifier modified the evidence snapshot.".into());
@@ -390,7 +390,7 @@ pub(crate) fn run_sharded_review(
                 comments_json.len()
             ),
         );
-        progress(&sharded_phase_json("validate", "ok"), &format!("Validated {} inline findings: head SHA, diff anchors, JSON and finding templates. Chunk fallback used: {}.", review_comment_count(Some(&comments_json)), used_fallback));
+        progress(&sharded_phase_json("validate", "ok"), &format!("Validados {} achados inline: head SHA, âncoras do diff, JSON e templates de achado. Fallback de chunk usado: {}.", review_comment_count(Some(&comments_json)), used_fallback));
         Ok((body, comments_json, crate::review::warnings::merge(evidence_warnings)))
     });
     let final_usage = parse_transcript_usage(&transcript);
@@ -459,7 +459,7 @@ pub(crate) fn run_adaptive_final(
     .map_err(|error| error.to_string())?;
     progress(
         &sharded_phase_json("merge", "running"),
-        "Partitioning final integration without dropping candidates or file coverage",
+        "Particionando a integração final sem perder candidatos nem cobertura de arquivos",
     );
     let stages = (|| -> Result<Vec<integration::Prepared>, String> {
         let stages = integration::prepare(
@@ -494,15 +494,15 @@ pub(crate) fn run_adaptive_final(
         progress(
             &serde_json::to_string(&phases).unwrap_or_default(),
             if cancelled {
-                "Final integration preparation cancelled before final inference"
+                "Preparação da integração final cancelada antes da inferência final"
             } else {
-                "Final integration preparation failed before final inference"
+                "Preparação da integração final falhou antes da inferência final"
             },
         );
     })?;
     progress(
         &sharded_phase_json("merge", "ok"),
-        &format!("Prepared {} final integration batches", stages.len()),
+        &format!("Preparados {} lotes de integração final", stages.len()),
     );
     budget::with(inputs, |budget| budget.integrating());
     // Batches are independent by design, so they run side by side like chunks do.
@@ -545,11 +545,11 @@ pub(crate) fn run_adaptive_final(
     fs::write(run_dir.join("comments.json"), &comments_json).map_err(|error| error.to_string())?;
     progress(
         &sharded_phase_json("final", "ok"),
-        &format!("Completed {} final integration batches", stages.len()),
+        &format!("Concluídos {} lotes de integração final", stages.len()),
     );
     progress(
         &sharded_phase_json("validate", "ok"),
-        "Validated every assigned file and candidate across final integration batches",
+        "Validados todos os arquivos e candidatos atribuídos nos lotes de integração final",
     );
     let usage = sum_usage(
         results
@@ -684,7 +684,7 @@ pub(crate) fn run_side_by_side<T: Send>(
         return Err(error.clone());
     }
     if outputs.len() != count {
-        return Err("Final integration ended before every batch reported".into());
+        return Err("Integração final terminou antes de todos os lotes reportarem".into());
     }
     Ok((outputs, usages))
 }
@@ -710,7 +710,7 @@ fn run_final_batch(
             progress(
                 &sharded_phase_json("final", "running"),
                 &format!(
-                    "Final integration batch {}/{} skipped: the review's time ran short, so its findings stay as validated in their chunks",
+                    "Lote de integração final {}/{} pulado: o tempo da revisão acabou, então os achados ficam como validados nos chunks",
                     index + 1,
                     total
                 ),
@@ -727,12 +727,12 @@ fn run_final_batch(
     let started = now_millis();
     progress(
         &sharded_phase_json("final", "queued"),
-        &format!("Final integration batch {}/{}", index + 1, total),
+        &format!("Lote de integração final {}/{}", index + 1, total),
     );
     let mut batch_progress = |phase: &str, tail: &str| {
         progress(
             phase,
-            &format!("Final integration batch {}/{}\n{tail}", index + 1, total),
+            &format!("Lote de integração final {}/{}\n{tail}", index + 1, total),
         )
     };
     let mut invalid = false;
@@ -804,7 +804,7 @@ fn run_final_batch(
                 progress(
                     &sharded_phase_json("final", "running"),
                     &format!(
-                        "Final integration batch {}/{} did not validate, so its findings stay as validated in their chunks: {error}",
+                        "Lote de integração final {}/{} não validou, então os achados ficam como validados nos chunks: {error}",
                         index + 1,
                         total
                     ),
@@ -868,7 +868,7 @@ pub(crate) fn run_review_chunk_batch(
         .collect::<BTreeMap<_, _>>();
     progress(
         &crate::review::progress::with_chunks(&sharded_phase_json("chunks", "running"), &snapshots),
-        &format!("chunks progress: {completed_before}/{total_chunks} done, 0 running"),
+        &format!("progresso dos chunks: {completed_before}/{total_chunks} concluídos, 0 em execução"),
     );
     let next_chunk = std::sync::atomic::AtomicUsize::new(0);
     std::thread::scope(|scope| {
@@ -962,7 +962,7 @@ pub(crate) fn run_review_chunk_batch(
                     progress(
                         &crate::review::progress::with_chunks(&phase, &snapshots),
                         &format!(
-                            "chunks progress: {}/{} done, {} running\n{}\ncurrent chunk: {}\n\n{}",
+                            "progresso dos chunks: {}/{} concluídos, {} em execução\n{}\nchunk atual: {}\n\n{}",
                             completed_before + results.len(),
                             total_chunks,
                             statuses.values().filter(|status| **status == "running").count(),
@@ -1015,7 +1015,7 @@ pub(crate) fn run_review_chunk_batch(
                     progress(
                         &crate::review::progress::with_chunks(&sharded_phase_json("chunks", "running"), &snapshots),
                         &format!(
-                            "chunks progress: {}/{} done, {} running\n{}\nfinished chunk {}",
+                            "progresso dos chunks: {}/{} concluídos, {} em execução\n{}\nchunk {} concluído",
                             completed_before + results.len(),
                             total_chunks,
                             statuses.values().filter(|status| **status == "running").count(),
@@ -1029,7 +1029,7 @@ pub(crate) fn run_review_chunk_batch(
                     progress(
                         &crate::review::progress::with_chunks(&sharded_phase_json("chunks", "running"), &snapshots),
                         &format!(
-                            "chunks progress: {}/{} done, {} running\n{}\n{}",
+                            "progresso dos chunks: {}/{} concluídos, {} em execução\n{}\n{}",
                             completed_before + results.len(),
                             total_chunks,
                             statuses.values().filter(|status| **status == "running").count(),
@@ -1078,7 +1078,7 @@ pub(crate) fn chunk_active_tail(
 ) -> String {
     let Some(id) = last_progress_id else {
         return format!(
-            "waiting for chunks {}",
+            "aguardando chunks {}",
             batch
                 .iter()
                 .map(|chunk| chunk.id.to_string())
@@ -1088,9 +1088,9 @@ pub(crate) fn chunk_active_tail(
     };
     let tail = last_tails.get(&id).map(String::as_str).unwrap_or("");
     if tail.trim().is_empty() {
-        format!("current chunk: {id}\n\nWaiting for Claude output from this chunk...")
+        format!("chunk atual: {id}\n\nAguardando saída do Claude neste chunk...")
     } else {
-        format!("current chunk: {id}\n\n{tail}")
+        format!("chunk atual: {id}\n\n{tail}")
     }
 }
 
@@ -1103,19 +1103,28 @@ pub(crate) fn chunk_status_tail(
 ) -> String {
     let now = Instant::now();
     let mut lines = Vec::with_capacity(total_chunks + 1);
-    lines.push("chunk status:".to_string());
+    lines.push("status dos chunks:".to_string());
     for id in 1..=total_chunks {
         if id <= completed_before {
-            lines.push(format!("{id} done"));
+            lines.push(format!("{id} concluído"));
         } else if let Some(status) = statuses.get(&id) {
+            let label = match *status {
+                "running" => "em execução",
+                "queued" => "na fila",
+                "failed" => "falhou",
+                "done" => "concluído",
+                "cancelled" => "cancelado",
+                "validating" => "validando",
+                other => other,
+            };
             let start = started_at.get(&id).copied().unwrap_or(now);
             let end = finished_at.get(&id).copied().unwrap_or(now);
             lines.push(format!(
-                "{id} {status} {}",
+                "{id} {label} {}",
                 format_duration_secs(end.duration_since(start).as_secs())
             ));
         } else {
-            lines.push(format!("{id} queued"));
+            lines.push(format!("{id} na fila"));
         }
     }
     lines.join("\n")
@@ -1360,7 +1369,7 @@ pub(crate) fn run_review_chunk(
             );
             progress(
                 &sharded_phase_json("chunks", "running"),
-                &format!("Chunk {} restored from validated snapshot cache", chunk.id),
+                &format!("Chunk {} restaurado do cache de snapshot validado", chunk.id),
             );
             return Ok(ChunkResult {
                 cached: true,
@@ -1376,7 +1385,7 @@ pub(crate) fn run_review_chunk(
     let mut chunk_progress = |phase: &str, tail: &str| {
         let detail = if tail.trim().is_empty() {
             format!(
-                "chunk {}/{}: reviewing {} file(s)\n{}\n\nWaiting for Claude output from this chunk...",
+                "chunk {}/{}: revisando {} arquivo(s)\n{}\n\nAguardando saída do Claude neste chunk...",
                 chunk.id,
                 total_chunks,
                 chunk.files.len(),
@@ -1384,7 +1393,7 @@ pub(crate) fn run_review_chunk(
             )
         } else {
             format!(
-                "chunk {}/{}: reviewing {} file(s)\n{}\n\n{}",
+                "chunk {}/{}: revisando {} arquivo(s)\n{}\n\n{}",
                 chunk.id,
                 total_chunks,
                 chunk.files.len(),
@@ -1405,7 +1414,7 @@ pub(crate) fn run_review_chunk(
                     "queued",
                     started_at,
                 ),
-                "Recovered frozen evidence; queueing the single additional review attempt",
+                "Evidência congelada recuperada; enfileirando a única tentativa adicional de revisão",
             );
         }
         let execution = spawn_and_supervise(
@@ -2339,9 +2348,9 @@ pub(crate) fn render_chunk_prompt(
         "Review range: {}. {}\n{}",
         review_range(incremental_base, &inputs.base_ref, head_sha),
         if incremental_base.is_some() {
-            "Only new child-PR changes since the prior review."
+            "Só mudanças novas do MR filho desde a revisão anterior."
         } else {
-            "Full PR diff against its immediate base, not the default branch."
+            "Diff completo do MR contra a base imediata, não o branch padrão."
         },
         frozen::prompt(
             inputs,

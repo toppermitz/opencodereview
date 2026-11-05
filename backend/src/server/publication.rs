@@ -1442,7 +1442,7 @@ pub(crate) fn complete_phase_json(raw: &str, fallback: &str) -> String {
 }
 
 pub(crate) fn review_done_phase() -> String {
-    "[{\"id\":\"context\",\"label\":\"Context ready\",\"status\":\"ok\"},{\"id\":\"review\",\"label\":\"Reviewed\",\"status\":\"ok\"},{\"id\":\"ready\",\"label\":\"Ready\",\"status\":\"ok\"}]".to_string()
+    "[{\"id\":\"context\",\"label\":\"Contexto\",\"status\":\"ok\"},{\"id\":\"review\",\"label\":\"Revisão\",\"status\":\"ok\"},{\"id\":\"ready\",\"label\":\"Pronto\",\"status\":\"ok\"}]".to_string()
 }
 
 pub(crate) fn active_review_count(state: &SharedState) -> usize {

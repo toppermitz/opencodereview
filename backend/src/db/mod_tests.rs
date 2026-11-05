@@ -529,7 +529,7 @@ fn upsert_pull_request_clears_stacked_status_on_retarget_to_default_branch() {
         default_branch: Some("main".to_string()),
         url: Some("https://github.com/acme/web/pull/7665".to_string()),
         lane: "manual_required".to_string(),
-        status_reason: Some("Stacked PR: reviewing `head` → `base` with immediate base context".to_string()),
+        status_reason: Some("MR empilhado: revisando `head` → `base` com contexto da base imediata".to_string()),
     };
     db.upsert_pull_request(&input).expect("insert stacked");
     input.base_ref = Some("main".to_string());
@@ -2288,7 +2288,7 @@ fn the_board_carries_an_auto_post_failure_and_a_suggestions_only_mark_until_the_
     db.conn.execute("INSERT INTO repos (owner,name,full_name,is_private,created_at,updated_at) VALUES ('acme','api','acme/api',1,1,1)", []).unwrap();
     let repo = db.conn.last_insert_rowid();
     db.save_repo_subscription(repo, true, "manual", false, false).unwrap();
-    db.conn.execute("INSERT INTO pull_requests (repo_id,number,title,author,head_sha,review_lane,status_reason,last_synced_at,created_at,updated_at) VALUES ($1,1,'PR','a','head','ready','Stacked PR: reviewing a → b',1,1,1)", [repo]).unwrap();
+    db.conn.execute("INSERT INTO pull_requests (repo_id,number,title,author,head_sha,review_lane,status_reason,last_synced_at,created_at,updated_at) VALUES ($1,1,'PR','a','head','ready','MR empilhado: revisando a → b',1,1,1)", [repo]).unwrap();
     let pr = db.conn.last_insert_rowid();
     db.conn.execute("INSERT INTO review_runs (pr_id,head_sha,status,review_body,created_at,updated_at) VALUES ($1,'head','preview','**[Achado] Bug**',1,1)", [pr]).unwrap();
     let run = db.conn.last_insert_rowid();

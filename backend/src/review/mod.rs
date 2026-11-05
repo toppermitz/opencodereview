@@ -435,7 +435,7 @@ fn build_snapshot_context_plan(
                 progress(
                     &phase_json("context", "running"),
                     &format!(
-                        "Indexing pinned PR snapshot: {} ({}/{})",
+                        "Indexando snapshot fixo do MR: {} ({}/{})",
                         event.stage, event.processed, event.total
                     ),
                 );

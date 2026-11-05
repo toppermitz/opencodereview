@@ -47,7 +47,7 @@ pub(crate) fn fetch_pr_head(repo_path: &Path, number: i64, cancel: &AtomicBool) 
 pub(crate) fn fetch_base(repo_path: &Path, base_ref: &str, cancel: &AtomicBool) -> Result<(), String> {
     let branch = base_ref.strip_prefix("origin/").unwrap_or(base_ref);
     if branch.is_empty() || branch == "HEAD" {
-        return Err("The PR's immediate base branch is missing. Refresh the PR before reviewing.".into());
+        return Err("A branch base imediata do MR está ausente. Atualize o MR antes de revisar.".into());
     }
     let refspec = format!("+refs/heads/{branch}:refs/remotes/origin/{branch}");
     git_capture(
@@ -103,7 +103,7 @@ pub(crate) fn resolve_base_rev(repo_path: &Path, base_ref: &str, cancel: &Atomic
     check_cancel(cancel)?;
     fetch_base(repo_path, base_ref, cancel).map_err(|error| {
         if error == "cancelled" { return error; }
-        format!("Could not refresh PR base `{base_ref}`: {error}. Refusing to use a stale ref or fall back to {}. Refresh the PR and retry.", remote_default_branch(repo_path, cancel).unwrap_or_else(|| "the default branch".into()))
+        format!("Não foi possível atualizar a base do MR `{base_ref}`: {error}. Recusando usar um ref antigo ou cair em {}. Atualize o MR e tente de novo.", remote_default_branch(repo_path, cancel).unwrap_or_else(|| "o branch padrão".into()))
     })?;
     let primary = remote_base(base_ref);
     resolve_rev_sha(repo_path, &primary, cancel)

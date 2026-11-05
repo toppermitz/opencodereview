@@ -255,7 +255,7 @@ fn review_context_uses_the_pinned_head_graph() {
         &std::sync::atomic::AtomicBool::new(false)
     ));
     let error = super::resolve_base_rev(&repo, "parent", &std::sync::atomic::AtomicBool::new(false)).unwrap_err();
-    assert!(error.contains("Refusing to use a stale ref"));
+    assert!(error.contains("Recusando usar um ref antigo"));
     git(&[
         "remote",
         "set-url",

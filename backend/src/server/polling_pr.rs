@@ -125,27 +125,27 @@ pub(crate) fn poll_one_pr(
     );
     let status_reason = if too_many_files {
         Some(format!(
-            "Skipped: {} {} exceeds the {}-file review limit. Change Maximum PR files in Settings.",
+            "Ignorado: {} {} excedem o limite de {} arquivos. Altere Máximo de arquivos do MR em Configurações.",
             file_count.map(|files| files.count).unwrap_or_default(),
             if file_count.is_some_and(|files| files.reviewable) {
-                "reviewable changed files"
+                "arquivos alterados revisáveis"
             } else {
-                "changed files"
+                "arquivos alterados"
             },
             settings.review_max_files
         ))
     } else if off_main {
         Some(format!(
-            "Stacked PR: reviewing `{}` → `{}` with immediate base context",
+            "MR empilhado: revisando `{}` → `{}` com contexto da base imediata",
             pr.head_ref_name.as_deref().unwrap_or("head"),
             pr.base_ref_name.as_deref().unwrap_or_default()
         ))
     } else if target_mismatch {
-        Some("Only PRs assigned to you or your teams are enabled".to_string())
+        Some("Só MRs atribuídos a você ou às suas equipes estão habilitados".to_string())
     } else {
         matched_keyword
-            .map(|keyword| format!("Matched auto-skip keyword: {keyword}"))
-            .or_else(|| (!settings.review_auto_enabled).then(|| "Manual AI review configured".to_string()))
+            .map(|keyword| format!("Palavra-chave de auto-pulo correspondente: {keyword}"))
+            .or_else(|| (!settings.review_auto_enabled).then(|| "Revisão por IA manual configurada".to_string()))
     };
     let previous_scope = with_db_raw(state, |db| db.pr_scope(repo.id, pr.number))?;
     let incoming_scope = pr

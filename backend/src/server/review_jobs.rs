@@ -74,8 +74,7 @@ pub(crate) fn start_review_job_with_intent(
     }
     let (repo_id, full_name, number, head_sha) = with_db_raw(state, |db| db.pr_review_coords(pr_id))?;
     let repo = with_db_raw(state, |db| db.repo_by_id(repo_id))?;
-    let model = crate::providers::claude::MODEL.to_string();
-    let (last_reviewed_sha, unresolved_review, skill_content, db_handle, run_id) = with_db_raw(state, |db| {
+    let (last_reviewed_sha, unresolved_review, skill_content, db_handle, run_id, model) = with_db_raw(state, |db| {
         let last_reviewed_sha = if force_full {
             None
         } else {
@@ -86,7 +85,7 @@ pub(crate) fn start_review_job_with_intent(
         } else {
             db.latest_unresolved_review(pr_id)?
         };
-        // Shows the engine the next account's provider reviews with until a stage records its own.
+        // Engine the next account's provider reviews with until a stage records its own.
         let provider = db
             .pick_ai_account(&[])?
             .map_or_else(|| "claude".to_string(), |account| account.provider);
@@ -101,6 +100,7 @@ pub(crate) fn start_review_job_with_intent(
             db.active_skill_content(),
             db.handle(),
             run_id,
+            engine_model,
         ))
     })?;
     let cancel = Arc::new(AtomicBool::new(false));

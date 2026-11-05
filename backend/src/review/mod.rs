@@ -369,7 +369,7 @@ fn record_stage(
             pr_id: inputs.pr_id,
             stage: stage.to_string(),
             chunk_id,
-            model: Some(inputs.model.clone()),
+            model: Some(stage_model(inputs, usage)),
             status: status.to_string(),
             cache_key,
             cache_hit: status == "cached",
@@ -391,6 +391,21 @@ fn record_stage(
             started_at,
             finished_at: Some(finished_at),
         });
+    }
+}
+
+/// Model id shown on a stage: Claude transcripts name the model; Codex only reports "codex", so
+/// those rows resolve ChatGPT's configured engine. Cache hits with no usage keep the job's engine.
+fn stage_model(inputs: &ReviewInputs, usage: &RunUsage) -> String {
+    match usage.model.as_deref() {
+        Some("codex") => inputs
+            .open_db()
+            .ok()
+            .and_then(|db| db.review_engine("codex").ok())
+            .map(|(model, _)| model)
+            .unwrap_or_else(|| inputs.model.clone()),
+        Some("unknown") | None => inputs.model.clone(),
+        Some(model) => model.to_string(),
     }
 }
 

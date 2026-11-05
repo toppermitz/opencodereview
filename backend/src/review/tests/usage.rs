@@ -34,6 +34,28 @@ fn attributes_usage_per_model_with_totals_and_dominant() {
 }
 
 #[test]
+fn stage_model_prefers_transcript_then_codex_engine_then_job() {
+    let mut inputs = review_inputs("economic", 20, 5);
+    inputs.model = "job-engine".into();
+    let db = inputs.open_db().unwrap();
+    db.save_review_engine("codex", "gpt-5.5", "medium").unwrap();
+
+    let claude = super::RunUsage {
+        model: Some("claude-sonnet-5-5".into()),
+        ..Default::default()
+    };
+    assert_eq!(super::stage_model(&inputs, &claude), "claude-sonnet-5-5");
+
+    let codex = super::RunUsage {
+        model: Some("codex".into()),
+        ..Default::default()
+    };
+    assert_eq!(super::stage_model(&inputs, &codex), "gpt-5.5");
+
+    assert_eq!(super::stage_model(&inputs, &super::RunUsage::default()), "job-engine");
+}
+
+#[test]
 fn falls_back_to_result_usage_and_parses_stream_lines() {
     let raw = "{\"type\":\"system\"}\n{\"type\":\"result\",\"usage\":{\"input_tokens\":30,\"output_tokens\":3,\"cache_read_input_tokens\":10}}\n";
     let events = super::transcript_events(raw).unwrap();

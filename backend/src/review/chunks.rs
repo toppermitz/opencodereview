@@ -1339,10 +1339,7 @@ pub(crate) fn run_review_chunk(
                 &comments,
             )?;
             let comments_json = fs::read_to_string(&comments).map_err(|error| error.to_string())?;
-            let usage = RunUsage {
-                model: Some(inputs.model.clone()),
-                ..Default::default()
-            };
+            let usage = RunUsage::default();
             record_stage(
                 inputs,
                 "chunk",

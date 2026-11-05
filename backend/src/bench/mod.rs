@@ -185,7 +185,12 @@ pub(crate) fn review(
         unresolved_review_body: None,
         pr_title: pr.title.clone(),
         pr_body: pr.body.clone(),
-        model: crate::providers::claude::MODEL.to_string(),
+        model: {
+            let provider = database
+                .pick_ai_account(&[])?
+                .map_or_else(|| "claude".to_string(), |account| account.provider);
+            database.review_engine(&provider)?.0
+        },
         review_depth_mode: settings.review_depth_mode.clone(),
         review_deep_threshold: settings.review_deep_threshold.max(2) as usize,
         review_chunk_size: settings.review_chunk_size.clamp(2, 20) as usize,

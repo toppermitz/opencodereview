@@ -34,11 +34,9 @@ fn attributes_usage_per_model_with_totals_and_dominant() {
 }
 
 #[test]
-fn stage_model_prefers_transcript_then_codex_engine_then_job() {
+fn stage_model_prefers_transcript_then_job() {
     let mut inputs = review_inputs("economic", 20, 5);
     inputs.model = "job-engine".into();
-    let db = inputs.open_db().unwrap();
-    db.save_review_engine("codex", "gpt-5.5", "medium").unwrap();
 
     let claude = super::RunUsage {
         model: Some("claude-sonnet-5-5".into()),
@@ -46,13 +44,50 @@ fn stage_model_prefers_transcript_then_codex_engine_then_job() {
     };
     assert_eq!(super::stage_model(&inputs, &claude), "claude-sonnet-5-5");
 
-    let codex = super::RunUsage {
+    // Codex usage is normally rewritten to the execution engine before record_stage; unresolved
+    // "codex" and empty usage (cache hits) keep the job engine.
+    let unresolved = super::RunUsage {
         model: Some("codex".into()),
         ..Default::default()
     };
-    assert_eq!(super::stage_model(&inputs, &codex), "gpt-5.5");
-
+    assert_eq!(super::stage_model(&inputs, &unresolved), "job-engine");
     assert_eq!(super::stage_model(&inputs, &super::RunUsage::default()), "job-engine");
+}
+
+#[test]
+fn codex_usage_resolves_to_engine_captured_at_execution() {
+    let directory = std::env::temp_dir().join(format!(
+        "ocr-stage-engine-{}",
+        crate::sandbox::secret().unwrap()
+    ));
+    std::fs::create_dir_all(&directory).unwrap();
+    let transcript = directory.join("transcript.json");
+    std::fs::write(
+        &transcript,
+        r#"{"type":"turn.completed","usage":{"input_tokens":40,"cached_input_tokens":10,"output_tokens":4}}
+"#,
+    )
+    .unwrap();
+    super::usage::write_stage_engine(&transcript, "gpt-5.5");
+
+    let usage = super::usage::parse_transcript_usage_single(&transcript);
+    assert_eq!(usage.model.as_deref(), Some("gpt-5.5"));
+    assert_eq!(usage.by_model[0].model, "gpt-5.5");
+    assert_eq!(
+        (usage.input_tokens, usage.cache_read_tokens, usage.output_tokens),
+        (30, 10, 4)
+    );
+
+    // A setting change after the sidecar was written must not affect this stage.
+    let mut inputs = review_inputs("economic", 20, 5);
+    inputs.model = "job-engine".into();
+    inputs
+        .open_db()
+        .unwrap()
+        .save_review_engine("codex", "gpt-6-astra", "low")
+        .unwrap();
+    assert_eq!(super::stage_model(&inputs, &usage), "gpt-5.5");
+    std::fs::remove_dir_all(&directory).unwrap();
 }
 
 #[test]

@@ -394,17 +394,12 @@ fn record_stage(
     }
 }
 
-/// Model id shown on a stage: Claude transcripts name the model; Codex only reports "codex", so
-/// those rows resolve ChatGPT's configured engine. Cache hits with no usage keep the job's engine.
+/// Model id shown on a stage: Claude transcripts name the model; Codex usage is rewritten to the
+/// engine captured at execution (see `usage::write_stage_engine`). Unresolved "codex" and cache
+/// hits with no usage keep the job's engine.
 fn stage_model(inputs: &ReviewInputs, usage: &RunUsage) -> String {
     match usage.model.as_deref() {
-        Some("codex") => inputs
-            .open_db()
-            .ok()
-            .and_then(|db| db.review_engine("codex").ok())
-            .map(|(model, _)| model)
-            .unwrap_or_else(|| inputs.model.clone()),
-        Some("unknown") | None => inputs.model.clone(),
+        Some("unknown") | None | Some("codex") => inputs.model.clone(),
         Some(model) => model.to_string(),
     }
 }

@@ -517,6 +517,9 @@ pub(super) fn execute(
             )?;
             let (model, effort) = engine_for(inputs, &account.provider);
             runner::set_engine(&mut request, &model, &effort)?;
+            // Recorded beside the transcript so stage usage resolves Codex's generic "codex" label
+            // to this execution's engine, not a setting changed while the stage ran.
+            super::usage::write_stage_engine(paths.transcript, &model);
             if inputs.db_handle.is_some() {
                 let label = crate::providers::engines::label(&account.provider, &model, &effort);
                 let _ = accounts_db(inputs).and_then(|db| db.set_review_run_model(inputs.run_id, &label));
@@ -574,8 +577,12 @@ pub(super) fn execute(
             return Err(message.to_string());
         }
         if paths.transcript.exists() {
-            fs::rename(paths.transcript, next_failover_transcript(paths.transcript))
-                .map_err(|error| error.to_string())?;
+            let failover = next_failover_transcript(paths.transcript);
+            fs::rename(paths.transcript, &failover).map_err(|error| error.to_string())?;
+            let engine = super::usage::stage_engine_path(paths.transcript);
+            if engine.exists() {
+                let _ = fs::rename(&engine, super::usage::stage_engine_path(&failover));
+            }
         }
         progress(
             &crate::review::progress::execution_phase(

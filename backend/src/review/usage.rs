@@ -31,7 +31,35 @@ pub(crate) fn parse_transcript_usage_single(transcript_path: &Path) -> RunUsage 
     };
     let mut per_model = std::collections::HashMap::new();
     collect_usage(&value, &mut per_model);
-    finalize_usage(per_model)
+    let mut usage = finalize_usage(per_model);
+    // Codex transcripts only name "codex"; the engine chosen for that execution lives beside it.
+    if usage.model.as_deref() == Some("codex") {
+        if let Some(engine) = read_stage_engine(transcript_path) {
+            if let Some(entry) = usage.by_model.iter_mut().find(|entry| entry.model == "codex") {
+                entry.model = engine.clone();
+            }
+            usage.model = Some(engine);
+        }
+    }
+    usage
+}
+
+/// Sidecar written by `frozen::execute` with the model that stage ran.
+pub(crate) fn stage_engine_path(transcript: &Path) -> PathBuf {
+    let mut name = transcript.file_name().unwrap_or_default().to_os_string();
+    name.push(".engine");
+    transcript.with_file_name(name)
+}
+
+pub(crate) fn write_stage_engine(transcript: &Path, model: &str) {
+    let _ = fs::write(stage_engine_path(transcript), model);
+}
+
+pub(crate) fn read_stage_engine(transcript: &Path) -> Option<String> {
+    fs::read_to_string(stage_engine_path(transcript))
+        .ok()
+        .map(|raw| raw.trim().to_string())
+        .filter(|model| !model.is_empty())
 }
 
 /// Parses a stream-json transcript (one event per line) into an array of events.

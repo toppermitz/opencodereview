@@ -56,6 +56,14 @@ pub(crate) fn models(provider: &str) -> &'static [EngineModel] {
     }
 }
 
+/// Every model id OpenCodeReview can run, for the runner catalogue.
+pub(crate) fn all_model_ids() -> Vec<&'static str> {
+    PROVIDERS
+        .iter()
+        .flat_map(|(provider, _)| models(provider).iter().map(|model| model.id))
+        .collect()
+}
+
 /// The provider's default model and effort.
 pub(crate) fn default_engine(provider: &str) -> (String, String) {
     models(provider)
@@ -115,6 +123,16 @@ mod tests {
             let (model, effort) = default_engine(provider);
             assert_eq!(resolve(provider, &model, &effort).unwrap(), (model, effort));
         }
+    }
+
+    #[test]
+    fn catalogue_lists_every_configured_engine() {
+        let ids = all_model_ids();
+        assert!(ids.contains(&"claude-opus-5-5"));
+        assert!(ids.contains(&"claude-sonnet-5-5"));
+        assert!(ids.contains(&"default"));
+        assert!(ids.contains(&"gpt-5.5"));
+        assert_eq!(ids.len(), CLAUDE.len() + CODEX.len());
     }
 
     #[test]

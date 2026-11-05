@@ -18,7 +18,7 @@ const candidate = (
   origin: "chunk",
   chunkId: 1,
   aiReason: `${id} evidence`,
-  body: `<sub>🤖 Automated review by OpenCodeReview</sub>\n\n[Finding] ${id} title\n\n${id} explanation`,
+  body: `[Achado] ${id} title\n\n${id} explanation`,
   originalBody: null,
   comment: { path: "src/example.ts", line: 1 },
 });
@@ -105,9 +105,9 @@ describe("finding selection groups", () => {
     const html = render();
     expect(html).not.toContain('role="tablist"');
     expect(html).toContain('data-finding-group="eligible"');
-    expect(html).toContain("Eligible findings");
-    expect(html).toContain("Discarded by AI");
-    expect(html).toContain("Blocked by validation");
+    expect(html).toContain("Achados elegíveis");
+    expect(html).toContain("Descartados pela IA");
+    expect(html).toContain("Bloqueados pela validação");
     expect(html).toContain("kept explanation");
     expect(html).not.toContain("discarded explanation");
     expect(html).not.toContain("Legacy final output");
@@ -116,7 +116,7 @@ describe("finding selection groups", () => {
 
   it("shows each finding under its own title, without the GitHub-only lines or redundant tags", () => {
     const html = render();
-    expect(html).not.toContain("Automated review by OpenCodeReview");
+    expect(html).not.toContain("Revisão automatizada por OpenCodeReview");
     expect(html.match(/kept title/g)).toHaveLength(1);
     expect(html).not.toContain("AI: selected");
     expect(html).toContain("src/example.ts:1 · Chunk 1");
@@ -125,7 +125,7 @@ describe("finding selection groups", () => {
 
   it("folds the original AI summary below the findings", () => {
     const html = render();
-    expect(html).toMatch(/<details class="finding-original-review[^"]*"><summary>Original AI summary<\/summary>/);
+    expect(html).toMatch(/<details class="finding-original-review[^"]*"><summary>Resumo original da IA<\/summary>/);
   });
 
   it("switches groups, preserves choices across them and keeps blocked findings disabled", async () => {
@@ -133,25 +133,25 @@ describe("finding selection groups", () => {
     const onSave = vi.fn();
     const onReset = vi.fn();
     await interact({ onToggle, onSave, onReset }, async (container) => {
-      expect(chip(container, "Eligible findings").getAttribute("aria-pressed")).toBe("true");
-      await click(chip(container, "Discarded by AI"));
-      expect(chip(container, "Discarded by AI").getAttribute("aria-pressed")).toBe("true");
-      expect(chip(container, "Eligible findings").getAttribute("aria-pressed")).toBe("false");
+      expect(chip(container, "Achados elegíveis").getAttribute("aria-pressed")).toBe("true");
+      await click(chip(container, "Descartados pela IA"));
+      expect(chip(container, "Descartados pela IA").getAttribute("aria-pressed")).toBe("true");
+      expect(chip(container, "Achados elegíveis").getAttribute("aria-pressed")).toBe("false");
       const discarded = container.querySelector<HTMLInputElement>('[aria-label="Include finding discarded"]')!;
       expect(discarded.disabled).toBe(false);
       expect(discarded.checked).toBe(false);
       expect(container.textContent).toContain("discarded evidence");
-      expect(container.textContent).toContain("AI: discarded");
+      expect(container.textContent).toContain("IA: discarded");
       await click(discarded);
       expect(onToggle).toHaveBeenCalledExactlyOnceWith("discarded");
-      await click(chip(container, "Blocked by validation"));
+      await click(chip(container, "Bloqueados pela validação"));
       expect(container.querySelector<HTMLInputElement>('[aria-label="Include finding blocked"]')!.disabled).toBe(true);
       expect(container.textContent).toContain("Invalid anchor");
-      await click(chip(container, "Discarded by AI"));
+      await click(chip(container, "Descartados pela IA"));
       expect(container.querySelector<HTMLInputElement>('[aria-label="Include finding discarded"]')!.checked).toBe(true);
       expect(container.textContent).toContain("Manual override");
       expect(container.querySelectorAll(".finding-tab-panel")).toHaveLength(1);
-      expect(chip(container, "Discarded by AI").getAttribute("aria-controls")).toBe(
+      expect(chip(container, "Descartados pela IA").getAttribute("aria-controls")).toBe(
         container.querySelector(".finding-tab-panel")!.id,
       );
       expect(onSave).not.toHaveBeenCalled();
@@ -163,7 +163,7 @@ describe("finding selection groups", () => {
     const question = {
       ...candidate("question", "kept"),
       kind: "question" as const,
-      body: "[Question] Confirm rollout",
+      body: "[Pergunta] Confirm rollout",
       selected: false,
       defaultSelected: false,
     };
@@ -183,15 +183,15 @@ describe("finding selection groups", () => {
         },
       },
       async (container) => {
-        expect(container.textContent).toContain("1 finding · 0 questions selected");
-        expect(container.textContent).toContain("cannot alone justify Request changes");
-        await click(chip(container, "Questions — optional publication"));
+        expect(container.textContent).toContain("1 achado · 0 perguntas selecionadas");
+        expect(container.textContent).toContain("Sozinhas não justificam Solicitar mudanças");
+        await click(chip(container, "Perguntas — publicação opcional"));
         expect(container.querySelector<HTMLInputElement>('[aria-label="Include question question"]')!.checked).toBe(
           false,
         );
-        await click(chip(container, "Decision unavailable"));
+        await click(chip(container, "Decisão indisponível"));
         expect(container.textContent).toContain("unknown evidence");
-        await click(chip(container, "Awaiting final review"));
+        await click(chip(container, "Aguardando revisão final"));
         expect(container.textContent).toContain("pending evidence");
       },
     );
@@ -201,16 +201,16 @@ describe("finding selection groups", () => {
     const html = render({ view: { ...view, editable: false, audit: null } });
     expect(html).toContain("Legacy final output");
     expect(html).toContain('data-finding-group="unavailable"><summary>');
-    expect(html).toContain("History unavailable");
+    expect(html).toContain("Histórico indisponível");
     expect(html).not.toContain("0 discarded");
     expect(html).not.toContain("Save selection");
   });
 
   it("does not ask for confirmation when no candidates were generated", () => {
     const html = render({ view: { ...view, audit: { ...view.audit!, candidates: [] } }, selectedIds: [] });
-    expect(html).toContain("Choose a review decision below");
+    expect(html).toContain("Escolha uma decisão de revisão abaixo");
     expect(html).not.toContain("Save the empty selection");
-    expect(html).not.toContain("Confirm findings");
+    expect(html).not.toContain("Confirmar achados");
     expect(html).not.toContain("finding-selection-actions");
   });
 
@@ -219,7 +219,7 @@ describe("finding selection groups", () => {
     async (overrides) => {
       await interact(overrides, async (container) => {
         expect(container.querySelector<HTMLInputElement>('[aria-label="Include finding kept"]')!.disabled).toBe(true);
-        await click(chip(container, "Discarded by AI"));
+        await click(chip(container, "Descartados pela IA"));
         expect(container.querySelector<HTMLInputElement>('[aria-label="Include finding discarded"]')!.disabled).toBe(
           true,
         );

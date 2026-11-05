@@ -47,39 +47,40 @@ export function FindingSelection({
     candidates.filter((candidate) => selected.has(candidate.id) && candidateKind(candidate) === kind).length;
   const editable = Boolean(view?.editable && !busy && !conflict && !error);
   return (
-    <section className="finding-selection grid min-w-0 gap-3" aria-label="Review findings">
+    <section className="finding-selection grid min-w-0 gap-3" aria-label="Achados da revisão">
       <div className="finding-selection-intro grid gap-1.5 text-small text-fg-muted">
         <div className="finding-review-heading flex flex-wrap items-center justify-between gap-2 text-caption text-fg-subtle">
-          <span>{error ? "Candidate audit could not be loaded." : findingAuditSummary(view)}</span>
+          <span>{error ? "Não foi possível carregar a auditoria de candidatos." : findingAuditSummary(view)}</span>
           {view?.audit &&
             (view.editable ? (
               <span className="tabular-nums">
-                {selectedOf("finding")} finding{selectedOf("finding") === 1 ? "" : "s"} · {selectedOf("question")}{" "}
-                question{selectedOf("question") === 1 ? "" : "s"} selected
+                {selectedOf("finding")} achado{selectedOf("finding") === 1 ? "" : "s"} · {selectedOf("question")}{" "}
+                pergunta{selectedOf("question") === 1 ? "" : "s"} selecionada{selectedOf("question") === 1 ? "" : "s"}
               </span>
             ) : (
               <span
                 className="inline-flex items-center gap-1"
-                title={!view.audit.complete ? "Audit incomplete. Selection unlocks after validation." : undefined}
+                title={!view.audit.complete ? "Auditoria incompleta. A seleção libera após a validação." : undefined}
               >
                 <Lock className="size-3" aria-hidden="true" />
-                {!view.audit.complete ? "Audit incomplete" : "Read-only"}
+                {!view.audit.complete ? "Auditoria incompleta" : "Somente leitura"}
               </span>
             ))}
         </div>
         {candidates.some((candidate) => candidateKind(candidate) === "question") && (
           <p>
-            Questions need confirmation, not a presumed fix. They are optional and cannot alone justify Request changes.
+            Perguntas precisam de confirmação, não de uma correção presumida. São opcionais e sozinhas não justificam
+            Solicitar mudanças.
           </p>
         )}
         {view?.editable && candidates.length > 0 && (
-          <p>Choose findings below, confirm them, then choose how to publish the review.</p>
+          <p>Escolha os achados abaixo, confirme-os e depois escolha como publicar a revisão.</p>
         )}
       </div>
       {error && <DSError>{error}</DSError>}
       {conflict && (
         <DSError>
-          The saved selection changed elsewhere. Reload it before saving; your draft has not been submitted.
+          A seleção salva mudou em outro lugar. Recarregue antes de salvar; seu rascunho não foi enviado.
         </DSError>
       )}
       <div className="finding-selection-list grid min-w-0 gap-3">
@@ -88,8 +89,8 @@ export function FindingSelection({
             {candidates.length === 0 && (
               <DSEmptyState>
                 {view.editable
-                  ? "No finding candidates were generated. Choose a review decision below."
-                  : "No finding candidates recorded for this run."}
+                  ? "Nenhum candidato a achado foi gerado. Escolha uma decisão de revisão abaixo."
+                  : "Nenhum candidato a achado registrado nesta execução."}
               </DSEmptyState>
             )}
             {group && (
@@ -97,7 +98,7 @@ export function FindingSelection({
                 {groups.length > 1 && (
                   <fieldset
                     className="m-0 min-w-0 border-0 p-0 finding-groups flex flex-wrap gap-1.5"
-                    aria-label="Finding groups"
+                    aria-label="Grupos de achados"
                   >
                     {groups.map((item) => (
                       <button
@@ -122,8 +123,8 @@ export function FindingSelection({
                         candidate.aiDecision === "kept"
                           ? null
                           : candidate.aiDecision === "unmapped"
-                            ? "AI: decision unavailable"
-                            : `AI: ${candidate.aiDecision}`;
+                            ? "IA: decisão indisponível"
+                            : `IA: ${candidate.aiDecision}`;
                       return (
                         <article
                           key={candidate.id}
@@ -143,10 +144,10 @@ export function FindingSelection({
                               </span>
                               <span className="finding-candidate-location mt-1.5 inline-block max-w-full rounded-md bg-surface-muted px-1.5 py-0.5 font-mono text-caption text-fg-muted [overflow-wrap:anywhere]">
                                 {candidate.comment
-                                  ? `${candidate.comment.path ?? "Unknown path"}:${candidate.comment.line ?? "?"}`
+                                  ? `${candidate.comment.path ?? "Caminho desconhecido"}:${candidate.comment.line ?? "?"}`
                                   : candidateKind(candidate) === "question"
-                                    ? "General review question"
-                                    : "General findings in the review body"}
+                                    ? "Pergunta geral da revisão"
+                                    : "Achados gerais no corpo da revisão"}
                                 {candidate.chunkId !== null && ` · Chunk ${candidate.chunkId}`}
                               </span>
                             </span>
@@ -154,31 +155,31 @@ export function FindingSelection({
                           {(aiTag || override) && (
                             <div className="finding-candidate-tags flex flex-wrap gap-1.5 pl-6.5 [&_span]:rounded-full [&_span]:bg-surface-muted [&_span]:px-2 [&_span]:py-0.5 [&_span]:text-caption [&_span]:font-medium [&_span]:text-fg-muted">
                               {aiTag && <span>{aiTag}</span>}
-                              {override && <span>Manual override</span>}
+                              {override && <span>Sobrescrita manual</span>}
                             </div>
                           )}
                           {group.id !== "eligible" && (
                             <p className="finding-candidate-reason pl-6.5 text-small text-fg-muted [overflow-wrap:anywhere]">
                               {candidate.aiReason ??
                                 (candidate.origin === "inherited"
-                                  ? "No new AI pass ran; this came from prior review context."
+                                  ? "Nenhuma nova passagem da IA; veio do contexto de revisão anterior."
                                   : candidate.aiDecision === "pending"
-                                    ? "Awaiting the final integration decision."
+                                    ? "Aguardando a decisão final de integração."
                                     : candidate.aiDecision === "unmapped"
-                                      ? "No reliable mapping was recorded. This candidate may have been rewritten or omitted; no discard reason is inferred."
-                                      : "AI reason not recorded.")}
+                                      ? "Nenhum mapeamento confiável foi registrado. Este candidato pode ter sido reescrito ou omitido; nenhum motivo de descarte é inferido."
+                                      : "Motivo da IA não registrado.")}
                             </p>
                           )}
                           {candidate.blockedReason && (
                             <p className="finding-candidate-blocked pl-6.5 text-small text-danger">
-                              Cannot include: {candidate.blockedReason}
+                              Não pode incluir: {candidate.blockedReason}
                             </p>
                           )}
                           <div className="finding-candidate-body min-w-0 pl-6.5 [overflow-wrap:anywhere]">
                             <Markdown>{findingDisplayBody(candidate.body)}</Markdown>
                             {group.id === "eligible" && (
                               <details className="finding-candidate-text disclosure text-small">
-                                <summary>Why the AI kept it</summary>
+                                <summary>Por que a IA manteve</summary>
                                 <p className="finding-candidate-reason text-small text-fg-muted [overflow-wrap:anywhere]">
                                   {candidate.aiReason ?? "AI reason not recorded."}
                                 </p>
@@ -186,7 +187,7 @@ export function FindingSelection({
                             )}
                             {candidate.originalBody && (
                               <details className="finding-candidate-text disclosure text-small">
-                                <summary>Original finding from chunk</summary>
+                                <summary>Achado original do chunk</summary>
                                 <Markdown>{candidate.originalBody}</Markdown>
                               </details>
                             )}
@@ -200,7 +201,7 @@ export function FindingSelection({
             )}
             {view.audit.originalBody && (
               <details className="finding-original-review disclosure text-small">
-                <summary>Original AI summary</summary>
+                <summary>Resumo original da IA</summary>
                 <Markdown>{view.audit.originalBody}</Markdown>
               </details>
             )}
@@ -208,16 +209,16 @@ export function FindingSelection({
         ) : (
           <>
             {children}
-            {loading && !error && <BrandLoading size="compact" label="Loading candidate audit…" />}
+            {loading && !error && <BrandLoading size="compact" label="Carregando auditoria de candidatos…" />}
             {view && !loading && (
               <details className="finding-group min-w-0" data-finding-group="unavailable">
                 <summary>
-                  <span>Discarded findings</span>
-                  <span>History unavailable</span>
+                  <span>Achados descartados</span>
+                  <span>Histórico indisponível</span>
                 </summary>
                 <p className="finding-candidate-reason text-small text-fg-muted [overflow-wrap:anywhere]">
-                  No candidate audit was recorded for this run. Historical discard reasons cannot be reconstructed
-                  reliably; this does not mean zero candidates were discarded.
+                  Nenhuma auditoria de candidatos foi registrada nesta execução. Motivos históricos de descarte não
+                  podem ser reconstruídos de forma confiável; isso não significa que zero candidatos foram descartados.
                 </p>
               </details>
             )}
@@ -228,16 +229,16 @@ export function FindingSelection({
         <footer className="finding-selection-actions sticky -bottom-5 z-1 flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface py-3 [&>span]:min-w-30 [&>span]:flex-1 [&>span]:text-caption [&>span]:text-fg-subtle">
           <span>
             {dirty
-              ? "Unsaved finding choices"
+              ? "Escolhas de achados não salvas"
               : view.selectionSaved
-                ? "Findings confirmed"
-                : "Confirm findings before choosing an action"}
+                ? "Achados confirmados"
+                : "Confirme os achados antes de escolher uma ação"}
           </span>
           <DSButton disabled={busy} onClick={onReset}>
-            {conflict ? "Reload selection" : "Reset to AI selection"}
+            {conflict ? "Recarregar seleção" : "Restaurar seleção da IA"}
           </DSButton>
           <DSButton tone="primary" disabled={!editable || (view.selectionSaved && !dirty)} onClick={onSave}>
-            {busy ? "Confirming…" : "Confirm findings"}
+            {busy ? "Confirmando…" : "Confirmar achados"}
           </DSButton>
         </footer>
       )}

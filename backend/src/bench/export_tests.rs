@@ -28,12 +28,24 @@ deleted file mode 100644
 ";
 
 fn body(kind: &str, title: &str, detail: &str, action: &str) -> String {
-    let (details, fix) = if kind == "Question" {
-        ("\u{1f50e} Why I'm asking", "\u{1f4ac} What to confirm")
+    let (marker, details, fix) = if kind == "Question" {
+        (
+            crate::review::QUESTION_MARKER,
+            crate::review::QUESTION_DETAILS_SUMMARY,
+            crate::review::QUESTION_ACTION_SUMMARY,
+        )
     } else {
-        ("\u{1f50e} Details", "\u{1f6e0}\u{fe0f} Suggested fix")
+        (
+            crate::review::FINDING_MARKER,
+            crate::review::FINDING_DETAILS_SUMMARY,
+            crate::review::FINDING_ACTION_SUMMARY,
+        )
     };
-    format!("<sub>\u{1f916} Automated review by OpenCodeReview</sub>\n\n**[{kind}] {title}**\n\n{detail}\n\n<details>\n<summary>{details}</summary>\n\nWhy: src/pool.rs:4 (abc)\n\n</details>\n\n<details>\n<summary>{fix}</summary>\n\n{action}\n\n</details>\n\n<details>\n<summary>\u{1f916} Prompt for AI Agents</summary>\n\n```text\nfix it\n```\n\n</details>")
+    format!(
+        "**{marker} {title}**\n\n{detail}\n\n<details>\n<summary>{details}</summary>\n\n{} src/pool.rs:4 (abc)\n\n</details>\n\n<details>\n<summary>{fix}</summary>\n\n{action}\n\n</details>\n\n<details>\n<summary>{}</summary>\n\n```text\nFix it\n```\n\n</details>",
+        crate::review::EVIDENCE_WHY_PREFIX,
+        crate::review::AGENTS_PROMPT_SUMMARY,
+    )
 }
 
 #[test]
@@ -46,8 +58,11 @@ fn points_read_comments_posted_before_the_detail_was_shown_once() {
         "Hold the lock.",
     )
     .replacen(
-        "<summary>\u{1f50e} Details</summary>\n\n",
-        "<summary>\u{1f50e} Details</summary>\n\nconns is read without the mutex.\n\n",
+        &format!("<summary>{}</summary>\n\n", crate::review::FINDING_DETAILS_SUMMARY),
+        &format!(
+            "<summary>{}</summary>\n\nconns is read without the mutex.\n\n",
+            crate::review::FINDING_DETAILS_SUMMARY
+        ),
         1,
     );
     assert_eq!(old.matches("conns is read without the mutex.").count(), 2);
@@ -98,7 +113,7 @@ fn points_parse_the_finding_template_and_keep_questions_apart() {
     assert_eq!(finding.action, "Hold the lock.");
     assert_eq!(
         finding.message(),
-        "Race on `conns`. conns is read <without> the mutex. Suggested fix: Hold the lock."
+        "Race on `conns`. conns is read <without> the mutex. Correção sugerida: Hold the lock."
     );
     let question = &points[1];
     assert_eq!(question.kind, "question");
@@ -135,7 +150,8 @@ fn a_cancelled_review_reports_what_its_finished_chunks_validated_once() {
 #[test]
 fn summary_suggestions_export_as_findings_on_their_line() {
     let body = format!(
-        "No findings.\n\n{}",
+        "{}\n\n{}",
+        crate::review::NO_FINDINGS_SUMMARY,
         crate::review::evidence::suggestions_section(&[
             serde_json::json!({"path":"src/a.rs","line":7,"title":"No test covers <empty> input","detail":"Nothing checks `parse`.","action":"Add a test for empty input."}),
         ])
@@ -151,7 +167,7 @@ fn summary_suggestions_export_as_findings_on_their_line() {
     assert_eq!(finding.title, "No test covers <empty> input");
     assert_eq!(
         finding.message(),
-        "No test covers <empty> input. Nothing checks `parse`. Suggested fix: Add a test for empty input."
+        "No test covers <empty> input. Nothing checks `parse`. Correção sugerida: Add a test for empty input."
     );
-    assert!(suggestions("No findings.").is_empty());
+    assert!(suggestions(crate::review::NO_FINDINGS_SUMMARY).is_empty());
 }

@@ -40,7 +40,7 @@ export function UsageTotals({ totals }: { totals: Totals }) {
         note={`on ${totals.prs.toLocaleString()} ${totals.prs === 1 ? "PR" : "PRs"}`}
       />
       <Total
-        label="Findings"
+        label="Achados"
         value={totals.findingsFound.toLocaleString()}
         note={`${totals.findings.toLocaleString()} posted · ${totals.questionsFound.toLocaleString()} ${totals.questionsFound === 1 ? "question" : "questions"}`}
         hint="Findings the reviews kept, published or not; posted counts the ones published to GitLab."

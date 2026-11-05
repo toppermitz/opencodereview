@@ -801,7 +801,7 @@ fn renderer_preserves_required_templates() {
             1,
             "the detail is shown once: {body}"
         );
-        assert!(body.contains("Why: src/auth.rs:1"));
+        assert!(body.contains("Por quê: src/auth.rs:1"));
     }
 }
 
@@ -975,16 +975,16 @@ fn suggestions_are_validated_and_listed_in_the_summary_instead_of_posted_inline(
     let (points, section) = crate::review::split_suggestions(&body);
     assert!(!points.contains("Suggestions"));
     assert!(section.starts_with(crate::review::SUGGESTIONS_HEADING));
-    // Collapsed on GitHub: one "💡 Suggestions (n)" line until the reader opens it.
+    // Collapsed on GitHub: one "💡 Sugestões (n)" line until the reader opens it.
     assert!(
-        section.starts_with("<details>\n<summary>💡 Suggestions (1)</summary>\n\n"),
+        section.starts_with("<details>\n<summary>💡 Sugestões (1)</summary>\n\n"),
         "{section}"
     );
     assert!(section.trim_end().ends_with("</details>"), "{section}");
     // Reviews stored before the section was collapsed still split at their heading.
     let legacy =
-        "**[Finding] Bug**\n\n### 💡 Suggestions\n\n- `a.rs:3` **Stale name**. Old. Suggested change: Rename it";
-    assert_eq!(crate::review::split_suggestions(legacy).0, "**[Finding] Bug**\n\n");
+        "**[Achado] Bug**\n\n### 💡 Sugestões\n\n- `a.rs:3` **Stale name**. Old. Alteração sugerida: Rename it";
+    assert_eq!(crate::review::split_suggestions(legacy).0, "**[Achado] Bug**\n\n");
     assert_eq!(
         section
             .matches("- `src/auth.rs:2` **No test covers allow_all**")
@@ -1019,7 +1019,7 @@ fn suggestions_are_validated_and_listed_in_the_summary_instead_of_posted_inline(
 #[test]
 fn a_review_with_only_suggestions_keeps_its_summary_as_written() {
     let body = format!(
-        "No findings.\n\n{}",
+        "Nada a sinalizar.\n\n{}",
         suggestions_section(&[
             json!({"path":"a.rs","line":3,"title":"Stale test name","detail":"The test name still says the feature is missing.","action":"Rename the test."})
         ])

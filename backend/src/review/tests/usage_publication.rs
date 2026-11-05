@@ -44,7 +44,7 @@ fn explained_discards_are_auditable_and_reversible() {
         crate::review::findings::seed_audit(&sources, "abc", diff),
         Some(empty),
         Some(empty),
-        "No findings",
+        "Nada a sinalizar",
         Some(&decisions),
         "",
     );
@@ -71,8 +71,8 @@ fn body_findings_can_be_excluded_without_leaking_into_publication() {
     assert!(audit.candidates[0].selected);
     crate::review::findings::select(&mut audit, &[]).unwrap();
     let (body, comments) = crate::review::findings::selection_payload(&audit);
-    assert!(!body.contains("[Finding]"));
-    assert!(!comments.contains("[Finding]"));
+    assert!(!body.contains("[Achado]"));
+    assert!(!comments.contains("[Achado]"));
     crate::review::findings::select(&mut audit, &["body-1".to_string()]).unwrap();
     assert_eq!(
         crate::review::findings::selection_payload(&audit).0,
@@ -775,11 +775,11 @@ fn finding_selection_is_versioned_and_locked_during_publication() {
 }
 
 fn structured_finding() -> &'static str {
-    "<sub>🤖 Automated review by OpenCodeReview</sub>\n\n**[Finding] Example issue**\n\nDetails.\n\n<details>\n<summary>🔎 Details</summary>\n\nWhy.\n\n</details>\n\n<details>\n<summary>🛠️ Suggested fix</summary>\n\nFix it.\n\n</details>\n\n<details>\n<summary>🤖 Prompt for AI Agents</summary>\n\n```text\nVerify this finding against the current code.\nFix only if still valid; skip the rest with a brief reason. Keep\nchanges minimal, and validate with the relevant tests/typecheck.\n\nInspect src/lib.rs and fix only if still valid.\n```\n\n</details>"
+    "**[Achado] Example issue**\n\nDetails.\n\n<details>\n<summary>🔎 Detalhes</summary>\n\nWhy.\n\n</details>\n\n<details>\n<summary>🛠️ Correção sugerida</summary>\n\nFix it.\n\n</details>\n\n<details>\n<summary>🤖 Prompt para agentes de IA</summary>\n\n```text\nVerifique este achado no código atual.\nCorrija somente se ainda for válido; senão, pule o restante com um breve motivo. Mantenha\nas alterações mínimas e valide com os testes/typecheck relevantes.\n\nInspect src/lib.rs and fix only if still valid.\n```\n\n</details>"
 }
 
 fn structured_question() -> &'static str {
-    "<sub>🤖 Automated review by OpenCodeReview</sub>\n\n**[Question] Is this behavior intentional?**\n\nClarify intent.\n\n<details>\n<summary>🔎 Why I'm asking</summary>\n\nEvidence.\n\n</details>\n\n<details>\n<summary>💬 What to confirm</summary>\n\nConfirm expected behavior.\n\n</details>\n\n<details>\n<summary>🤖 Prompt for AI Agents</summary>\n\n```text\nValidate this review question against the current code.\nDo not apply a fix unless the author already answered. If answered,\nimplement only the confirmed path and validate with the relevant\ntests/typecheck.\n\nInspect src/lib.rs and ask only if still ambiguous.\n```\n\n</details>"
+    "**[Pergunta] Is this behavior intentional?**\n\nClarify intent.\n\n<details>\n<summary>🔎 Por que pergunto</summary>\n\nEvidence.\n\n</details>\n\n<details>\n<summary>💬 O que confirmar</summary>\n\nConfirm expected behavior.\n\n</details>\n\n<details>\n<summary>🤖 Prompt para agentes de IA</summary>\n\n```text\nValide esta pergunta de revisão no código atual.\nNão aplique correção a menos que o autor já tenha respondido. Se respondeu,\nimplemente somente o caminho confirmado e valide com os testes/typecheck\nrelevantes.\n\nInspect src/lib.rs and ask only if still ambiguous.\n```\n\n</details>"
 }
 
 #[test]
@@ -816,13 +816,13 @@ fn repairs_unstructured_body_only_finding() {
         "Found one validation regression in the relaxed no-issue summary detection: summaries that negate only questions can now hide an untemplated body-only finding.".to_string(),
         Some("{\"comments\":[]}"),
     );
-    assert!(repaired.contains("<sub>🤖 Automated review by OpenCodeReview</sub>"));
-    assert!(repaired.contains("**[Finding] validation regression"));
-    assert!(repaired.contains("🔎 Details"));
-    assert!(repaired.contains("Why: The original generated review described this as a finding"));
-    assert!(repaired.contains("🛠️ Suggested fix"));
-    assert!(repaired.contains("🤖 Prompt for AI Agents"));
-    assert!(repaired.contains("Review finding to verify:"));
+    assert!(!repaired.contains("<sub>🤖"));
+    assert!(repaired.contains("**[Achado] validation regression"));
+    assert!(repaired.contains("🔎 Detalhes"));
+    assert!(repaired.contains("Por quê: Vi isto como um achado"));
+    assert!(repaired.contains("🛠️ Correção sugerida"));
+    assert!(repaired.contains("🤖 Prompt para agentes de IA"));
+    assert!(repaired.contains("Achado de revisão a verificar:"));
     assert!(super::validate_review_templates(&repaired, Some("{\"comments\":[]}")).is_ok());
 }
 

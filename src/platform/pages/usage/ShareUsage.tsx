@@ -61,7 +61,7 @@ function ShareDialog({ report, onClose }: { report: UsageReport; onClose: () => 
       <button
         type="button"
         tabIndex={-1}
-        aria-label="Close"
+        aria-label="Fechar"
         className="absolute inset-0 cursor-default bg-black/60"
         onClick={onClose}
       />
@@ -78,7 +78,7 @@ function ShareDialog({ report, onClose }: { report: UsageReport; onClose: () => 
               Totals only: no repository, merge request, account or model names.
             </p>
           </div>
-          <DSButton tone="ghost" size="iconSm" aria-label="Close" onClick={onClose}>
+          <DSButton tone="ghost" size="iconSm" aria-label="Fechar" onClick={onClose}>
             <X className="size-4" aria-hidden="true" />
           </DSButton>
         </div>

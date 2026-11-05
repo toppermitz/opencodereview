@@ -3,17 +3,17 @@ use super::*;
 #[test]
 fn mixed_review_points_are_actionable_in_either_order() {
     for body in [
-        "**[Question] Confirm**\n\n**[Finding] Fix**",
-        "**[Finding] Fix**\n\n**[Question] Confirm**",
+        "**[Pergunta] Confirm**\n\n**[Achado] Fix**",
+        "**[Achado] Fix**\n\n**[Pergunta] Confirm**",
     ] {
         assert_eq!(point_kind(body), "mixed");
         assert!(actionable(None, Some(body)));
         assert!(actionable(Some(&json!({"comments":[{"body":body}]}).to_string()), None));
     }
     for (body, kind) in [
-        ("[Question] Confirm\n```text\n[Finding] Example\n```", "question"),
-        ("[Finding] Fix\n~~~text\n[Question] Example\n~~~", "finding"),
-        ("No findings.", "unknown"),
+        ("[Pergunta] Confirm\n```text\n[Achado] Example\n```", "question"),
+        ("[Achado] Fix\n~~~text\n[Pergunta] Example\n~~~", "finding"),
+        ("Nada a sinalizar.", "unknown"),
     ] {
         assert_eq!(point_kind(body), kind);
     }
@@ -22,10 +22,10 @@ fn mixed_review_points_are_actionable_in_either_order() {
 #[test]
 fn auto_post_event_uses_selected_findings_not_questions_or_fenced_examples() {
     for (body, actionable) in [
-        ("[Question] Confirm", false),
-        ("[Question] Confirm\n```text\n[Finding] Example\n```", false),
-        ("[Finding] Fix", true),
-        ("[Question] Confirm\n\n[Finding] Fix", true),
+        ("[Pergunta] Confirm", false),
+        ("[Pergunta] Confirm\n```text\n[Achado] Example\n```", false),
+        ("[Achado] Fix", true),
+        ("[Pergunta] Confirm\n\n[Achado] Fix", true),
     ] {
         let comments = json!({"comments":[{"body":body}]}).to_string();
         for (comments, body) in [(Some(comments.as_str()), None), (None, Some(body))] {
@@ -77,7 +77,7 @@ fn a_saved_selection_keeps_the_summary_suggestions() {
         evidence_warnings: None,
         head_sha: "head".into(),
         complete: true,
-        original_body: format!("Automated review produced 1 inline comment(s).\n\n{section}"),
+        original_body: format!("Produzi 1 comentário(s) inline.\n\n{section}"),
         diff: None,
         candidates: vec![FindingCandidate {
             id: "candidate-1".into(),
@@ -104,10 +104,10 @@ fn a_saved_selection_keeps_the_summary_suggestions() {
     // A general finding in the body carries the section too; it is listed once.
     let mut general = audit.clone();
     general.candidates[0].comment = None;
-    general.candidates[0].body = format!("**[Finding] General**\n\nDetail\n\n{section}");
+    general.candidates[0].body = format!("**[Achado] Geral**\n\nDetalhe\n\n{section}");
     let (body, _) = selection_payload(&general);
     assert_eq!(body.matches(crate::review::SUGGESTIONS_HEADING).count(), 1, "{body}");
-    assert!(body.starts_with("**[Finding] General**"), "{body}");
+    assert!(body.starts_with("**[Achado] Geral**"), "{body}");
 }
 
 #[test]
@@ -119,29 +119,26 @@ fn a_review_with_only_summary_suggestions_is_suggestions_only() {
     assert!(suggestions_only(Some(r#"{"comments":[]}"#), Some(&only)));
     // A finding inline or in the body, or no suggestions at all, is not.
     let inline =
-        json!({"comments":[{"path":"src/a.rs","line":3,"side":"RIGHT","body":"**[Finding] Bug**"}]}).to_string();
+        json!({"comments":[{"path":"src/a.rs","line":3,"side":"RIGHT","body":"**[Achado] Bug**"}]}).to_string();
     assert!(!suggestions_only(Some(&inline), Some(&only)));
-    assert!(!suggestions_only(
-        None,
-        Some(&format!("**[Finding] Bug**\n\n{section}"))
-    ));
-    assert!(!suggestions_only(None, Some("No findings.")));
+    assert!(!suggestions_only(None, Some(&format!("**[Achado] Bug**\n\n{section}"))));
+    assert!(!suggestions_only(None, Some("Nada a sinalizar.")));
 }
 
 #[test]
 fn a_review_that_only_asks_questions_is_questions_only() {
     let question =
-        json!({"comments":[{"path":"src/a.rs","line":3,"side":"RIGHT","body":"**[Question] Checked?**"}]}).to_string();
+        json!({"comments":[{"path":"src/a.rs","line":3,"side":"RIGHT","body":"**[Pergunta] Checked?**"}]}).to_string();
     let finding =
-        json!({"comments":[{"path":"src/a.rs","line":3,"side":"RIGHT","body":"**[Finding] Bug**"}]}).to_string();
+        json!({"comments":[{"path":"src/a.rs","line":3,"side":"RIGHT","body":"**[Achado] Bug**"}]}).to_string();
     let summary = Some("1 review comments selected for publication.");
     assert!(questions_only(Some(&question), summary));
     assert!(questions_only(
         Some(r#"{"comments":[]}"#),
-        Some("**[Question] Checked?**")
+        Some("**[Pergunta] Checked?**")
     ));
     // A finding inline or in the body, or no question at all, is not.
     assert!(!questions_only(Some(&finding), summary));
-    assert!(!questions_only(Some(&question), Some("**[Finding] Bug**")));
-    assert!(!questions_only(Some(r#"{"comments":[]}"#), Some("No findings.")));
+    assert!(!questions_only(Some(&question), Some("**[Achado] Bug**")));
+    assert!(!questions_only(Some(r#"{"comments":[]}"#), Some("Nada a sinalizar.")));
 }

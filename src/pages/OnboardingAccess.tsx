@@ -45,29 +45,29 @@ export function GitlabStep({
   return (
     <>
       <StepHeader
-        title="Connect GitLab"
+        title="Conectar GitLab"
         subtitle="OpenCodeReview reads your merge requests and posts its reviews as you."
       />
-      <ChoiceList label="Code host">
+      <ChoiceList label="Hospedeiro de código">
         <ChoiceRow
           glyph={<GitLabMark className="size-5" />}
           name="GitLab"
           detail={
             connected
-              ? (login ?? "Connected")
-              : "Authorize with a GitLab device code; the token stays in OpenCodeReview's Docker volume."
+              ? (login ?? "Conectado")
+              : "Autorize com um código de dispositivo GitLab; o token fica no volume Docker do OpenCodeReview."
           }
           status={
             connected ? (
-              <StatusPill tone="success">Connected</StatusPill>
+              <StatusPill tone="success">Conectado</StatusPill>
             ) : !busy ? (
-              <StatusPill tone="warning">Not connected</StatusPill>
+              <StatusPill tone="warning">Não conectado</StatusPill>
             ) : undefined
           }
           action={
             !connected && !busy ? (
               <button type="button" className={rowAction} onClick={() => flow.start.mutate()}>
-                {flow.failure ? "Try again" : "Connect"}
+                {flow.failure ? "Tentar de novo" : "Conectar"}
               </button>
             ) : undefined
           }
@@ -120,10 +120,10 @@ export function GitlabStep({
       <StepActions
         primary={
           <button type="button" className={ctaPrimary} disabled={!connected} onClick={onContinue}>
-            Continue
+            Continuar
           </button>
         }
-        hint={connected ? undefined : "Connect GitLab to continue."}
+        hint={connected ? undefined : "Conecte o GitLab para continuar."}
       />
     </>
   );
@@ -142,14 +142,14 @@ const alternative: Record<
   { label: string; hint: string; icon: React.ReactNode; method: SignIn["method"] }
 > = {
   claude: {
-    label: "Paste a token",
-    hint: "From claude setup-token on another computer",
+    label: "Colar um token",
+    hint: "De claude setup-token em outro computador",
     icon: <KeyRound />,
     method: "code",
   },
   codex: {
-    label: "Sign in with a code",
-    hint: "Enter a one-time code on any device",
+    label: "Entrar com um código",
+    hint: "Digite um código de uso único em qualquer dispositivo",
     icon: <Smartphone />,
     method: "code",
   },
@@ -164,7 +164,7 @@ function providerDetail(provider: AiProvider) {
     ]
       .filter(Boolean)
       .join(" · ");
-  if (provider.accounts > 0) return "Signed out";
+  if (provider.accounts > 0) return "Desconectado";
   return planDetail[provider.provider];
 }
 
@@ -182,10 +182,14 @@ export function PlanStep({ onBack, onContinue }: { onBack: () => void; onContinu
   }, [refresh]);
   const list = providers.data ?? [];
   const ready = list.some((provider) => provider.ready > 0);
-  const hint = signIn ? "Finish signing in above." : ready ? "You can add more accounts later in Settings." : undefined;
+  const hint = signIn
+    ? "Conclua o login acima."
+    : ready
+      ? "Você pode adicionar mais contas depois em Configurações."
+      : undefined;
   return (
     <>
-      <StepHeader title="Connect your plan" subtitle="Reviews run on the AI plan you already pay for." />
+      <StepHeader title="Conecte seu plano" subtitle="As revisões usam o plano de IA que você já paga." />
       {providers.isLoading ? (
         <p className="flex items-center justify-center gap-2 text-small text-fg-muted">
           <BrandLoadingIcon />
@@ -196,7 +200,7 @@ export function PlanStep({ onBack, onContinue }: { onBack: () => void; onContinu
           {friendlyError(providers.error)}
         </p>
       ) : (
-        <ChoiceList label="Choose your AI provider">
+        <ChoiceList label="Escolha seu provedor de IA">
           {list.map((provider) => {
             const open = signIn?.provider === provider.provider ? signIn : null;
             const connected = provider.ready > 0;
@@ -205,9 +209,9 @@ export function PlanStep({ onBack, onContinue }: { onBack: () => void; onContinu
                   ...(connected
                     ? [
                         {
-                          label: "Add another account",
+                          label: "Adicionar outra conta",
                           icon: <Plus />,
-                          hint: "Reviews switch to it when this one hits a limit",
+                          hint: "As revisões passam para ela quando esta atingir o limite",
                           onSelect: () => setSignIn({ provider: provider.provider, method: "oauth" }),
                         },
                       ]
@@ -236,9 +240,9 @@ export function PlanStep({ onBack, onContinue }: { onBack: () => void; onContinu
                 detailTone={provider.installed ? undefined : "warning"}
                 status={
                   !provider.installed ? (
-                    <StatusPill tone="warning">Not installed</StatusPill>
+                    <StatusPill tone="warning">Não instalado</StatusPill>
                   ) : connected ? (
-                    <StatusPill tone="success">Connected</StatusPill>
+                    <StatusPill tone="success">Conectado</StatusPill>
                   ) : undefined
                 }
                 action={
@@ -274,7 +278,7 @@ export function PlanStep({ onBack, onContinue }: { onBack: () => void; onContinu
       <StepActions
         primary={
           <button type="button" className={ctaPrimary} disabled={!ready} onClick={onContinue}>
-            Continue
+            Continuar
           </button>
         }
         secondary={

@@ -9,8 +9,8 @@ export function itemTime(value: number, now: number) {
   if (!Number.isFinite(date.getTime())) return "";
   const sameDay = date.toDateString() === new Date(now).toDateString();
   return sameDay
-    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : date.toLocaleDateString([], { month: "short", day: "numeric" });
+    ? date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+    : date.toLocaleDateString("pt-BR", { month: "short", day: "numeric" });
 }
 
 /** Most recently updated first; cards without a usable time sink to the bottom. */
@@ -23,11 +23,11 @@ export function byRecent(items: ReviewCard[]) {
 }
 
 export function streamStatusLabel(state: string) {
-  if (state === "live") return "Live via SSE";
-  if (state === "connecting" || state === "reconnecting") return "Connecting live monitor";
-  if (state === "fallback") return "Fallback polling";
-  if (state === "closed") return "Process completed";
-  return "Monitor idle";
+  if (state === "live") return "Ao vivo via SSE";
+  if (state === "connecting" || state === "reconnecting") return "Conectando monitor ao vivo";
+  if (state === "fallback") return "Polling de fallback";
+  if (state === "closed") return "Processo concluído";
+  return "Monitor ocioso";
 }
 
 interface InlineComment {
@@ -87,7 +87,7 @@ export function parseRisk(run: ReviewRun): ReviewRisk | null {
   return {
     score: run.riskScore,
     level: run.riskLevel,
-    summary: `${run.riskLevel} landing risk`,
+    summary: `risco de merge ${run.riskLevel}`,
     autoMergeEligible: false,
     drivers: [],
   };
@@ -96,28 +96,28 @@ export function parseRisk(run: ReviewRun): ReviewRisk | null {
 export function reviewError(cause: unknown) {
   const message = formatError(cause);
   return message.includes("route not found")
-    ? "Review API not available in the running server. Rebuild/restart the Docker backend so it picks up the new review routes."
+    ? "API de revisão indisponível no servidor em execução. Reconstrua/reinicie o backend Docker para carregar as novas rotas de revisão."
     : message;
 }
 
 const LANE_LABELS: Record<string, string> = {
-  manual_required: "Needs you",
-  needs_setup: "Needs setup",
-  ready: "Ready to post",
-  reviewing: "Reviewing",
-  queued: "Queued",
-  open: "Open",
-  draft: "Draft",
-  auto_skipped: "Skipped",
-  skipped: "Skipped",
-  size_skipped: "Too large",
-  auto_posted: "Findings posted",
-  posted: "Findings posted",
-  reviewed_cleanly: "No findings",
-  approved: "Approved",
-  merged: "Merged",
-  closed: "Closed",
-  failed: "Failed",
+  manual_required: "Precisa de você",
+  needs_setup: "Precisa de configuração",
+  ready: "Pronto para publicar",
+  reviewing: "Revisando",
+  queued: "Na fila",
+  open: "Aberto",
+  draft: "Rascunho",
+  auto_skipped: "Ignorado",
+  skipped: "Ignorado",
+  size_skipped: "Grande demais",
+  auto_posted: "Achados publicados",
+  posted: "Achados publicados",
+  reviewed_cleanly: "Nada a sinalizar",
+  approved: "Aprovado",
+  merged: "Mesclado",
+  closed: "Fechado",
+  failed: "Falhou",
 };
 
 /** A short status for a review lane. */
@@ -128,8 +128,8 @@ function labelLane(lane: string) {
 /** A card's status: its lane, except that a review published with only suggestions or questions says so. */
 export function labelCard(card: Pick<ReviewCard, "lane" | "suggestionsOnly" | "questionsOnly">) {
   if (!["auto_posted", "posted"].includes(card.lane)) return labelLane(card.lane);
-  if (card.suggestionsOnly) return "Suggestions posted";
-  return card.questionsOnly ? "Questions posted" : labelLane(card.lane);
+  if (card.suggestionsOnly) return "Sugestões publicadas";
+  return card.questionsOnly ? "Perguntas publicadas" : labelLane(card.lane);
 }
 
 /** Each outcome gets its own colour: posted findings are green, a clean review stays grey. */

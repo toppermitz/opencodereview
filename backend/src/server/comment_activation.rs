@@ -5,7 +5,7 @@ pub(crate) fn activation_marker(full_name: &str, number: i64, installation: &str
 }
 
 pub(crate) fn queued_for_review_text(full_name: &str, head: &str) -> String {
-    format!("### ⏳ OpenCodeReview is reviewing this merge request\n\nQueued commit [`{}`](https://{}/{full_name}/-/commit/{head}). The results will appear here when the review finishes.\n\n{}", short_sha(head), gitlab::gitlab_host(), ocr_footer())
+    format!("### ⏳ Estou revisando este merge request\n\nCommit na fila [`{}`](https://{}/{full_name}/-/commit/{head}). Os resultados aparecem aqui quando a revisão terminar.\n\n{}", short_sha(head), gitlab::gitlab_host(), ocr_footer())
 }
 
 pub(crate) fn activation_confirmation_body(

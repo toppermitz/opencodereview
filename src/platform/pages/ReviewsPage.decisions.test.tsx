@@ -84,7 +84,7 @@ describe("review result decisions", () => {
       headSha: "head",
       createdAt: 1000,
       finishedAt: 2000,
-      reviewBody: "[Question] Confirm ownership",
+      reviewBody: "[Pergunta] Confirm ownership",
     } as ReviewRun;
     const client = new QueryClient({
       defaultOptions: { queries: { enabled: false, retry: false, staleTime: Infinity } },
@@ -114,7 +114,7 @@ describe("review result decisions", () => {
       requiresConfirmation: true,
       selectionSaved: false,
       editable: false,
-      audit: { headSha: "head", complete: true, originalBody: "Question", candidates: [] },
+      audit: { headSha: "head", complete: true, originalBody: "Pergunta", candidates: [] },
     });
     const container = document.createElement("div");
     const root = createRoot(container);
@@ -134,7 +134,9 @@ describe("review result decisions", () => {
           .click(),
       );
       expect(setupApi.startReview).not.toHaveBeenCalled();
-      const rerun = [...container.querySelectorAll("button")].find((button) => button.textContent === "Re-run review")!;
+      const rerun = [...container.querySelectorAll("button")].find(
+        (button) => button.textContent === "Reexecutar revisão",
+      )!;
       expect(rerun.disabled).toBe(false);
       expect(rerun.title).toContain("Consumes model usage");
       await act(async () => {
@@ -151,9 +153,9 @@ describe("review result decisions", () => {
   });
 
   it.each([
-    ["mark_reviewed", "Mark reviewed"],
-    ["approve_post", "Approve"],
-    ["skip", "Skip"],
+    ["mark_reviewed", "Marcar como revisado"],
+    ["approve_post", "Aprovar"],
+    ["skip", "Ignorar"],
   ] as const)(
     "prepares an empty selection only on the explicit %s decision and uses the saved revision",
     async (decision, label) => {
@@ -235,7 +237,7 @@ describe("review result decisions", () => {
         expect(option.disabled).toBe(false);
         await act(async () => option.click());
         const sections = container
-          .querySelector('[aria-label="Review result sections"]')!
+          .querySelector('[aria-label="Seções do resultado"]')!
           .querySelectorAll<HTMLButtonElement>('[role="tab"]');
         await act(async () => sections[1].click());
         expect(container.querySelector<HTMLElement>(".review-decision-footer")!.hidden).toBe(true);
@@ -297,7 +299,7 @@ describe("review result decisions", () => {
                 id: 1,
                 number: 42,
                 repoFullName: "example/repo",
-                title: "Review",
+                title: "Revisão",
                 author: "developer",
                 lane: editable ? "ready" : "posted",
                 headSha: "head",
@@ -332,7 +334,7 @@ describe("review result decisions", () => {
               defaultSelected: true,
               blockedReason: null,
               comment: { path: "src/a.ts", line: 1 },
-              body: "[Finding] Keep the guard",
+              body: "[Achado] Keep the guard",
               originalBody: null,
             },
           ],
@@ -366,9 +368,9 @@ describe("review result decisions", () => {
             .find((button) => button.textContent === "View review result")!
             .click(),
         );
-        const navigation = container.querySelector('[role="tablist"][aria-label="Review result sections"]')!;
+        const navigation = container.querySelector('[role="tablist"][aria-label="Seções do resultado"]')!;
         const tabs = [...navigation.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
-        expect(tabs.map((tab) => tab.textContent)).toEqual(["Findings", "Details"]);
+        expect(tabs.map((tab) => tab.textContent)).toEqual(["Achados", "Detalhes"]);
         expect(tabs[0].getAttribute("aria-selected")).toBe("true");
         const findings = container.querySelector<HTMLElement>('[data-review-result-section="findings"]')!;
         const details = container.querySelector<HTMLElement>('[data-review-result-section="details"]')!;

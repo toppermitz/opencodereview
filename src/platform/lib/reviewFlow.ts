@@ -22,7 +22,7 @@ export function reviewControl(card: ReviewCard, run: ReviewRun | null): Omit<Rev
   const active = ["reviewing", "queued"].includes(card.lane) || ["running", "pending"].includes(run?.status ?? "");
   return {
     kind: active ? "stop" : run ? "rerun" : "run",
-    label: active ? "Stop review" : run ? "Re-run review" : "Run review",
+    label: active ? "Parar revisão" : run ? "Reexecutar revisão" : "Executar revisão",
     disabled:
       !active &&
       (["closed", "merged"].includes(card.state) ||
@@ -44,55 +44,67 @@ export function reviewResultSummary(
 ): ReviewResultSummary {
   if (card.lane === "size_skipped")
     return {
-      status: "Skipped",
-      detail: card.statusReason ?? "PR exceeds the configured file limit",
+      status: "Ignorado",
+      detail: card.statusReason ?? "O MR excede o limite de arquivos configurado",
       state: "completed",
     };
   if (card.lane === "queued" || run?.status === "pending")
-    return { status: "Queued", detail: "Ready when the review finishes", state: "pending" };
+    return { status: "Na fila", detail: "Pronto quando a revisão terminar", state: "pending" };
   if (card.lane === "reviewing" || run?.status === "running")
-    return { status: "Waiting for review", detail: "Ready when the review finishes", state: "pending" };
+    return { status: "Aguardando revisão", detail: "Pronto quando a revisão terminar", state: "pending" };
   if (run && TERMINAL_FAILURES.has(run.status))
     return {
       status:
-        run.status === "failed" ? "Review failed" : run.status === "cancelled" ? "Review stopped" : "Outdated result",
-      detail: "View run details",
+        run.status === "failed"
+          ? "Revisão falhou"
+          : run.status === "cancelled"
+            ? "Revisão interrompida"
+            : "Resultado desatualizado",
+      detail: "Ver detalhes da execução",
       state: run.status as ReviewFlowState,
     };
   const current = card.resultObservedHeadSha === card.headSha;
   const publication = current ? card.resultPublicationStatus : null;
   const result = current ? card.resultState : null;
   if (run && run.headSha !== card.headSha && !result)
-    return { status: "Outdated result", detail: "Re-run for the latest changes", state: "superseded" };
+    return {
+      status: "Resultado desatualizado",
+      detail: "Reexecute para as alterações mais recentes",
+      state: "superseded",
+    };
   const noFindings = findingCount === 0 && questionCount === 0;
   const detail =
     card.suggestionsOnly && !findingCount && questionCount === 0
-      ? "Suggestions only"
+      ? "Só sugestões"
       : questionCount > 0
         ? `${findingCount ?? 0} findings · ${questionCount} questions`
         : noFindings || result === "clean"
-          ? "No findings"
+          ? "Nada a sinalizar"
           : findingCount !== undefined && findingCount > 0
             ? `${findingCount} finding${findingCount === 1 ? "" : "s"}`
             : result === "findings_local" || result === "findings_posted"
-              ? "Findings generated"
-              : "View findings and details";
+              ? "Achados gerados"
+              : "Ver achados e detalhes";
   if (publication === "failed")
-    return { status: "Publication failed", detail: "Open result to retry", state: "failed" };
+    return { status: "Publicação falhou", detail: "Abra o resultado para tentar de novo", state: "failed" };
   if (publication === "pending" || publication === "posting")
-    return { status: publication === "posting" ? "Publishing…" : "Awaiting publication", detail, state: "queued" };
+    return { status: publication === "posting" ? "Publicando…" : "Aguardando publicação", detail, state: "queued" };
   if (publication === "superseded")
-    return { status: "Outdated result", detail: "Re-run for the latest changes", state: "superseded" };
+    return {
+      status: "Resultado desatualizado",
+      detail: "Reexecute para as alterações mais recentes",
+      state: "superseded",
+    };
   if (card.lane === "ready" || result === "awaiting_action")
-    return { status: "Needs your decision", detail, state: "awaiting_action" };
-  if (result === "clean") return { status: "Completed", detail: "No findings", state: "completed" };
+    return { status: "Precisa da sua decisão", detail, state: "awaiting_action" };
+  if (result === "clean") return { status: "Concluído", detail: "Nada a sinalizar", state: "completed" };
   if (result === "skipped" || run?.status === "skipped")
-    return { status: "Skipped", detail: "View run details", state: "completed" };
+    return { status: "Ignorado", detail: "Ver detalhes da execução", state: "completed" };
   if (publication === "posted" || run?.status === "posted" || result === "findings_posted")
-    return { status: "Published", detail, state: "completed" };
-  if (run?.status === "approved") return { status: "Marked reviewed", detail, state: "completed" };
-  if (run || result) return { status: "Generated", detail, state: "completed" };
-  return { status: "Awaiting review", detail: "Run a review to generate results", state: "pending" };
+    return { status: "Publicado", detail, state: "completed" };
+  if (run?.status === "approved") return { status: "Marcado como revisado", detail, state: "completed" };
+  if (run || result) return { status: "Gerado", detail, state: "completed" };
+  return { status: "Aguardando revisão", detail: "Execute uma revisão para gerar resultados", state: "pending" };
 }
 
 interface ReviewWorkspaceState {
@@ -163,11 +175,11 @@ export interface ReviewFlowNodeData extends Record<string, unknown> {
 export type ReviewFlowNode = Node<ReviewFlowNodeData, "reviewPhase" | "reviewControl">;
 
 const FALLBACK_PHASES: ReviewPhase[] = [
-  { id: "index", label: "Prepare repository", status: "pending" },
-  { id: "context", label: "Context ready", status: "pending" },
-  { id: "review", label: "Reviewed", status: "pending" },
-  { id: "validate", label: "Validated", status: "pending" },
-  { id: "ready", label: "Ready", status: "pending" },
+  { id: "index", label: "Preparar repositório", status: "pending" },
+  { id: "context", label: "Contexto pronto", status: "pending" },
+  { id: "review", label: "Revisado", status: "pending" },
+  { id: "validate", label: "Validado", status: "pending" },
+  { id: "ready", label: "Pronto", status: "pending" },
 ];
 
 const DONE_STATES = new Set(["ok", "done", "ready", "completed", "cached", "skipped"]);
@@ -193,13 +205,13 @@ function isReviewPhase(value: unknown): value is ReviewPhase {
 }
 
 export function phaseLabel(phase: Pick<ReviewPhase, "id" | "label">) {
-  if (phase.id === "context") return "Context";
+  if (phase.id === "context") return "Contexto";
   if (phase.id === "chunks") return "Chunks";
-  if (phase.id === "merge") return "Merge";
+  if (phase.id === "merge") return "Mesclar";
   if (phase.id === "final") return "Final";
-  if (phase.id === "validate") return "Validate";
-  if (phase.id === "review") return "Review";
-  if (phase.id === "ready") return "Review result";
+  if (phase.id === "validate") return "Validar";
+  if (phase.id === "review") return "Revisão";
+  if (phase.id === "ready") return "Resultado da revisão";
   return phase.label;
 }
 
@@ -237,21 +249,21 @@ function phaseState(
 function phaseDetail(phase: ReviewPhase, state: ReviewFlowState) {
   if (typeof phase.detail === "string" && phase.detail) return phase.detail;
   if (phase.id === "index" && state === "pending")
-    return "Preparing the local repository; the pinned-head graph is built in Context";
-  if (state === "awaiting_action") return "Waiting for your decision";
-  if (state === "completed") return "Completed";
-  if (state === "running") return "Processing now";
-  if (state === "queued") return "Waiting for a worker";
-  if (state === "failed") return "Review failed";
-  if (state === "cancelled") return "Stopped by user";
-  if (state === "superseded") return "Replaced by a changed PR head or base scope";
-  if (phase.id === "context") return "Selecting changed and related files";
-  if (phase.id === "chunks") return "Running parallel review chunks";
-  if (phase.id === "merge") return "Combining findings";
-  if (phase.id === "final") return "Integrating the final review";
-  if (phase.id === "validate") return "Checking review output";
-  if (phase.id === "review") return "Running the AI review";
-  if (phase.id === "ready") return "Waiting for your decision";
+    return "Preparando o repositório local; o grafo do head fixo é montado em Contexto";
+  if (state === "awaiting_action") return "Aguardando sua decisão";
+  if (state === "completed") return "Concluído";
+  if (state === "running") return "Processando agora";
+  if (state === "queued") return "Aguardando um worker";
+  if (state === "failed") return "Revisão falhou";
+  if (state === "cancelled") return "Interrompido pelo usuário";
+  if (state === "superseded") return "Substituído por mudança no head ou na base do MR";
+  if (phase.id === "context") return "Selecionando arquivos alterados e relacionados";
+  if (phase.id === "chunks") return "Executando chunks de revisão em paralelo";
+  if (phase.id === "merge") return "Combinando achados";
+  if (phase.id === "final") return "Integrando a revisão final";
+  if (phase.id === "validate") return "Verificando a saída da revisão";
+  if (phase.id === "review") return "Executando a revisão por IA";
+  if (phase.id === "ready") return "Aguardando sua decisão";
   return phase.label;
 }
 
@@ -399,7 +411,11 @@ export function buildReviewChunks(
     : (parseChunkProgress(run?.tail ?? "") ??
       parseChunkProgress(typeof parent.log === "string" ? parent.log : "") ??
       parseChunkProgress(typeof parent.detail === "string" ? parent.detail : ""));
-  const completed = typeof parent.detail === "string" ? parent.detail.match(/^Completed (\d+) chunk reviews\b/) : null;
+  const completed =
+    typeof parent.detail === "string"
+      ? (parent.detail.match(/^Completed (\d+) chunk reviews\b/) ??
+        parent.detail.match(/^Concluídas? (\d+) revisões? de chunk\b/))
+      : null;
   const declaredTotal =
     structured?.length ??
     snapshot?.total ??
@@ -473,12 +489,12 @@ export function buildReviewChunks(
         : (measured ?? chunkDuration(reported?.duration) ?? old?.metrics.durationMs ?? null);
       const tokens = records.reduce((sum, row) => sum + (stageTokens(row) ?? 0), 0);
       const detail = cached
-        ? "Reused validated snapshot cache; no new inference."
+        ? "Cache de snapshot validado reutilizado; sem nova inferência."
         : validating
-          ? "Verifying quoted evidence, coverage and anchors locally."
+          ? "Verificando evidências citadas, cobertura e âncoras localmente."
           : state === "unknown"
-            ? "No final status recorded for this chunk. It is not assumed to have failed or completed."
-            : `${flowStateLabel(state)} · ${latest?.fileCount ?? live?.fileCount ?? "Unknown"} files assigned to this chunk.`;
+            ? "Nenhum status final registrado para este chunk. Não se assume falha nem conclusão."
+            : `${flowStateLabel(state)} · ${latest?.fileCount ?? live?.fileCount ?? "Desconhecido"} arquivos atribuídos a este chunk.`;
       counts[state] += 1;
       return {
         id,
@@ -518,11 +534,12 @@ export function buildReviewChunks(
 }
 
 export function chunkCountsLabel(chunks: ReviewChunks, inferenceSkipped = false) {
-  if (!chunks.items.length) return inferenceSkipped ? "No model execution started" : "Chunk details unavailable";
+  if (!chunks.items.length)
+    return inferenceSkipped ? "Nenhuma execução de modelo iniciada" : "Detalhes do chunk indisponíveis";
   const { completed, running, queued, failed, cancelled, superseded, unknown } = chunks.counts;
   const validating = chunks.items.filter((chunk) => chunk.validating).length;
   return [
-    `${chunks.total === null ? `${chunks.items.length} recorded · ` : ""}${unknown ? "Known: " : ""}${completed}${chunks.total !== null ? `/${chunks.total}` : ""} completed`,
+    `${chunks.total === null ? `${chunks.items.length} registrados · ` : ""}${unknown ? "Conhecidos: " : ""}${completed}${chunks.total !== null ? `/${chunks.total}` : ""} concluídos`,
     `${Math.max(0, running - validating)} running`,
     `${queued} queued`,
     ...(validating ? [`${validating} validating`] : []),
@@ -753,7 +770,7 @@ export function formatFlowDuration(ms: number | null) {
 }
 
 export function formatFlowTokens(tokens: number | null) {
-  if (tokens === null) return "Tokens unavailable";
+  if (tokens === null) return "Tokens indisponíveis";
   const value =
     tokens >= 1_000_000
       ? `${(tokens / 1_000_000).toLocaleString(undefined, { maximumFractionDigits: 1 })}M`
@@ -764,16 +781,16 @@ export function formatFlowTokens(tokens: number | null) {
 }
 
 export function flowStateLabel(state: ReviewFlowState) {
-  if (state === "awaiting_action") return "Needs your decision";
-  if (state === "skipped") return "Skipped";
-  if (state === "partial") return "Partial context";
-  if (state === "unavailable") return "Context unavailable";
-  if (state === "completed") return "Completed";
-  if (state === "running") return "Running";
-  if (state === "queued") return "Queued";
-  if (state === "failed") return "Failed";
-  if (state === "cancelled") return "Cancelled";
-  if (state === "superseded") return "Superseded";
-  if (state === "unknown") return "Unknown";
-  return "Pending";
+  if (state === "awaiting_action") return "Precisa da sua decisão";
+  if (state === "skipped") return "Ignorado";
+  if (state === "partial") return "Contexto parcial";
+  if (state === "unavailable") return "Contexto indisponível";
+  if (state === "completed") return "Concluído";
+  if (state === "running") return "Em execução";
+  if (state === "queued") return "Na fila";
+  if (state === "failed") return "Falhou";
+  if (state === "cancelled") return "Cancelado";
+  if (state === "superseded") return "Substituído";
+  if (state === "unknown") return "Desconhecido";
+  return "Pendente";
 }

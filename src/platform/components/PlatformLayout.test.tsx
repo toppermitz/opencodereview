@@ -16,7 +16,7 @@ vi.mock("../../services/setupApi", () => ({
     listReviewBoard: async () => [
       {
         lane: "manual_required",
-        title: "Needs you",
+        title: "Precisa de você",
         items: [
           { id: 1, lane: "manual_required" },
           { id: 2, lane: "ready" },
@@ -33,7 +33,7 @@ it("uses the same attention count as the review workspace", () => {
     [
       {
         lane: "manual_required",
-        title: "Needs you",
+        title: "Precisa de você",
         items: [
           { id: 1, lane: "manual_required" },
           { id: 2, lane: "ready" },
@@ -47,7 +47,7 @@ it("uses the same attention count as the review workspace", () => {
         <PlatformLayout />
       </QueryClientProvider>,
     );
-    expect(html).toContain('title="Reviews needing your attention">2</span>');
+    expect(html).toContain('title="Revisões que precisam da sua atenção">2</span>');
     const mark = new DOMParser().parseFromString(html, "text/html").querySelector("[data-topbar] .brand-mark.sm");
     expect(mark).not.toBeNull();
     expect(mark?.getAttribute("aria-hidden")).toBe("true");
@@ -61,9 +61,9 @@ it("uses the same attention count as the review workspace", () => {
 });
 
 it.each([
-  ["/platform/reviews", "workspace", "Reviews"],
-  ["/platform/indexing", "workspace", "Indexing"],
-  ["/platform/usage", "page", "Usage"],
+  ["/platform/reviews", "workspace", "Revisões"],
+  ["/platform/indexing", "workspace", "Indexação"],
+  ["/platform/usage", "page", "Uso"],
 ])("uses the %s route's shell (%s) and names the page in the top bar", (pathname, shell, title) => {
   location.pathname = pathname;
   const client = new QueryClient();

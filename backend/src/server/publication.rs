@@ -121,14 +121,14 @@ pub(crate) fn review_result_body(
     let commit_url = |sha: &str| format!("https://{host}/{full_name}/-/commit/{sha}");
     let visible = match (observation, effective_state) {
         ("no_new_changes", "clean") => format!(
-            "### ✅ No new issues\n\nOpenCodeReview checked [`{}`]({}) and found no new changes since the clean review of [`{}`]({}).",
+            "### ✅ Nenhum problema novo\n\nVerifiquei [`{}`]({}) e não encontrei alterações novas desde a revisão limpa de [`{}`]({}).",
             short_sha(observed_head_sha),
             commit_url(observed_head_sha),
             short_sha(reviewed_head_sha),
             commit_url(reviewed_head_sha)
         ),
         _ => format!(
-            "### ✅ OpenCodeReview found no issues\n\nReviewed [`{}`]({}). Nothing here needs action.",
+            "### ✅ Não encontrei problemas\n\nRevisei [`{}`]({}). Nada aqui precisa de ação.",
             short_sha(reviewed_head_sha),
             commit_url(reviewed_head_sha)
         ),
@@ -930,7 +930,7 @@ pub(crate) fn review_body_has_findings(review_body: Option<&str>) -> bool {
                     .trim_start()
                     .trim_start_matches(['*', '_', '>', '-', '#'])
                     .trim_start();
-                normalized.starts_with("[Finding]") || normalized.starts_with("[Question]")
+                review::has_point_marker_prefix(normalized)
             })
         })
         .unwrap_or(false)
@@ -1098,7 +1098,7 @@ pub(crate) fn auto_post_review(
     Ok(AutoPostReview::Posted(posted_review_id))
 }
 
-/// Bold `[Finding]`/`[Question]` title of an inline comment, ready for a table cell.
+/// Bold `[Achado]`/`[Pergunta]` (or legacy English) title of an inline comment, ready for a table cell.
 fn summary_row_title(body: &str) -> (bool, String) {
     let mut fence = false;
     let mut found = None;
@@ -1111,12 +1111,8 @@ fn summary_row_title(body: &str) -> (bool, String) {
             continue;
         }
         let title = line.trim_start_matches(['*', '_', '>', '-', '#', ' ']);
-        if let Some(rest) = title.strip_prefix("[Finding]") {
-            found = Some((false, rest));
-            break;
-        }
-        if let Some(rest) = title.strip_prefix("[Question]") {
-            found = Some((true, rest));
+        if let Some((kind, rest)) = review::strip_point_marker(title) {
+            found = Some((kind == "question", rest));
             break;
         }
     }
@@ -1126,11 +1122,15 @@ fn summary_row_title(body: &str) -> (bool, String) {
             body.lines()
                 .map(str::trim)
                 .find(|line| !line.is_empty() && !review::is_review_attribution_line(line))
-                .unwrap_or("Review comment"),
+                .unwrap_or("Comentário de revisão"),
         )
     });
     let title = title.trim().trim_end_matches(['*', '_']).trim();
-    let title = if title.is_empty() { "Review comment" } else { title };
+    let title = if title.is_empty() {
+        "Comentário de revisão"
+    } else {
+        title
+    };
     (question, table_cell(title, 120))
 }
 
@@ -1152,12 +1152,12 @@ fn plural(count: usize, word: &str) -> String {
 /// the counts and one table row per comment, so the PR page reads at a glance.
 pub(crate) fn posted_findings_review_body(full_name: &str, head_sha: &str, comments: &[serde_json::Value]) -> String {
     let reviewed = format!(
-        "Reviewed [`{}`](https://{}/{full_name}/-/commit/{head_sha}).",
+        "Revisei [`{}`](https://{}/{full_name}/-/commit/{head_sha}).",
         short_sha(head_sha),
         gitlab::gitlab_host(),
     );
     if comments.is_empty() {
-        return format!("### ⚠️ OpenCodeReview posted findings\n\n{reviewed} The details are in this review.");
+        return format!("### ⚠️ Publiquei achados\n\n{reviewed} Os detalhes estão nesta revisão.");
     }
     let mut rows = comments
         .iter()
@@ -1169,7 +1169,7 @@ pub(crate) fn posted_findings_review_body(full_name: &str, head_sha: &str, comme
             ) {
                 (Some(path), Some(line)) => format!("`{}:{line}`", table_cell(path, 200)),
                 (Some(path), None) => format!("`{}`", table_cell(path, 200)),
-                (None, _) => "General".to_string(),
+                (None, _) => "Geral".to_string(),
             };
             // Most severe first, questions last; a comment without a severity reads as medium.
             let (rank, icon) = match (
@@ -1193,26 +1193,26 @@ pub(crate) fn posted_findings_review_body(full_name: &str, head_sha: &str, comme
     let issues = rows.len() - questions;
     let (heading, intro) = if issues == 0 {
         (
-            format!("### ❓ OpenCodeReview has {}", plural(questions, "question")),
-            "Each question below explains what to confirm.",
+            format!("### ❓ Tenho {}", plural(questions, "pergunta")),
+            "Cada pergunta abaixo explica o que confirmar.",
         )
     } else if questions == 0 {
         (
-            format!("### ⚠️ OpenCodeReview found {}", plural(issues, "issue")),
-            "Each issue below has the details and a suggested fix.",
+            format!("### ⚠️ Encontrei {}", plural(issues, "problema")),
+            "Cada problema abaixo tem os detalhes e uma correção sugerida.",
         )
     } else {
         (
             format!(
-                "### ⚠️ OpenCodeReview found {} and {}",
-                plural(issues, "issue"),
-                plural(questions, "question")
+                "### ⚠️ Encontrei {} e {}",
+                plural(issues, "problema"),
+                plural(questions, "pergunta")
             ),
-            "Each issue below has the details and a suggested fix.",
+            "Cada problema abaixo tem os detalhes e uma correção sugerida.",
         )
     };
     let table = rows.into_iter().map(|(_, row)| row).collect::<Vec<_>>().join("\n");
-    format!("{heading}\n\n{reviewed} {intro}\n\n| | Issue | Where |\n|---|---|---|\n{table}")
+    format!("{heading}\n\n{reviewed} {intro}\n\n| | Problema | Onde |\n|---|---|---|\n{table}")
 }
 
 pub(crate) fn build_review_payload(
@@ -1230,7 +1230,14 @@ pub(crate) fn build_review_payload(
         .unwrap_or_else(|| serde_json::json!([]));
     let inline = comments.as_array().map(Vec::as_slice).unwrap_or_default();
     let (body, generated) = if body.trim().is_empty() && !evidence_warnings.is_empty() && inline.is_empty() {
-        (format!("### ⚠️ OpenCodeReview finished with warnings\n\nReviewed [`{}`](https://{}/{full_name}/-/commit/{head_sha}).", short_sha(head_sha), gitlab::gitlab_host()), true)
+        (
+            format!(
+                "### ⚠️ Terminei com avisos\n\nRevisei [`{}`](https://{}/{full_name}/-/commit/{head_sha}).",
+                short_sha(head_sha),
+                gitlab::gitlab_host()
+            ),
+            true,
+        )
     } else if body.trim().is_empty() && matches!(event, "COMMENT" | "REQUEST_CHANGES") {
         (posted_findings_review_body(full_name, head_sha, inline), true)
     } else {
@@ -1291,12 +1298,8 @@ pub(crate) fn split_comments_for_post(
 }
 
 pub(crate) fn generated_review_body(body: &str) -> String {
-    let trimmed = body.trim();
-    if trimmed.is_empty() || review::contains_review_attribution(trimmed) {
-        trimmed.to_string()
-    } else {
-        format!("{}\n\n{trimmed}", review::REVIEW_ATTRIBUTION)
-    }
+    // Brand is only in `ocr_footer` on the review; do not prepend it to comment bodies.
+    body.trim().to_string()
 }
 
 pub(crate) fn review_post_body(relocated: &str) -> String {

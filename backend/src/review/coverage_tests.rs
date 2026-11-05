@@ -349,7 +349,7 @@ fn a_push_with_only_content_excluded_files_keeps_the_previous_outcome() {
         unresolved_review_head: None,
         // With suggestions off (the default) the review keeps none, not even a pending one's.
         unresolved_review_body: Some(format!(
-            "No findings.\n\n{}",
+            "Nada a sinalizar.\n\n{}",
             crate::review::evidence::suggestions_section(&[serde_json::json!(
                 {"path":"code.rs","line":1,"title":"Stale test name","detail":"Detail","action":"Rename it"}
             )])
@@ -434,7 +434,7 @@ fn legacy_merge_with_only_excluded_delta_finishes_without_inference() {
         unresolved_review_head: None,
         // With suggestions off (the default) the review keeps none, not even a pending one's.
         unresolved_review_body: Some(format!(
-            "No findings.\n\n{}",
+            "Nada a sinalizar.\n\n{}",
             crate::review::evidence::suggestions_section(&[serde_json::json!(
                 {"path":"code.rs","line":1,"title":"Stale test name","detail":"Detail","action":"Rename it"}
             )])

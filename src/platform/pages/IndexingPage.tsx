@@ -135,7 +135,7 @@ export function IndexingPage() {
   const requesting = selectedId !== null && requests[selectedId]?.pending;
   return (
     <PlatformPage
-      title="Indexing"
+      title="Indexação"
       description="Explore the code context behind your reviews. Selected repositories stay indexed automatically."
     >
       <div className="review-workspace-summary index-workspace-summary [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1.5 mx-6 mb-3 flex flex-none flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-surface px-4 py-2.5 text-small text-fg-muted shadow-card">
@@ -208,7 +208,7 @@ export function IndexingPage() {
               </DSButton>
             </div>
             <DSInput
-              aria-label="Search repositories"
+              aria-label="Buscar repositórios"
               icon={<Search className="size-4" />}
               value={search}
               placeholder="Search repositories…"
@@ -217,7 +217,7 @@ export function IndexingPage() {
           </div>
           <div className="review-workspace-list-scroll flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3">
             {jobsQuery.isLoading ? (
-              workspace.listOpen && <BrandLoading size="compact" label="Loading repositories…" />
+              workspace.listOpen && <BrandLoading size="compact" label="Carregando repositórios…" />
             ) : filtered.length === 0 ? (
               <DSEmptyState>
                 {search
@@ -318,7 +318,7 @@ export function IndexingPage() {
                   onClick={() => reindex.mutate(selectedJob.repo.id)}
                 >
                   {requesting ? <BrandLoadingIcon size={16} /> : <RefreshCw className="size-3.5" />}
-                  {requesting ? "Starting…" : selectedJob.status.status === "failed" ? "Retry indexing" : "Re-index"}
+                  {requesting ? "Iniciando…" : selectedJob.status.status === "failed" ? "Retry indexing" : "Re-index"}
                 </DSButton>
               )}
             </header>
@@ -407,7 +407,7 @@ function RepositoryRow({
         ) : (
           <span className="index-status-dot inline-block size-1.5 flex-none rounded-full bg-current" />
         )}
-        {request?.error ? "Retry" : indexStateLabel[state]}
+        {request?.error ? "Tentar de novo" : indexStateLabel[state]}
       </span>
     </button>
   );

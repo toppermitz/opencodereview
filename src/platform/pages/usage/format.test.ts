@@ -25,9 +25,9 @@ describe("usage formatting", () => {
   });
 
   it("labels local days for the axis and the tooltip", () => {
-    expect(dayAxisLabel("2026-10-25")).toBe("OCT 25");
+    expect(dayAxisLabel("2026-10-25")).toBe("OUT 25");
     expect(dayAxisLabel("2026-01-05")).toBe("JAN 5");
-    expect(dayLabel("2026-10-25")).toBe("Oct 25, 2026");
+    expect(dayLabel("2026-10-25")).toBe("Out 25, 2026");
     expect(dayAxisLabel("not a day")).toBe("not a day");
   });
 

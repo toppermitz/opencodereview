@@ -90,8 +90,8 @@ it("lists connected providers in review order and opens one to set its model, ef
     expect(setupApi.saveReviewEngine).toHaveBeenCalledWith({ provider: "claude", model: "m1", effort: "high" });
     await act(async () => button("Use for new reviews").click());
     expect(setupApi.reorderAccounts).toHaveBeenCalledWith([2, 1, 3]);
-    await act(async () => button("Providers").click());
-    expect(container.textContent).toContain("Connected");
+    await act(async () => button("Provedores").click());
+    expect(container.textContent).toContain("Conectado");
   } finally {
     await act(async () => root.unmount());
     container.remove();

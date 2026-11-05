@@ -123,7 +123,7 @@ export function PrUsageList({ query, totalTokens, live }: { query: UsageQuery; t
         </span>
         {prs.hasNextPage && (
           <DSButton size="sm" onClick={() => void prs.fetchNextPage()} disabled={prs.isFetchingNextPage}>
-            {prs.isFetchingNextPage ? "Loading…" : "Show more"}
+            {prs.isFetchingNextPage ? "Carregando…" : "Mostrar mais"}
           </DSButton>
         )}
       </div>

@@ -70,18 +70,18 @@ export function DoneStep({ login, repoCount }: { login?: string; repoCount: numb
   return (
     <>
       <StepHeader
-        title="You're all set"
-        subtitle="Your code is being indexed in the background. Review a merge request that's open right now."
+        title="Tudo pronto"
+        subtitle="Seu código está sendo indexado em segundo plano. Revise um merge request aberto agora."
       />
       <ul
         className="grid overflow-hidden rounded-2xl border border-line bg-surface-muted/60 sm:grid-cols-3 sm:divide-x max-sm:divide-y divide-line"
-        aria-label="Connected"
+        aria-label="Conectado"
       >
-        <Connected name="GitLab" detail={login ?? "Connected"} />
-        <Connected name="AI plan" detail={plans.join(", ") || "Connected"} />
-        <Connected name="Repositories" detail={`${repoCount} selected`} />
+        <Connected name="GitLab" detail={login ?? "Conectado"} />
+        <Connected name="Plano de IA" detail={plans.join(", ") || "Conectado"} />
+        <Connected name="Repositórios" detail={`${repoCount} selecionados`} />
       </ul>
-      <ChoiceList label="Your first review">
+      <ChoiceList label="Sua primeira revisão">
         {finding ? (
           <li className="flex items-center gap-2 px-4 py-4 text-small text-fg-muted">
             <BrandLoadingIcon />
@@ -90,8 +90,8 @@ export function DoneStep({ login, repoCount }: { login?: string; repoCount: numb
         ) : pending.length === 0 ? (
           <li className="px-4 py-4 text-small text-fg-muted">
             {open.length
-              ? "Every open merge request is already reviewed. New ones are reviewed as soon as they're opened."
-              : "No open merge requests yet. New ones are reviewed as soon as they're opened."}
+              ? "Todo merge request aberto já foi revisado. Novos são revisados assim que abertos."
+              : "Ainda não há merge requests abertos. Novos são revisados assim que abertos."}
           </li>
         ) : (
           pending.map((pr) => (
@@ -113,7 +113,7 @@ export function DoneStep({ login, repoCount }: { login?: string; repoCount: numb
                     disabled={review.isPending}
                     onClick={() => review.mutate(pr)}
                   >
-                    {review.isPending && review.variables?.id === pr.id ? "Starting…" : "Review"}
+                    {review.isPending && review.variables?.id === pr.id ? "Iniciando…" : "Revisar"}
                   </button>
                 )
               }
@@ -133,7 +133,7 @@ export function DoneStep({ login, repoCount }: { login?: string; repoCount: numb
             <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
         }
-        hint="Change accounts and repositories anytime in Settings."
+        hint="Altere contas e repositórios a qualquer momento em Configurações."
       />
     </>
   );

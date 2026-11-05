@@ -10,7 +10,7 @@ import { ctaPrimary, ctaSecondary, StepActions, StepHeader } from "./OnboardingP
 
 const owner = (repo: Repo) => repo.fullName.split("/")[0] || repo.owner;
 
-/** Every repository the GitLab sign-in can see, across all of its organizations, in one list. */
+/** Every repositório the GitLab sign-in can see, across all of its organizations, in one list. */
 export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (count: number) => void }) {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<number> | null>(null);
@@ -20,7 +20,7 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
   const logins = (workspaces.data ?? []).map((workspace) => workspace.login);
   const repos = useQuery({
     queryKey: ["setup", "repos", logins.join("|")],
-    // Refreshing the workspaces already pulled every repository from GitLab; read them back.
+    // Refreshing the workspaces already pulled every repositório from GitLab; read them back.
     queryFn: async () =>
       (await Promise.all(logins.map((login) => setupApi.listWorkspaceRepos(login).catch(() => [] as Repo[])))).flat(),
     enabled: logins.length > 0,
@@ -39,8 +39,8 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
   const save = useMutation({
     mutationFn: async () => {
       await setupApi.saveSelectedWorkspaces([...new Set(all.filter((repo) => chosen.has(repo.id)).map(owner))]);
-      // Only repositories whose state changed: each request is a round trip, and with hundreds of
-      // repositories saving every one made the first save take minutes.
+      // Only repositórios whose state changed: each request is a round trip, and with hundreds of
+      // repositórios saving every one made the first save take minutes.
       const changed = all.filter((repo) => chosen.has(repo.id) !== repo.subscriptionEnabled);
       await Promise.all(changed.map((repo) => setupApi.saveRepoSubscription(repo, chosen.has(repo.id))));
       return chosen.size;
@@ -61,17 +61,17 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
   return (
     <>
       <StepHeader
-        title="Pick your repositories"
+        title="Escolha seus repositórios"
         subtitle="OpenCodeReview indexes these and reviews their new merge requests."
       />
-      <section className="flex min-h-0 flex-col gap-2.5" aria-label="Repositories">
+      <section className="flex min-h-0 flex-col gap-2.5" aria-label="Repositórios">
         <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-muted/60 px-3 focus-within:border-line-strong">
           <Search className="size-4 flex-none text-fg-subtle" aria-hidden="true" />
           <input
             className="h-10 w-full bg-transparent text-small text-fg outline-none placeholder:text-fg-subtle"
             value={search}
-            placeholder="Search repositories"
-            aria-label="Search repositories"
+            placeholder="Buscar repositórios"
+            aria-label="Buscar repositórios"
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
@@ -95,11 +95,13 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
         <ul className="max-h-[min(46dvh,420px)] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-surface-muted/60 [scrollbar-gutter:stable]">
           {loading ? (
             <li className="p-6">
-              <BrandLoading label="Loading repositories…" />
+              <BrandLoading label="Carregando repositórios…" />
             </li>
           ) : visible.length === 0 ? (
             <li className="p-6 text-center text-small text-fg-muted">
-              {all.length ? "No repositories match your search." : "No repositories found for this GitLab account."}
+              {all.length
+                ? "Nenhum repositório corresponde à busca."
+                : "Nenhum repositório encontrado para esta conta GitLab."}
             </li>
           ) : (
             visible.map((repo) => {
@@ -151,10 +153,10 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
             onClick={() => save.mutate()}
           >
             {save.isPending
-              ? "Saving…"
+              ? "Salvando…"
               : chosen.size
-                ? `Continue with ${chosen.size} repositor${chosen.size === 1 ? "y" : "ies"}`
-                : "Continue"}
+                ? `Continuar com ${chosen.size} repositor${chosen.size === 1 ? "y" : "ies"}`
+                : "Continuar"}
           </button>
         }
         secondary={
@@ -164,8 +166,8 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
         }
         hint={
           chosen.size === 0 && !loading
-            ? "Pick at least one repository to continue."
-            : "You can change this later in Settings."
+            ? "Escolha ao menos um repositório para continuar."
+            : "Você pode mudar isso depois em Configurações."
         }
       />
     </>

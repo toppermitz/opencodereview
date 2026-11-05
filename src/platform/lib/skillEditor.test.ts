@@ -27,8 +27,8 @@ describe("skill Markdown editing", () => {
     const before = instance.getJSON();
     instance.commands.setContent(instance.getMarkdown(), { contentType: "markdown" });
     expect(semanticDocument(instance.getJSON())).toEqual(semanticDocument(before));
-    expect(instance.getText()).toContain("[Finding]");
-    expect(instance.getText()).toContain("[Question]");
+    expect(instance.getText()).toContain("[Achado]");
+    expect(instance.getText()).toContain("[Pergunta]");
   });
 
   it("preserves headings, marks, links, lists, tasks, tables and fenced code", () => {

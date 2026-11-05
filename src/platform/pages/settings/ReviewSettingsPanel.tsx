@@ -24,7 +24,7 @@ export function ReviewSettingsPanel({
     <SettingsSection id="selection" activeSection={activeSection}>
       <SettingsGroup title="PR selection" description="Control which PRs enter the review queue.">
         <SettingChoice
-          title="Review scope"
+          title="Escopo da revisão"
           description="Use assignments and GitLab reviewers, or review all open MRs."
           options={["true", "false"]}
           labels={{ true: "Assigned", false: "All PRs" }}
@@ -47,13 +47,13 @@ export function ReviewSettingsPanel({
           />
         </SettingRow>
         <SettingRow
-          title="Reviews at a time"
+          title="Revisões ao mesmo tempo"
           description="How many merge requests are reviewed at once. The default is 20; each review runs in its own isolated container."
         >
           <input
             className="settings-number-input h-9 w-24 rounded-md border border-line bg-surface px-3 text-small text-fg shadow-card outline-none focus:border-brand focus:ring-3 focus:ring-brand/15"
             type="number"
-            aria-label="Reviews at a time"
+            aria-label="Revisões ao mesmo tempo"
             min={1}
             max={64}
             value={settings.reviewConcurrency}
@@ -71,9 +71,9 @@ export function ReviewSettingsPanel({
           onChange={(value) => onSave("poll_interval_seconds", value)}
         />
       </SettingsGroup>
-      <SettingsGroup title="Review comments" description="Choose what a review posts besides its findings.">
+      <SettingsGroup title="Comentários da revisão" description="Choose what a review posts besides its findings.">
         <SettingChoice
-          title="Post suggestions"
+          title="Publicar sugestões"
           description="Lower-priority notes, such as tests, docs and naming, listed in a collapsed section of the review summary. Off posts only findings and questions."
           options={["true", "false"]}
           labels={{ true: "On", false: "Off" }}

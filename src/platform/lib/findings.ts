@@ -51,7 +51,7 @@ export async function prepareEmptyFindingDecision(
       view.audit.headSha !== headSha ||
       view.audit.candidates.length !== 0
     ) {
-      throw new Error("Review changed or its audit is no longer complete and empty. Reload before deciding.");
+      throw new Error("A revisão mudou ou a auditoria deixou de estar completa e vazia. Recarregue antes de decidir.");
     }
   };
   const current = await load();
@@ -59,11 +59,21 @@ export async function prepareEmptyFindingDecision(
   if (current.selectionSaved) return current;
   const saved = await save(current.revision);
   validate(saved);
-  if (!saved.selectionSaved) throw new Error("Empty finding selection was not saved. Reload before deciding.");
+  if (!saved.selectionSaved) {
+    throw new Error("A seleção vazia de achados não foi salva. Recarregue antes de decidir.");
+  }
   return saved;
 }
 
-/** The `[Finding]` and `[Question]` titles in a body, outside code fences. */
+const POINT_MARKER = /\[(Achado|Pergunta|Finding|Question)\]/i;
+const POINT_MARKER_PREFIX = /^\[(Achado|Pergunta|Finding|Question)\]/;
+
+/** Whether a marker name is a finding (Achado/Finding) rather than a question. */
+function isFindingMarker(name: string) {
+  return /^(Achado|Finding)$/i.test(name);
+}
+
+/** The `[Achado]`/`[Pergunta]` (or legacy English) titles in a body, outside code fences. */
 function pointTitles(body: string) {
   let fence = false;
   const titles: string[] = [];
@@ -72,7 +82,7 @@ function pointTitles(body: string) {
       fence = !fence;
       continue;
     }
-    const match = fence ? null : line.replace(/^[\s*_>#-]+/, "").match(/^\[(Finding|Question)\]/);
+    const match = fence ? null : line.replace(/^[\s*_>#-]+/, "").match(POINT_MARKER_PREFIX);
     if (match) titles.push(match[1]);
   }
   return titles;
@@ -80,8 +90,8 @@ function pointTitles(body: string) {
 
 export function reviewPointKind(body: string): "finding" | "question" | "mixed" | "unknown" {
   const titles = pointTitles(body);
-  const finding = titles.includes("Finding");
-  const question = titles.includes("Question");
+  const finding = titles.some(isFindingMarker);
+  const question = titles.some((title) => !isFindingMarker(title));
   return finding && question ? "mixed" : finding ? "finding" : question ? "question" : "unknown";
 }
 
@@ -94,7 +104,9 @@ export function storedPointCounts(commentBodies: string[], reviewBody: string | 
     if (kind !== "question") counts.findings += 1;
     if (kind === "question" || kind === "mixed") counts.questions += 1;
   }
-  for (const title of pointTitles(reviewBody ?? "")) counts[title === "Finding" ? "findings" : "questions"] += 1;
+  for (const title of pointTitles(reviewBody ?? "")) {
+    counts[isFindingMarker(title) ? "findings" : "questions"] += 1;
+  }
   return counts;
 }
 
@@ -102,12 +114,12 @@ export const candidateKind = (candidate: FindingCandidate) => candidate.kind ?? 
 
 export function groupFindingCandidates(candidates: FindingCandidate[]) {
   const groups = [
-    { id: "eligible", title: "Eligible findings", open: true, candidates: [] as FindingCandidate[] },
-    { id: "questions", title: "Questions — optional publication", open: true, candidates: [] as FindingCandidate[] },
-    { id: "discarded", title: "Discarded by AI", open: false, candidates: [] as FindingCandidate[] },
-    { id: "blocked", title: "Blocked by validation", open: false, candidates: [] as FindingCandidate[] },
-    { id: "unmapped", title: "Decision unavailable", open: false, candidates: [] as FindingCandidate[] },
-    { id: "pending", title: "Awaiting final review", open: false, candidates: [] as FindingCandidate[] },
+    { id: "eligible", title: "Achados elegíveis", open: true, candidates: [] as FindingCandidate[] },
+    { id: "questions", title: "Perguntas — publicação opcional", open: true, candidates: [] as FindingCandidate[] },
+    { id: "discarded", title: "Descartados pela IA", open: false, candidates: [] as FindingCandidate[] },
+    { id: "blocked", title: "Bloqueados pela validação", open: false, candidates: [] as FindingCandidate[] },
+    { id: "unmapped", title: "Decisão indisponível", open: false, candidates: [] as FindingCandidate[] },
+    { id: "pending", title: "Aguardando revisão final", open: false, candidates: [] as FindingCandidate[] },
   ];
   for (const candidate of candidates) {
     const id = candidate.blockedReason
@@ -126,39 +138,39 @@ export function groupFindingCandidates(candidates: FindingCandidate[]) {
 }
 
 export function findingAuditSummary(view: FindingAuditView | undefined) {
-  if (!view) return "Loading candidate audit…";
-  if (!view.audit) return "Discard history unavailable for this run.";
+  if (!view) return "Carregando auditoria de candidatos…";
+  if (!view.audit) return "Histórico de descarte indisponível para esta execução.";
   const { candidates, complete } = view.audit;
   const discarded = candidates.filter((candidate) => candidate.aiDecision === "discarded").length;
   const unmapped = candidates.filter((candidate) => candidate.aiDecision === "unmapped").length;
   const pending = candidates.filter((candidate) => candidate.aiDecision === "pending").length;
   const blocked = candidates.filter((candidate) => candidate.blockedReason).length;
   return [
-    `${candidates.length} candidate${candidates.length === 1 ? "" : "s"}`,
-    `${discarded} discarded by AI`,
-    blocked && `${blocked} blocked`,
-    unmapped && `${unmapped} decision${unmapped === 1 ? "" : "s"} unavailable`,
-    pending && `${pending} pending`,
-    !complete && "incomplete audit",
+    `${candidates.length} candidato${candidates.length === 1 ? "" : "s"}`,
+    `${discarded} descartado${discarded === 1 ? "" : "s"} pela IA`,
+    blocked && `${blocked} bloqueado${blocked === 1 ? "" : "s"}`,
+    unmapped && `${unmapped} decisão${unmapped === 1 ? "" : "ões"} indisponível${unmapped === 1 ? "" : "eis"}`,
+    pending && `${pending} pendente${pending === 1 ? "" : "s"}`,
+    !complete && "auditoria incompleta",
   ]
     .filter(Boolean)
     .join(" · ");
 }
 
 export function findingTitle(candidate: FindingCandidate) {
-  const line = candidate.body.split("\n").find((line) => /\[(Finding|Question)\]/i.test(line));
+  const line = candidate.body.split("\n").find((line) => POINT_MARKER.test(line));
   return (
     line
-      ?.replace(/^.*?\[(Finding|Question)\]\s*/i, "")
+      ?.replace(/^.*?\[(Achado|Pergunta|Finding|Question)\]\s*/i, "")
       .replace(/[*_]+$/g, "")
       .trim()
-      .slice(0, 180) || (candidate.origin === "body" ? "General review findings" : candidate.id)
+      .slice(0, 180) || (candidate.origin === "body" ? "Achados gerais da revisão" : candidate.id)
   );
 }
 
 /**
- * The finding as the app shows it, under its own title: without the fingerprint and "Automated review"
- * lines GitHub needs, and without the [Finding] line that `findingTitle` already shows.
+ * The finding as the app shows it, under its own title: without the fingerprint and attribution
+ * lines GitLab needs, and without the [Achado]/[Pergunta] line that `findingTitle` already shows.
  */
 export function findingDisplayBody(body: string) {
   let titleRemoved = false;
@@ -166,8 +178,13 @@ export function findingDisplayBody(body: string) {
     .split("\n")
     .filter((line) => {
       if (/^\s*<!--\s*ocr:.*-->\s*$/.test(line)) return false;
-      if (/^\s*<sub>.*Automated review by OpenCodeReview.*<\/sub>\s*$/i.test(line)) return false;
-      if (!titleRemoved && /\[(Finding|Question)\]/i.test(line)) {
+      if (
+        /^\s*<sub>.*(Revisão automatizada por|Automated review by) OpenCodeReview.*<\/sub>\s*$/i.test(line) ||
+        /^\s*<sub>🤖 OpenCodeReview<\/sub>\s*$/i.test(line)
+      ) {
+        return false;
+      }
+      if (!titleRemoved && POINT_MARKER.test(line)) {
         titleRemoved = true;
         return false;
       }
@@ -184,14 +201,19 @@ export function reviewBodyHasPostableFinding(body: string | null) {
         .trimStart()
         .replace(/^[*_>#-]+\s*/, "")
         .replace(/^[*_>#-]+\s*/, "");
-      return normalized.startsWith("[Finding]") || normalized.startsWith("[Question]");
+      return POINT_MARKER_PREFIX.test(normalized);
     }),
   );
 }
 
 /** Start of the review summary section that lists lower-priority suggestions (backend `SUGGESTIONS_HEADING`):
  * a collapsed `<details>` block on GitLab, or the heading reviews used before it was collapsed. */
-const SUGGESTIONS_STARTS = ["<details>\n<summary>💡 Suggestions", "### 💡 Suggestions"];
+const SUGGESTIONS_STARTS = [
+  "<details>\n<summary>💡 Sugestões",
+  "### 💡 Sugestões",
+  "<details>\n<summary>💡 Suggestions",
+  "### 💡 Suggestions",
+];
 
 /** The suggestions section of a review body as Markdown, or "" when it has none. A collapsed block is
  * shown as a heading: the app's Markdown view renders no HTML. */

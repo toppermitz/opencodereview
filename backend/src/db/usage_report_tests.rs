@@ -140,7 +140,7 @@ fn usage_report_totals_reconcile_across_every_breakdown() {
         pr1,
         "posted",
         day(3),
-        Some(r#"{"commit_id":"abc","comments":[{"body":"**[Finding] A**"},{"body":"**[Question] B**"}]}"#),
+        Some(r#"{"commit_id":"abc","comments":[{"body":"**[Achado] A**"},{"body":"**[Pergunta] B**"}]}"#),
         (999, 999),
     );
     seed.stage(
@@ -191,7 +191,7 @@ fn usage_report_totals_reconcile_across_every_breakdown() {
         pr1,
         "superseded",
         day(2),
-        Some(r#"{"comments":[{"body":"[Finding] C"}]}"#),
+        Some(r#"{"comments":[{"body":"[Achado] C"}]}"#),
         (0, 0),
     );
     seed.stage(
@@ -211,16 +211,16 @@ fn usage_report_totals_reconcile_across_every_breakdown() {
             params![
                 superseded,
                 r#"{"complete":true,"candidates":[
-                  {"kind":"finding","origin":"chunk","aiDecision":"kept","body":"[Finding] C"},
-                  {"kind":"","origin":"final","aiDecision":"kept","body":"**[Question] E**"},
-                  {"kind":"finding","origin":"chunk","aiDecision":"discarded","body":"[Finding] F"},
-                  {"kind":"finding","origin":"inherited","aiDecision":"kept","body":"[Finding] G"},
-                  {"kind":"finding","origin":"final","aiDecision":"unmapped","body":"[Finding] H"}]}"#
+                  {"kind":"finding","origin":"chunk","aiDecision":"kept","body":"[Achado] C"},
+                  {"kind":"","origin":"final","aiDecision":"kept","body":"**[Pergunta] E**"},
+                  {"kind":"finding","origin":"chunk","aiDecision":"discarded","body":"[Achado] F"},
+                  {"kind":"finding","origin":"inherited","aiDecision":"kept","body":"[Achado] G"},
+                  {"kind":"finding","origin":"final","aiDecision":"unmapped","body":"[Achado] H"}]}"#
             ],
         )
         .expect("audit");
 
-    let legacy = seed.run(pr2, "approved", day(1), Some(r#"[{"body":"[Finding] D"}]"#), (30, 3));
+    let legacy = seed.run(pr2, "approved", day(1), Some(r#"[{"body":"[Achado] D"}]"#), (30, 3));
     db.set_run_model_usage(legacy, pr2, &[("claude-sonnet".into(), 30, 3, 0, 0)])
         .expect("model usage");
 
@@ -232,7 +232,7 @@ fn usage_report_totals_reconcile_across_every_breakdown() {
             "INSERT INTO review_finding_audits (run_id, audit_json, updated_at) VALUES ($1, $2, 1)",
             params![
                 lost,
-                r#"{"complete":false,"candidates":[{"kind":"finding","origin":"chunk","aiDecision":"pending","body":"[Finding] P"}]}"#
+                r#"{"complete":false,"candidates":[{"kind":"finding","origin":"chunk","aiDecision":"pending","body":"[Achado] P"}]}"#
             ],
         )
         .expect("seeded audit");

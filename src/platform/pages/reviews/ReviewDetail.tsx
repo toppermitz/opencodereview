@@ -79,7 +79,7 @@ export function ReviewDetail({
   const decisionOptions = [
     {
       value: "request_changes",
-      label: "Request changes",
+      label: "Solicitar mudanças",
       description: "Ask the author to fix selected findings.",
       tone: "danger",
       enabled: hasActionableFindings && !allFindingsDuplicated && !ownPr,
@@ -95,19 +95,25 @@ export function ReviewDetail({
     },
     {
       value: "approve_post",
-      label: "Approve",
+      label: "Aprovar",
       description: "Approve this merge request on GitLab.",
       tone: "primary",
       enabled: !hasFindings && !ownPr,
     },
     {
       value: "mark_reviewed",
-      label: "Mark reviewed",
+      label: "Marcar como revisado",
       description: "Close locally without posting to GitLab.",
       tone: "secondary",
       enabled: ownPr || !hasActionableFindings || allFindingsDuplicated,
     },
-    { value: "skip", label: "Skip", description: "Leave this review unpublished.", tone: "secondary", enabled: true },
+    {
+      value: "skip",
+      label: "Ignorar",
+      description: "Leave this review unpublished.",
+      tone: "secondary",
+      enabled: true,
+    },
   ] as const;
   const selectedDecision = decisionOptions.find((option) => option.enabled && option.value === decision);
   const canReprocess = !["closed", "merged", "draft", "auto_skipped"].includes(card.lane);
@@ -132,8 +138,8 @@ export function ReviewDetail({
               href={card.url}
               target="_blank"
               rel="noreferrer"
-              aria-label="Open on GitLab"
-              title="Open on GitLab"
+              aria-label="Abrir no GitLab"
+              title="Abrir no GitLab"
             >
               <GitLabMark className="size-4" />
             </a>
@@ -172,12 +178,12 @@ export function ReviewDetail({
       <div className="review-result-tabs flex-none border-b border-line bg-surface px-5 py-2">
         <ArrowTabs
           tabs={[
-            { id: "findings", label: "Findings" },
-            { id: "details", label: "Details" },
+            { id: "findings", label: "Achados" },
+            { id: "details", label: "Detalhes" },
           ]}
           activeId={resultSection}
           panelId={resultPanelId}
-          label="Review result sections"
+          label="Seções do resultado"
           previousLabel="Previous result section"
           nextLabel="Next result section"
           showArrows={false}

@@ -35,7 +35,7 @@ export function RepositorySelector({
         </span>
       </div>
       <DSInput
-        aria-label="Search repositories"
+        aria-label="Buscar repositórios"
         icon={<Search className="size-4" />}
         value={search}
         placeholder="Search by organization or repository name…"
@@ -52,7 +52,7 @@ export function RepositorySelector({
         {!hasOrganizations ? (
           <DSEmptyState>Select organizations above to browse their repositories.</DSEmptyState>
         ) : loading ? (
-          <BrandLoading size="compact" label="Loading repositories…" />
+          <BrandLoading size="compact" label="Carregando repositórios…" />
         ) : filteredRepos.length === 0 ? (
           <DSEmptyState>
             {query

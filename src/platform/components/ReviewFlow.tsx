@@ -282,7 +282,7 @@ export function ReviewFlow({
                   <DSButton tone="primary" onClick={() => onSelectView("overview")}>
                     {findingCount !== undefined
                       ? `Review ${findingCount} finding${findingCount === 1 ? "" : "s"}`
-                      : "Review findings"}
+                      : "Achados da revisão"}
                   </DSButton>
                 )}
                 {phase?.id === "chunks" && (

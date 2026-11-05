@@ -28,7 +28,7 @@ impl Database {
                   AND res.observation = 'findings'
                   AND json_member_is_true(rfa.audit_json, 'complete')
                   AND json_member_type(rfa.audit_json, 'candidates') = 'array'
-                  AND json_member_array_length(rfa.audit_json, 'candidates') = 0 THEN 'No findings'
+                  AND json_member_array_length(rfa.audit_json, 'candidates') = 0 THEN 'Nada a sinalizar'
                 WHEN lr.status = 'preview' THEN 'AI review ready'
                 WHEN lr.status IN ('pending', 'running', 'posting') THEN 'AI review running'
                 ELSE pr.status_reason

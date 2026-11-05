@@ -11,17 +11,17 @@ const railItem = "group relative grid size-10 flex-none place-items-center round
 const railActive = "bg-surface-muted text-fg";
 const railIdle = "text-fg-subtle hover:bg-surface/80 hover:text-fg";
 const navigation = [
-  { to: "/platform/reviews", label: "Reviews", icon: GitPullRequest },
-  { to: "/platform/indexing", label: "Indexing", icon: Database },
+  { to: "/platform/reviews", label: "Revisões", icon: GitPullRequest },
+  { to: "/platform/indexing", label: "Indexação", icon: Database },
   { to: "/platform/skills", label: "Skills", icon: FileText },
-  { to: "/platform/usage", label: "Usage", icon: BarChart3 },
+  { to: "/platform/usage", label: "Uso", icon: BarChart3 },
 ] as const;
 const pageTitles: Record<string, string> = {
-  "/platform/reviews": "Reviews",
-  "/platform/indexing": "Indexing",
+  "/platform/reviews": "Revisões",
+  "/platform/indexing": "Indexação",
   "/platform/skills": "Skills",
-  "/platform/usage": "Usage",
-  "/platform/settings": "Settings",
+  "/platform/usage": "Uso",
+  "/platform/settings": "Configurações",
 };
 
 function RailTooltip({ label }: { label: string }) {
@@ -91,7 +91,7 @@ export function PlatformLayout() {
         <Link
           to="/platform/reviews"
           className="inline-flex h-8 flex-none items-center gap-2 rounded-lg px-1.5 text-small font-semibold text-fg no-underline transition-colors hover:bg-surface/80 [&_.brand-mark]:size-6!"
-          aria-label="OpenCodeReview home"
+          aria-label="Início OpenCodeReview"
         >
           <BrandMark size="sm" />
           <span>OpenCodeReview</span>
@@ -100,18 +100,23 @@ export function PlatformLayout() {
         <EnginePicker />
       </header>
       <div className="flex min-h-0 flex-1">
-        <nav className="flex w-15 flex-none flex-col items-center gap-1.5 pt-1 pb-3" aria-label="Platform navigation">
+        <nav
+          className="flex w-15 flex-none flex-col items-center gap-1.5 pt-1 pb-3"
+          aria-label="Navegação da plataforma"
+        >
           {navigation.map(({ to, label, icon }) => (
             <RailLink
               key={to}
               to={to}
               label={label}
               icon={icon}
-              badge={to === "/platform/reviews" ? badge(reviewNeedsYou, "Reviews needing your attention") : undefined}
+              badge={
+                to === "/platform/reviews" ? badge(reviewNeedsYou, "Revisões que precisam da sua atenção") : undefined
+              }
             />
           ))}
           <div className="mt-auto flex flex-col items-center gap-1.5">
-            <RailLink to="/platform/settings" label="Settings" icon={SettingsIcon} />
+            <RailLink to="/platform/settings" label="Configurações" icon={SettingsIcon} />
           </div>
         </nav>
         <main

@@ -112,7 +112,7 @@ export function EnginePicker() {
       {open && (
         <div
           role="dialog"
-          aria-label="Reviews run on"
+          aria-label="Revisões usam"
           className="absolute top-full right-0 z-50 mt-2 flex max-h-[min(40rem,85vh)] w-[min(24rem,92vw)] overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-pop"
         >
           <div className="flex w-14 flex-none flex-col items-center gap-1.5 overflow-y-auto border-r border-line bg-rail py-2.5">

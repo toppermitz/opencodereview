@@ -346,7 +346,7 @@ describe("review processes toggle", () => {
       if (!ignored.querySelector(".review-section-items"))
         await act(async () => ignored.querySelector<HTMLButtonElement>(".review-section-toggle")!.click());
       expect(ignored.textContent).toContain("Skip this review");
-      expect(ignored.textContent).toContain("Skipped");
+      expect(ignored.textContent).toContain("Ignorado");
       expect(setupApi.decideReview).not.toHaveBeenCalled();
     } finally {
       await act(async () => root.unmount());

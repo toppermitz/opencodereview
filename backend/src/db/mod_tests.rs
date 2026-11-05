@@ -98,7 +98,7 @@ fn superseded_review_run_preserves_pending_body() {
     let pr_id = db.conn.last_insert_rowid();
     db.conn.execute("INSERT INTO review_runs (pr_id, head_sha, status, created_at, updated_at, started_at, model) VALUES ($1, 'oldhead', 'running', 1, 1, 1, 'gpt')", params![pr_id]).expect("run");
     let run_id = db.conn.last_insert_rowid();
-    let body = "**[Finding] Stale but valid finding**\n\nDetails";
+    let body = "**[Achado] Stale but valid finding**\n\nDetails";
     let comments = r#"{"comments":[]}"#;
 
     let finished = db
@@ -121,16 +121,16 @@ fn unresolved_review_context_keeps_inline_bodies_and_anchor_metadata() {
     db.conn.execute("INSERT INTO pull_requests (repo_id,number,title,author,head_sha,last_synced_at,created_at,updated_at) VALUES ($1,1,'PR','a','head',1,1,1)", [repo]).unwrap();
     let pr = db.conn.last_insert_rowid();
     let long_detail = "x".repeat(25_000);
-    let first = format!("**[Finding] First concern**\n\n{long_detail}");
-    let second = "**[Question] Second concern**\n\nFull confirmation request.";
+    let first = format!("**[Achado] First concern**\n\n{long_detail}");
+    let second = "**[Pergunta] Second concern**\n\nFull confirmation request.";
     let comments = serde_json::json!({"comments":[{"path":"src/first.rs","line":12,"side":"RIGHT","start_line":10,"start_side":"RIGHT","body":first.clone()},{"path":"src/second.rs","line":7,"side":"LEFT","body":second}]}).to_string();
-    db.conn.execute("INSERT INTO review_runs (pr_id,head_sha,status,review_body,comments_json,created_at,updated_at) VALUES ($1,'head','superseded','1 finding(s), 1 question(s).',$2,1,1)", params![pr,comments]).unwrap();
+    db.conn.execute("INSERT INTO review_runs (pr_id,head_sha,status,review_body,comments_json,created_at,updated_at) VALUES ($1,'head','superseded','1 achado(s), 1 pergunta(s).',$2,1,1)", params![pr,comments]).unwrap();
     let run = db.conn.last_insert_rowid();
     let fallback = db.latest_unresolved_review(pr).unwrap().unwrap();
     assert_eq!(fallback.0, "head");
-    assert!(fallback.1.starts_with("1 finding(s), 1 question(s)."));
+    assert!(fallback.1.starts_with("1 achado(s), 1 pergunta(s)."));
     for expected in [
-        "**[Finding] First concern**",
+        "**[Achado] First concern**",
         second,
         "src/first.rs",
         "src/second.rs",
@@ -1846,13 +1846,13 @@ fn review_board_classifies_current_empty_audit_as_clean() {
             evidence_warnings: None,
             head_sha: "head".into(),
             complete: true,
-            original_body: "No findings".into(),
+            original_body: "Nada a sinalizar".into(),
             diff: None,
             candidates: vec![],
         },
     )
     .unwrap();
-    db.finish_review_run_only(run_id, "No findings", Some("{\"comments\":[]}"), "[]")
+    db.finish_review_run_only(run_id, "Nada a sinalizar", Some("{\"comments\":[]}"), "[]")
         .unwrap();
     db.set_pr_lane(pr_id, "ready", Some("Confirm finding selection before publishing"))
         .unwrap();
@@ -1884,7 +1884,7 @@ fn review_board_classifies_current_empty_audit_as_clean() {
         .expect("board card");
     assert_eq!(card.lane, "reviewed_cleanly");
     assert_eq!(card.result_state.as_deref(), Some("clean"));
-    assert_eq!(card.status_reason.as_deref(), Some("No findings"));
+    assert_eq!(card.status_reason.as_deref(), Some("Nada a sinalizar"));
 }
 
 #[test]
@@ -1912,7 +1912,7 @@ fn review_board_keeps_inherited_findings_in_needs_you() {
         .unwrap();
     let prior_run_id = db.start_review_skeleton_with(pr_id, Some("fixture")).unwrap();
     db.conn.execute(
-        "UPDATE review_runs SET status = 'preview', review_body = '[Finding] Prior issue', comments_json = '{\"comments\":[{\"body\":\"[Finding] Prior issue\"}]}' WHERE id = $1",
+        "UPDATE review_runs SET status = 'preview', review_body = '[Achado] Prior issue', comments_json = '{\"comments\":[{\"body\":\"[Achado] Prior issue\"}]}' WHERE id = $1",
         params![prior_run_id],
     ).unwrap();
     db.reserve_review_result(&ReviewResultInput {
@@ -2011,13 +2011,13 @@ fn review_board_ignores_malformed_current_audit() {
             evidence_warnings: None,
             head_sha: "head".into(),
             complete: true,
-            original_body: "No findings".into(),
+            original_body: "Nada a sinalizar".into(),
             diff: None,
             candidates: vec![],
         },
     )
     .unwrap();
-    db.finish_review_run_only(run_id, "No findings", Some("{\"comments\":[]}"), "[]")
+    db.finish_review_run_only(run_id, "Nada a sinalizar", Some("{\"comments\":[]}"), "[]")
         .unwrap();
     db.set_pr_lane(pr_id, "ready", Some("Review ready")).unwrap();
     db.conn
@@ -2290,7 +2290,7 @@ fn the_board_carries_an_auto_post_failure_and_a_suggestions_only_mark_until_the_
     db.save_repo_subscription(repo, true, "manual", false, false).unwrap();
     db.conn.execute("INSERT INTO pull_requests (repo_id,number,title,author,head_sha,review_lane,status_reason,last_synced_at,created_at,updated_at) VALUES ($1,1,'PR','a','head','ready','Stacked PR: reviewing a → b',1,1,1)", [repo]).unwrap();
     let pr = db.conn.last_insert_rowid();
-    db.conn.execute("INSERT INTO review_runs (pr_id,head_sha,status,review_body,created_at,updated_at) VALUES ($1,'head','preview','**[Finding] Bug**',1,1)", [pr]).unwrap();
+    db.conn.execute("INSERT INTO review_runs (pr_id,head_sha,status,review_body,created_at,updated_at) VALUES ($1,'head','preview','**[Achado] Bug**',1,1)", [pr]).unwrap();
     let run = db.conn.last_insert_rowid();
     let input = ReviewResultInput {
         pr_id: pr,
@@ -2363,7 +2363,7 @@ fn the_board_carries_an_auto_post_failure_and_a_suggestions_only_mark_until_the_
     assert!(card(&db).suggestions_only);
     // The next review's result clears the failure, and its findings clear the suggestions-only mark.
     // It keeps its suggestions, so only its finding can clear the mark.
-    db.conn.execute("INSERT INTO review_runs (pr_id,head_sha,status,review_body,created_at,updated_at) VALUES ($1,'head','preview',$2,2,2)", params![pr, format!("**[Finding] Bug**\n\n{section}")]).unwrap();
+    db.conn.execute("INSERT INTO review_runs (pr_id,head_sha,status,review_body,created_at,updated_at) VALUES ($1,'head','preview',$2,2,2)", params![pr, format!("**[Achado] Bug**\n\n{section}")]).unwrap();
     let next = db.conn.last_insert_rowid();
     db.reserve_review_result(&ReviewResultInput {
         run_id: next,

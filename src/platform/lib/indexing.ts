@@ -2,21 +2,21 @@ import type { IndexJob } from "../../services/setupApi";
 import type { RepoIndexState, RepoIndexStatus } from "../../types";
 
 export const indexGroups: Array<{ title: string; states: RepoIndexState[] }> = [
-  { title: "Needs attention", states: ["failed", "stale", "cancelled"] },
-  { title: "In progress", states: ["indexing", "queued"] },
-  { title: "Ready", states: ["ready"] },
-  { title: "Not indexed", states: ["not_indexed", "empty"] },
+  { title: "Precisa de atenção", states: ["failed", "stale", "cancelled"] },
+  { title: "Em andamento", states: ["indexing", "queued"] },
+  { title: "Pronto", states: ["ready"] },
+  { title: "Não indexado", states: ["not_indexed", "empty"] },
 ];
 
 export const indexStateLabel: Record<RepoIndexState, string> = {
-  ready: "Ready",
-  queued: "Queued",
-  indexing: "Indexing",
-  stale: "Outdated",
-  failed: "Failed",
-  cancelled: "Cancelled",
-  not_indexed: "Not indexed",
-  empty: "No commits yet",
+  ready: "Pronto",
+  queued: "Na fila",
+  indexing: "Indexando",
+  stale: "Desatualizado",
+  failed: "Falhou",
+  cancelled: "Cancelado",
+  not_indexed: "Não indexado",
+  empty: "Sem commits ainda",
 };
 
 export function selectRepository(jobs: IndexJob[], current: number | null) {

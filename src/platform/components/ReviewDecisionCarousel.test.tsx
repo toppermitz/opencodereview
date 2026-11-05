@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import { ReviewDecisionCarousel, type ReviewDecisionCarouselOption } from "./ReviewDecisionCarousel";
 
 const options: ReviewDecisionCarouselOption[] = [
-  { value: "approve_post", label: "Approve", description: "Approve this merge request on GitLab.", tone: "primary" },
+  { value: "approve_post", label: "Aprovar", description: "Approve this merge request on GitLab.", tone: "primary" },
   {
     value: "mark_reviewed",
-    label: "Mark reviewed",
+    label: "Marcar como revisado",
     description: "Close locally without posting to GitLab.",
     tone: "secondary",
   },
-  { value: "skip", label: "Skip", description: "Leave this review unpublished.", tone: "secondary" },
+  { value: "skip", label: "Ignorar", description: "Leave this review unpublished.", tone: "secondary" },
 ];
 
 describe("review decision carousel", () => {
@@ -19,10 +19,10 @@ describe("review decision carousel", () => {
       <ReviewDecisionCarousel options={options} value="approve_post" onChange={() => undefined} />,
     );
     expect(html).toContain('role="radiogroup"');
-    expect(html).toContain('aria-label="Review decisions"');
+    expect(html).toContain('aria-label="Decisões da revisão"');
     expect(html).toContain('role="radio"');
     expect(html).toContain('aria-checked="true"');
-    expect(html).toContain("Approve");
+    expect(html).toContain("Aprovar");
     expect(html).not.toContain("<select");
   });
 });

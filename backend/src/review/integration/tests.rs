@@ -481,7 +481,7 @@ fn diagnostic_restore_preserves_chunk_warnings_when_final_has_none() {
     super::diagnostics::retain_chunk_warnings(&mut output, &results);
     super::diagnostics::retain_chunk_warnings(&mut output, &results);
     assert_eq!(output.evidence_warnings, expected);
-    assert_eq!(output.body, "No findings.");
+    assert_eq!(output.body, crate::review::NO_FINDINGS_SUMMARY);
 
     let comments = output.comments_json.as_deref().unwrap();
     let audit =
@@ -1396,7 +1396,7 @@ fn adaptive_integration_no_findings_is_clean_only_after_full_coverage() {
     let merge = root.join("merge");
     let (body, comments, _evidence_warnings) =
         combine(&inputs, &payload, outputs, &map.reviewable_files, HEAD, &diff, &merge).unwrap();
-    assert_eq!(body, "No findings.");
+    assert_eq!(body, crate::review::NO_FINDINGS_SUMMARY);
     assert_eq!(
         serde_json::from_str::<Value>(&comments).unwrap()["comments"]
             .as_array()

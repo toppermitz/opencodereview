@@ -2,10 +2,10 @@ import { FolderGit2, GitPullRequest, KeyRound, Plug } from "lucide-react";
 import type { Settings } from "../../../types";
 
 export const SETTINGS_SECTIONS = [
-  { id: "accounts", title: "Providers", icon: KeyRound },
-  { id: "repositories", title: "Repository access", icon: FolderGit2 },
-  { id: "selection", title: "PR selection", icon: GitPullRequest },
-  { id: "integrations", title: "Integrations", icon: Plug },
+  { id: "accounts", title: "Provedores", icon: KeyRound },
+  { id: "repositories", title: "Acesso a repositórios", icon: FolderGit2 },
+  { id: "selection", title: "Seleção de MRs", icon: GitPullRequest },
+  { id: "integrations", title: "Integrações", icon: Plug },
 ] as const;
 
 export type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]["id"];

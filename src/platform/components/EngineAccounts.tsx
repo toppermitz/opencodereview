@@ -29,7 +29,7 @@ function usedUpUntil(windows: UsageWindow[], now = Date.now()) {
  * can't take reviews now. The full status is in the row's tooltip. */
 function accountNote(account: AiAccount, windows: UsageWindow[], left: number | null, now = Date.now()) {
   const health = accountHealth(account, now);
-  if (health === "signed-out") return "Signed out";
+  if (health === "signed-out") return "Desconectado";
   if (health === "resting") return `Limit reached · resets in ${relative((account.limitedUntil ?? now) - now)}`;
   const until = usedUpUntil(windows, now);
   const amount = until === null ? (left === null ? null : `${left}% left`) : `Resets in ${relative(until - now)}`;
@@ -113,7 +113,7 @@ export function AddAccount({ onDone, onCancel }: { onDone: (provider: Provider) 
       <div className="flex items-center gap-2">
         <button
           type="button"
-          aria-label="Back"
+          aria-label="Voltar"
           className="grid size-7 flex-none cursor-pointer place-items-center rounded-lg text-fg-subtle hover:bg-surface-muted hover:text-fg"
           onClick={choice ? back : onCancel}
         >

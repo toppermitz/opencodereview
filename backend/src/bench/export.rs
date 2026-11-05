@@ -28,7 +28,7 @@ impl Finding {
         if !message.is_empty() && !message.ends_with(['.', '!', '?']) {
             message.push('.');
         }
-        for (label, text) in [("", self.detail.trim()), ("Suggested fix: ", self.action.trim())] {
+        for (label, text) in [("", self.detail.trim()), ("Correção sugerida: ", self.action.trim())] {
             if !text.is_empty() {
                 if !message.is_empty() {
                     message.push(' ');
@@ -98,7 +98,9 @@ pub(crate) fn suggestions(body: &str) -> Vec<Finding> {
             let (location, rest) = item.strip_prefix("- `")?.split_once("` **")?;
             let (path, number) = location.rsplit_once(':')?;
             let (title, rest) = rest.split_once("**. ")?;
-            let (detail, action) = rest.split_once(" Suggested change: ")?;
+            let (detail, action) = rest
+                .split_once(&format!(" {} ", crate::review::SUGGESTED_CHANGE_LABEL))
+                .or_else(|| rest.split_once(&format!(" {} ", crate::review::LEGACY_SUGGESTED_CHANGE_LABEL)))?;
             let line = number.parse::<i64>().ok()?.max(1);
             Some(Finding {
                 kind: "suggestion".into(),
@@ -123,20 +125,15 @@ struct Parsed {
     action: String,
 }
 
-/// Reads the finding template `evidence::render` writes: a `**[Finding] title**` line, the detail
+/// Reads the finding template `evidence::render` writes: a `**[Achado] title**` line, the detail
 /// paragraph after it, and the suggested fix (or, for a question, what to confirm).
 fn parse_body(body: &str) -> Parsed {
     let lines = body.lines().collect::<Vec<_>>();
     let heading = lines.iter().enumerate().find_map(|(index, line)| {
         let line = line.trim();
         let inner = line.strip_prefix("**")?.strip_suffix("**")?;
-        if let Some(title) = inner.strip_prefix("[Finding]") {
-            Some((index, "finding", title.trim()))
-        } else {
-            inner
-                .strip_prefix("[Question]")
-                .map(|title| (index, "question", title.trim()))
-        }
+        let (kind, title) = crate::review::strip_point_marker(inner)?;
+        Some((index, kind, title.trim()))
     });
     let Some((index, kind, title)) = heading else {
         return Parsed {
@@ -155,7 +152,12 @@ fn parse_body(body: &str) -> Parsed {
         .join("\n");
     let action = lines
         .iter()
-        .position(|line| line.contains("Suggested fix</summary>") || line.contains("What to confirm</summary>"))
+        .position(|line| {
+            line.contains(&format!("{}</summary>", crate::review::FINDING_ACTION_SUMMARY))
+                || line.contains(&format!("{}</summary>", crate::review::QUESTION_ACTION_SUMMARY))
+                || line.contains("Suggested fix</summary>")
+                || line.contains("What to confirm</summary>")
+        })
         .map(|summary| {
             lines[summary + 1..]
                 .iter()

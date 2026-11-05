@@ -37,7 +37,7 @@ describe("BrandLoading", () => {
     const status = document.querySelector('[role="status"]')!;
     expect(status.getAttribute("aria-live")).toBe("polite");
     expect(status.getAttribute("aria-atomic")).toBe("true");
-    expect(status.querySelector("p")?.textContent).toBe("Loading…");
+    expect(status.querySelector("p")?.textContent).toBe("Carregando…");
     const svg = status.querySelector('.brand-loading-art[aria-hidden="true"] svg[data-motion="loading"]')!;
     expect(svg.querySelector("title")?.textContent).toBe("OpenCodeReview mascot");
     expect(document.querySelector("img, image, script, foreignObject, .animate-pulse")).toBeNull();

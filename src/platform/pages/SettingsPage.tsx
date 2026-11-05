@@ -346,16 +346,16 @@ export function SettingsPage() {
 
   return (
     <PlatformPage
-      title="Settings"
+      title="Configurações"
       description="Configure repositories, review behavior, and external integrations."
       action={
         <div className="settings-global-actions flex flex-wrap items-center gap-2 [&>span]:mr-2 [&>span]:text-caption [&>span]:text-fg-subtle [&>span:empty]:hidden">
           <span role="status">{dirty ? "Unsaved changes" : notice}</span>
           <DSButton onClick={cancelChanges} disabled={!dirty || save.isPending}>
-            Cancel
+            Cancelar
           </DSButton>
           <DSButton tone="primary" onClick={saveChanges} disabled={saveDisabled}>
-            {save.isPending ? "Saving…" : "Save changes"}
+            {save.isPending ? "Salvando…" : "Save changes"}
           </DSButton>
         </div>
       }
@@ -481,7 +481,7 @@ export function SettingsPage() {
             onKeywordDraft={setKeywordDraft}
           />
           <SettingsSection id="integrations" activeSection={activeSection}>
-            <SettingsGroup title="Integrations" description="Connected services used by OpenCodeReview.">
+            <SettingsGroup title="Integrações" description="Serviços conectados usados pelo OpenCodeReview.">
               {status ? (
                 <>
                   <IntegrationRow
@@ -489,7 +489,7 @@ export function SettingsPage() {
                     detail={
                       status.auth.loggedIn
                         ? `${status.auth.login ?? "GitLab CLI"} · ${authUsesEnvToken ? "GITLAB_TOKEN from environment" : status.auth.host}`
-                        : "Not connected"
+                        : "Não conectado"
                     }
                     connected={status.auth.loggedIn}
                     action={
@@ -501,7 +501,7 @@ export function SettingsPage() {
                         )
                       ) : (
                         <DSButton tone="primary" onClick={() => connectGitLab.mutate("login")} disabled={loading}>
-                          {connectGitLab.isPending ? "Starting" : "Connect GitLab"}
+                          {connectGitLab.isPending ? "Starting" : "Conectar GitLab"}
                         </DSButton>
                       )
                     }

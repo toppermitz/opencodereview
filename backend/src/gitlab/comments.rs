@@ -304,9 +304,14 @@ pub fn dedupe_review_comments(full_name: &str, number: i64, comments: serde_json
 }
 
 fn point_title(body: &str) -> Option<&str> {
-    let start = ["**[Finding] ", "**[Question] "]
-        .iter()
-        .find_map(|marker| body.find(marker).map(|at| at + marker.len()))?;
+    let start = [
+        format!("**{} ", crate::review::FINDING_MARKER),
+        format!("**{} ", crate::review::QUESTION_MARKER),
+        "**[Finding] ".to_string(),
+        "**[Question] ".to_string(),
+    ]
+    .into_iter()
+    .find_map(|marker| body.find(&marker).map(|at| at + marker.len()))?;
     let end = body[start..].find("**\n").or_else(|| body[start..].find("**"))?;
     Some(body[start..start + end].trim())
 }
@@ -473,13 +478,15 @@ mod dedupe_tests {
     use super::*;
 
     fn posted(path: &str, line: i64, title: &str) -> serde_json::Value {
-        let body =
-            format!("<!-- ocr:fingerprint=fnv64:{line:016x} -->\nOpenCodeReview\n\n**[Finding] {title}**\n\nDetail");
+        let body = format!(
+            "<!-- ocr:fingerprint=fnv64:{line:016x} -->\nOpenCodeReview\n\n**{} {title}**\n\nDetail",
+            crate::review::FINDING_MARKER
+        );
         serde_json::json!({"path": path, "line": line, "body": body, "html_url": format!("https://x/{path}/{line}"), "user": {"login": "me"}})
     }
 
     fn new_comment(path: &str, line: i64, title: &str) -> serde_json::Value {
-        serde_json::json!({"path": path, "line": line, "side": "RIGHT", "body": format!("{}\n\n**[Finding] {title}**\n\nOther detail", crate::review::REVIEW_ATTRIBUTION)})
+        serde_json::json!({"path": path, "line": line, "side": "RIGHT", "body": format!("**{} {title}**\n\nOther detail", crate::review::FINDING_MARKER)})
     }
 
     fn dedupe(existing: &[serde_json::Value], comments: Vec<serde_json::Value>) -> DedupeResult {

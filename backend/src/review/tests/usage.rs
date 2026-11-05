@@ -56,10 +56,7 @@ fn stage_model_prefers_transcript_then_job() {
 
 #[test]
 fn codex_usage_resolves_to_engine_captured_at_execution() {
-    let directory = std::env::temp_dir().join(format!(
-        "ocr-stage-engine-{}",
-        crate::sandbox::secret().unwrap()
-    ));
+    let directory = std::env::temp_dir().join(format!("ocr-stage-engine-{}", crate::sandbox::secret().unwrap()));
     std::fs::create_dir_all(&directory).unwrap();
     let transcript = directory.join("transcript.json");
     std::fs::write(
@@ -92,10 +89,7 @@ fn codex_usage_resolves_to_engine_captured_at_execution() {
 
 #[test]
 fn engine_sidecar_moves_with_output_repair_transcript() {
-    let directory = std::env::temp_dir().join(format!(
-        "ocr-repair-engine-{}",
-        crate::sandbox::secret().unwrap()
-    ));
+    let directory = std::env::temp_dir().join(format!("ocr-repair-engine-{}", crate::sandbox::secret().unwrap()));
     std::fs::create_dir_all(&directory).unwrap();
     let transcript = directory.join("transcript.json");
     let retry = directory.join("transcript.retry-1.json");
@@ -357,7 +351,7 @@ fn distinct_findings_at_one_anchor_are_not_collapsed_by_attribution() {
     let diff =
         "diff --git a/src/auth.rs b/src/auth.rs\n--- a/src/auth.rs\n+++ b/src/auth.rs\n@@ -0,0 +1 @@\n+allow_all();\n";
     let body = |title: &str| {
-        format!("<sub>🤖 Automated review by OpenCodeReview</sub>\n\n**[Finding] {title}**\n\n🔎 Details\n\nDetails\n\n🛠️ Suggested fix\n\nFix\n\n🤖 Prompt for AI Agents\n\n```text\n{preamble}\n```", preamble = super::FINDING_PROMPT_PREAMBLE)
+        format!("**[Achado] {title}**\n\n🔎 Detalhes\n\nDetails\n\n🛠️ Correção sugerida\n\nFix\n\n🤖 Prompt para agentes de IA\n\n```text\n{preamble}\n```", preamble = super::FINDING_PROMPT_PREAMBLE)
     };
     let comments = serde_json::json!({"commit_id":"head","comments":[
         {"path":"src/auth.rs","line":1,"side":"RIGHT","body":body("Tenant boundary")},
@@ -423,7 +417,7 @@ fn retained_incremental_comments_fail_full_diff_validation() {
     assert!(!incompatible.is_empty());
     assert!(!super::incremental_diff_is_publishable(active, full));
     assert!(super::incremental_diff_is_publishable(full, full));
-    let body = format!("**[Finding] Offline anchor regression**\n\n\u{1f50e} Details\n\nSynthetic validation fixture.\n\n\u{1f6e0}\u{fe0f} Suggested fix\n\nKeep publication scope consistent.\n\n\u{1f916} Prompt for AI Agents\n\n```text\n{}\n```", super::FINDING_PROMPT_PREAMBLE);
+    let body = format!("**[Achado] Offline anchor regression**\n\n\u{1f50e} Detalhes\n\nSynthetic validation fixture.\n\n\u{1f6e0}\u{fe0f} Correção sugerida\n\nKeep publication scope consistent.\n\n\u{1f916} Prompt para agentes de IA\n\n```text\n{}\n```", super::FINDING_PROMPT_PREAMBLE);
     for (path, line, side) in &incompatible {
         let raw = serde_json::json!({"commit_id":head,"comments":[{"path":path,"line":line,"side":side,"body":body}]})
             .to_string();

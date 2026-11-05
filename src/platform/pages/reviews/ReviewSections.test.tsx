@@ -6,7 +6,7 @@ import { type ReviewSection, ReviewSections } from "./ReviewSections";
 import { labelCard } from "./reviewHelpers";
 
 const sections: ReviewSection[] = [
-  { id: "needs_you", title: "Needs you", lanes: ["manual_required"], defaultOpen: true },
+  { id: "needs_you", title: "Precisa de você", lanes: ["manual_required"], defaultOpen: true },
   { id: "archive", title: "Closed and merged", lanes: ["merged"], defaultOpen: false, history: true },
 ];
 const card = (id: number, lane: string) =>
@@ -56,9 +56,11 @@ it("keeps what is collapsed during a search out of the saved sections", async ()
 
 describe("labelCard", () => {
   it("says a published review had only suggestions", () => {
-    expect(labelCard({ lane: "auto_posted", suggestionsOnly: true, questionsOnly: false })).toBe("Suggestions posted");
-    expect(labelCard({ lane: "posted", suggestionsOnly: false, questionsOnly: false })).toBe("Findings posted");
-    expect(labelCard({ lane: "posted", suggestionsOnly: false, questionsOnly: true })).toBe("Questions posted");
+    expect(labelCard({ lane: "auto_posted", suggestionsOnly: true, questionsOnly: false })).toBe(
+      "Sugestões publicadas",
+    );
+    expect(labelCard({ lane: "posted", suggestionsOnly: false, questionsOnly: false })).toBe("Achados publicados");
+    expect(labelCard({ lane: "posted", suggestionsOnly: false, questionsOnly: true })).toBe("Perguntas publicadas");
     expect(labelCard({ lane: "ready", suggestionsOnly: true, questionsOnly: true })).toBe("Ready to post");
   });
 });

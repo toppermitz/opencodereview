@@ -22,7 +22,7 @@ export function ReviewDecisionCarousel({
     <div
       className="review-decision-carousel flex min-w-0 gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
       role="radiogroup"
-      aria-label="Review decisions"
+      aria-label="Decisões da revisão"
     >
       {options.map((option) => {
         const selected = option.value === value;

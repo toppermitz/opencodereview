@@ -65,7 +65,7 @@ it("searches full repository names, keeps multiple selections and restores focus
     expect(dialog).not.toBeNull();
     expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
     expect(container.querySelector(".settings-multiselect-popover")).toBeNull();
-    const search = dialog.querySelector<HTMLInputElement>('[aria-label="Search repositories"]')!;
+    const search = dialog.querySelector<HTMLInputElement>('[aria-label="Buscar repositórios"]')!;
     expect(document.activeElement).toBe(search);
     const options = () => [...dialog.querySelectorAll<HTMLButtonElement>(".settings-multiselect-option")];
     expect(options().map((option) => option.textContent)).toEqual(repositories);

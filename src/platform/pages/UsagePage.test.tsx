@@ -239,7 +239,7 @@ describe("Usage page", () => {
     const row = host.querySelector<HTMLButtonElement>('[role="tabpanel"] button[aria-expanded]')!;
     expect(row.textContent).toContain("Refactor auth");
     expect(row.getAttribute("aria-expanded")).toBe("false");
-    expect(row.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("2 runs: 1 failed, 1 posted");
+    expect(row.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("2 runs: 1 falhou, 1 publicado");
     await click(row);
     expect(row.getAttribute("aria-expanded")).toBe("true");
     expect(setupApi.usagePrRuns).toHaveBeenCalledTimes(1);

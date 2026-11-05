@@ -145,7 +145,7 @@ describe("indexing workspace", () => {
 
   it("places status beside repository metadata, not in a third line", async () => {
     await render([job(1, "ready")]);
-    expect(container.querySelector(".index-repo-item > .index-repo-state")?.textContent).toBe("Ready");
+    expect(container.querySelector(".index-repo-item > .index-repo-state")?.textContent).toBe("Pronto");
     expect(container.querySelector(".index-repo-owner")?.textContent).toBe("team");
   });
 

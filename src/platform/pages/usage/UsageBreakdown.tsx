@@ -44,7 +44,7 @@ function GroupTable({
     <table className="w-full table-fixed border-collapse text-small">
       <thead>
         <tr className="border-b border-line text-left">
-          <th className={th}>{repos ? "Repository" : kind === "models" ? "Model" : "Account"}</th>
+          <th className={th}>{repos ? "Repositório" : kind === "models" ? "Model" : "Account"}</th>
           <th className={`${th} w-24 text-right`}>Tokens</th>
           <th className={`${th} w-56 max-md:hidden`}>Share</th>
           {!repos && <th className={`${th} w-28 text-right max-md:hidden`}>Cache reads</th>}
@@ -83,7 +83,7 @@ export function UsageBreakdown({ report, query }: { report: UsageReport; query: 
   const showAccounts = attributedRows(report.byAccount).length >= 2;
   const tabs = [
     { id: "prs", label: "Merge requests" },
-    { id: "repos", label: "Repositories" },
+    { id: "repos", label: "Repositórios" },
     { id: "models", label: "Models" },
     ...(showAccounts ? [{ id: "accounts", label: "Accounts" }] : []),
   ];

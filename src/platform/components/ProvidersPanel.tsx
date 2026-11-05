@@ -86,7 +86,7 @@ export function ProvidersPanel() {
               <div className="text-caption text-fg-subtle">New reviews start with this provider.</div>
             </div>
             <select
-              aria-label="Reviews run on"
+              aria-label="Revisões usam"
               className="h-9 rounded-lg border border-line bg-surface-muted px-3 text-small text-fg outline-none focus:border-line-strong"
               value={connected[0]}
               disabled={moveFirst.isPending}
@@ -103,7 +103,7 @@ export function ProvidersPanel() {
         </div>
       )}
       {connected.length > 0 && (
-        <ProviderGroup title="Connected">
+        <ProviderGroup title="Conectado">
           {connected.map((provider, index) => (
             <button key={provider} type="button" className={rowClass} onClick={() => setOpen(provider)}>
               <ProviderGlyph provider={provider} />

@@ -14,7 +14,7 @@ export const rowActionQuiet =
 /** One dot per step; the current one stretches into a pill. */
 export function StepDots({ step, total }: { step: number; total: number }) {
   return (
-    <ol className="flex items-center justify-center gap-1.5" aria-label={`Step ${step} of ${total}`}>
+    <ol className="flex items-center justify-center gap-1.5" aria-label={`Passo ${step} de ${total}`}>
       {Array.from({ length: total }, (_, index) => index + 1).map((dot) => (
         <li
           key={dot}

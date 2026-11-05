@@ -209,7 +209,7 @@ function AccountRow({
                 setEditing(false);
               }}
             >
-              Cancel
+              Cancelar
             </DSButton>
           </form>
         ) : (
@@ -304,8 +304,8 @@ function addOptions(provider: Provider, start: (code?: boolean) => void) {
     return [
       main,
       {
-        label: "Paste a token",
-        hint: "From claude setup-token on another computer",
+        label: "Colar um token",
+        hint: "De claude setup-token em outro computador",
         icon: <KeyRound />,
         onSelect: () => start(true),
       },
@@ -314,8 +314,8 @@ function addOptions(provider: Provider, start: (code?: boolean) => void) {
     return [
       main,
       {
-        label: "Sign in with a code",
-        hint: "Enter a one-time code on any device",
+        label: "Entrar com um código",
+        hint: "Digite um código de uso único em qualquer dispositivo",
         icon: <Smartphone />,
         onSelect: () => start(true),
       },
@@ -403,13 +403,13 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
               },
               {
                 label: "Claude with a token",
-                hint: "From claude setup-token on another computer",
+                hint: "De claude setup-token em outro computador",
                 icon: <KeyRound />,
                 onSelect: () => setSignIn({ provider: "claude", code: true }),
               },
               {
                 label: "ChatGPT with a code",
-                hint: "Enter a one-time code on any device",
+                hint: "Digite um código de uso único em qualquer dispositivo",
                 icon: <Smartphone />,
                 onSelect: () => setSignIn({ provider: "codex", code: true }),
               },

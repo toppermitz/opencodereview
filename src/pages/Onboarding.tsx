@@ -47,7 +47,7 @@ export function Onboarding() {
       </header>
       <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-7 px-4 pt-[clamp(8px,3vh,32px)] pb-10">
         {status.isLoading ? (
-          <BrandLoading label="Loading your workspace…" />
+          <BrandLoading label="Carregando seu workspace…" />
         ) : offline ? (
           <Offline retrying={status.isFetching} onRetry={refresh} />
         ) : (
@@ -88,8 +88,8 @@ function Offline({ onRetry, retrying }: { onRetry: () => void; retrying: boolean
   return (
     <>
       <StepHeader
-        title="OpenCodeReview can't reach its server"
-        subtitle="The page loaded, but the OpenCodeReview API did not answer. It runs in Docker next to this page."
+        title="O OpenCodeReview não alcança o servidor"
+        subtitle="A página carregou, mas a API do OpenCodeReview não respondeu. Ela roda no Docker ao lado desta página."
       />
       <div className="rounded-2xl border border-line bg-surface-muted/60 p-5 text-small text-fg">
         <p>
@@ -103,7 +103,7 @@ function Offline({ onRetry, retrying }: { onRetry: () => void; retrying: boolean
       <StepActions
         primary={
           <button type="button" className={ctaPrimary} disabled={retrying} onClick={onRetry}>
-            {retrying ? "Checking…" : "Try again"}
+            {retrying ? "Verificando…" : "Tentar de novo"}
           </button>
         }
       />

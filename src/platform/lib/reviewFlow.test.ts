@@ -39,11 +39,11 @@ describe("canvas actions and result", () => {
     expect(flow.nodes.slice(1).every((node) => node.initialWidth === 216 && node.initialHeight === 92)).toBe(true);
     expect(flow.edges[0]).toMatchObject({ source: "review-control", target: "index" });
     expect(flow.nodes[0].data.control).toBe(control);
-    expect(phaseLabel(phases.find((phase) => phase.id === "ready")!)).toBe("Review result");
+    expect(phaseLabel(phases.find((phase) => phase.id === "ready")!)).toBe("Resultado da revisão");
   });
 
   it("keeps stop available while queued or running, and disables ineligible starts", () => {
-    expect(reviewControl(card, null)).toMatchObject({ kind: "run", label: "Run review", disabled: false });
+    expect(reviewControl(card, null)).toMatchObject({ kind: "run", label: "Executar revisão", disabled: false });
     expect(reviewControl({ ...card, lane: "queued" }, null).kind).toBe("stop");
     expect(reviewControl(card, { status: "running" } as ReviewRun).kind).toBe("stop");
     expect(reviewControl(card, { status: "preview" } as ReviewRun).kind).toBe("rerun");
@@ -54,19 +54,19 @@ describe("canvas actions and result", () => {
   });
 
   it("distinguishes generation, decision and publication without inventing clean results", () => {
-    expect(reviewResultSummary(card, null).status).toBe("Awaiting review");
+    expect(reviewResultSummary(card, null).status).toBe("Aguardando revisão");
     const run = { headSha: "current", status: "running" } as ReviewRun;
     expect(reviewResultSummary(card, run)).toMatchObject({ status: "Waiting for review", state: "pending" });
-    expect(reviewResultSummary({ ...card, lane: "queued" }, { ...run, status: "posted" }).status).toBe("Queued");
-    expect(reviewResultSummary(card, { ...run, status: "failed" }).status).toBe("Review failed");
+    expect(reviewResultSummary({ ...card, lane: "queued" }, { ...run, status: "posted" }).status).toBe("Na fila");
+    expect(reviewResultSummary(card, { ...run, status: "failed" }).status).toBe("Revisão falhou");
     expect(reviewResultSummary({ ...card, lane: "ready" }, { ...run, status: "preview" }, 5)).toMatchObject({
-      status: "Needs your decision",
+      status: "Precisa da sua decisão",
       detail: "5 findings",
       state: "awaiting_action",
     });
     expect(reviewResultSummary({ ...card, lane: "ready" }, { ...run, status: "preview" }, 0)).toMatchObject({
-      status: "Needs your decision",
-      detail: "No findings",
+      status: "Precisa da sua decisão",
+      detail: "Nada a sinalizar",
       state: "awaiting_action",
     });
     expect(reviewResultSummary(card, { ...run, status: "preview" }).detail).toBe("View findings and details");
@@ -75,14 +75,14 @@ describe("canvas actions and result", () => {
         { ...card, resultState: "clean", resultPublicationStatus: "posted" },
         { ...run, status: "done" },
       ),
-    ).toMatchObject({ status: "Completed", detail: "No findings", state: "completed" });
+    ).toMatchObject({ status: "Concluído", detail: "Nada a sinalizar", state: "completed" });
     expect(reviewResultSummary({ ...card, resultPublicationStatus: "failed" }, null).status).toBe("Publication failed");
     expect(reviewResultSummary({ ...card, resultState: "clean", resultObservedHeadSha: "old" }, null).detail).not.toBe(
-      "No findings",
+      "Nada a sinalizar",
     );
     expect(reviewResultSummary(card, { ...run, headSha: "old", status: "preview" }).status).toBe("Outdated result");
     expect(reviewResultSummary(card, { ...run, status: "posted" }).status).toBe("Published");
-    expect(reviewResultSummary(card, { ...run, status: "skipped" }).status).toBe("Skipped");
+    expect(reviewResultSummary(card, { ...run, status: "skipped" }).status).toBe("Ignorado");
     expect(reviewResultSummary(card, { ...run, status: "approved" }).status).toBe("Marked reviewed");
     expect(reviewResultSummary({ ...card, resultPublicationStatus: "superseded" }, null).status).toBe(
       "Outdated result",
@@ -94,7 +94,7 @@ describe("canvas actions and result", () => {
     const run = { headSha: "current", status: "skipped" } as ReviewRun;
     expect(reviewNeedsAttention(skipped)).toBe(false);
     expect(reviewControl(skipped, run)).toMatchObject({ kind: "rerun", disabled: false });
-    expect(reviewResultSummary(skipped, run)).toMatchObject({ status: "Skipped", state: "completed" });
+    expect(reviewResultSummary(skipped, run)).toMatchObject({ status: "Ignorado", state: "completed" });
     for (const lane of ["manual_required", "ready", "failed", "needs_setup"])
       expect(reviewNeedsAttention({ lane, state: "open" })).toBe(true);
     expect(reviewNeedsAttention({ lane: "manual_required", state: "merged" })).toBe(false);
@@ -158,7 +158,7 @@ describe("individual review chunks", () => {
       fileCount: 5,
       cached: false,
       attempts: 0,
-      log: "Queued",
+      log: "Na fila",
       error: null,
     };
     const phase = [{ id: "chunks", label: "Chunks", status: "running", chunks: [progress] }];
@@ -410,9 +410,9 @@ describe("review flow mapping", () => {
   });
   it("shows skipped inference as known zero without inventing an execution", () => {
     const phases = [
-      { id: "review", label: "Review", status: "skipped", inferenceSkipped: true },
-      { id: "validate", label: "Validate", status: "skipped", inferenceSkipped: true },
-      { id: "ready", label: "Ready", status: "ok" },
+      { id: "review", label: "Revisão", status: "skipped", inferenceSkipped: true },
+      { id: "validate", label: "Validar", status: "skipped", inferenceSkipped: true },
+      { id: "ready", label: "Pronto", status: "ok" },
     ];
     const run = { status: "preview", inputTokens: 0, phaseJson: JSON.stringify(phases) } as ReviewRun;
     expect(buildReviewFlow(phases, "preview").nodes.every((node) => node.data.state === "completed")).toBe(true);
@@ -426,12 +426,12 @@ describe("review flow mapping", () => {
   it("keeps deep phases after a completed run", () => {
     const phases = parseReviewPhases(
       JSON.stringify([
-        { id: "context", label: "Context ready", status: "ok" },
+        { id: "context", label: "Contexto pronto", status: "ok" },
         { id: "chunks", label: "Chunk reviews", status: "ok" },
         { id: "merge", label: "Merged findings", status: "ok" },
         { id: "final", label: "Final integration", status: "ok" },
-        { id: "validate", label: "Validated", status: "ok" },
-        { id: "ready", label: "Ready", status: "ok" },
+        { id: "validate", label: "Validado", status: "ok" },
+        { id: "ready", label: "Pronto", status: "ok" },
       ]),
     );
     const flow = buildReviewFlow(phases, "preview");
@@ -443,9 +443,9 @@ describe("review flow mapping", () => {
   it("marks the active phase and failure without changing topology", () => {
     const phases = parseReviewPhases(
       JSON.stringify([
-        { id: "context", label: "Context ready", status: "ok" },
-        { id: "review", label: "Reviewed", status: "running" },
-        { id: "ready", label: "Ready", status: "pending" },
+        { id: "context", label: "Contexto pronto", status: "ok" },
+        { id: "review", label: "Revisado", status: "running" },
+        { id: "ready", label: "Pronto", status: "pending" },
       ]),
     );
     const running = buildReviewFlow(phases, "running");
@@ -458,8 +458,8 @@ describe("review flow mapping", () => {
     const phases = parseReviewPhases(
       JSON.stringify([
         { id: "index", label: "Index", status: "ok" },
-        { id: "context", label: "Context", status: "running" },
-        { id: "review", label: "Review", status: "pending" },
+        { id: "context", label: "Contexto", status: "running" },
+        { id: "review", label: "Revisão", status: "pending" },
       ]),
     );
     const running = buildReviewFlow(phases, "running");
@@ -475,8 +475,8 @@ describe("review flow mapping", () => {
   it("marks the latest completed stage so it can stay highlighted beside the active stage", () => {
     const phases: ReviewPhase[] = [
       { id: "index", label: "Index", status: "ok" },
-      { id: "context", label: "Context", status: "running" },
-      { id: "review", label: "Review", status: "pending" },
+      { id: "context", label: "Contexto", status: "running" },
+      { id: "review", label: "Revisão", status: "pending" },
     ];
     const flow = buildReviewFlow(phases, "running");
     expect(flow.nodes.find((node) => node.id === "index")?.data.lastCompleted).toBe(true);
@@ -486,7 +486,7 @@ describe("review flow mapping", () => {
 
   it("does not turn pending stages green when output is ready", () => {
     const phases = parseReviewPhases(
-      '[{"id":"index","label":"Index","status":"ok"},{"id":"review","label":"Review","status":"pending"}]',
+      '[{"id":"index","label":"Index","status":"ok"},{"id":"review","label":"Revisão","status":"pending"}]',
     );
     expect(buildReviewFlow(phases, "preview").nodes[1].data.state).toBe("pending");
   });
@@ -513,7 +513,7 @@ describe("review flow mapping", () => {
 
   it("shows local phases as zero tokens, but never guesses missing AI usage", () => {
     const local = phaseMetrics(
-      { id: "context", label: "Context", status: "ok", startedAt: 1000, finishedAt: 9100 },
+      { id: "context", label: "Contexto", status: "ok", startedAt: 1000, finishedAt: 9100 },
       "completed",
       [],
       null,
@@ -551,7 +551,7 @@ describe("review flow mapping", () => {
 
   it("freezes failed stage time and keeps unreported tokens unknown", () => {
     const run = { status: "failed", finishedAt: 9000, inputTokens: 0 } as ReviewRun;
-    const phase = { id: "review", label: "Review", status: "running", startedAt: 1000 };
+    const phase = { id: "review", label: "Revisão", status: "running", startedAt: 1000 };
     expect(phaseMetrics(phase, "failed", [], run, 50_000)).toMatchObject({ durationMs: 8000, tokens: null });
     const rows = [
       { stage: "single", inputTokens: 2000, createdAt: 1000, finishedAt: 9000, status: "failed" },
@@ -581,7 +581,7 @@ describe("suggestions-only reviews", () => {
       suggestionsOnly: true,
     } as ReviewCard;
     const run = { status: "posted", headSha: "current" } as ReviewRun;
-    expect(reviewResultSummary(posted, run, 0, 0).detail).toBe("Suggestions only");
-    expect(reviewResultSummary({ ...posted, suggestionsOnly: false }, run, 0, 0).detail).toBe("No findings");
+    expect(reviewResultSummary(posted, run, 0, 0).detail).toBe("Só sugestões");
+    expect(reviewResultSummary({ ...posted, suggestionsOnly: false }, run, 0, 0).detail).toBe("Nada a sinalizar");
   });
 });

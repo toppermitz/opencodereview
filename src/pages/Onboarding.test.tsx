@@ -70,7 +70,7 @@ const repo = (id: number, name: string, change: Partial<Repo> = {}): Repo => ({
 });
 const github = { loggedIn: true, login: "octo", host: "gitlab.example.com", detail: "Connected" };
 const status = (change: Partial<SetupStatus>): SetupStatus => ({
-  auth: { loggedIn: false, login: null, host: "gitlab.example.com", detail: "Not connected" },
+  auth: { loggedIn: false, login: null, host: "gitlab.example.com", detail: "Não conectado" },
   workspaces: [],
   selectedWorkspaces: [],
   selectedRepos: [],
@@ -136,11 +136,11 @@ async function render(setup: SetupStatus) {
 describe("onboarding", () => {
   it("starts with GitHub and keeps Continue disabled until it is connected", async () => {
     await render(status({}));
-    expect(container.querySelector("h1")?.textContent).toBe("Connect GitLab");
-    expect(container.querySelector('[aria-label="Step 1 of 4"] [aria-current="step"]')).not.toBeNull();
-    expect(container.querySelector('[aria-label="GitLab"]')?.textContent).toContain("Not connected");
-    expect(button("Continue")?.disabled).toBe(true);
-    await act(async () => button("Connect")!.click());
+    expect(container.querySelector("h1")?.textContent).toBe("Conectar GitLab");
+    expect(container.querySelector('[aria-label="Passo 1 de 4"] [aria-current="step"]')).not.toBeNull();
+    expect(container.querySelector('[aria-label="GitLab"]')?.textContent).toContain("Não conectado");
+    expect(button("Continuar")?.disabled).toBe(true);
+    await act(async () => button("Conectar")!.click());
     expect(setupApi.gitlabAuthStart).toHaveBeenCalled();
   });
 
@@ -154,7 +154,7 @@ describe("onboarding", () => {
       ),
     );
     await vi.waitFor(
-      () => expect(container.querySelector("h1")?.textContent).toBe("OpenCodeReview can't reach its server"),
+      () => expect(container.querySelector("h1")?.textContent).toBe("O OpenCodeReview não alcança o servidor"),
       { timeout: 3000 },
     );
     expect(container.textContent).toContain("docker compose up -d");
@@ -164,17 +164,17 @@ describe("onboarding", () => {
   it("lists Claude and ChatGPT with their CLI versions and connection state", async () => {
     vi.mocked(setupApi.aiProviders).mockResolvedValue(providers({}, { installed: false, version: null }));
     await render(status({ auth: github, nextStep: 2 }));
-    expect(container.querySelector("h1")?.textContent).toBe("Connect your plan");
+    expect(container.querySelector("h1")?.textContent).toBe("Conecte seu plano");
     await vi.waitFor(() => expect(container.querySelector('[aria-label="Claude"]')).not.toBeNull());
     const claude = container.querySelector('[aria-label="Claude"]')!;
     expect(claude.textContent).toContain("Pro, Max or Team plan");
     expect(claude.textContent).not.toContain("v2.1.292");
-    expect(claude.textContent).not.toContain("Not connected");
-    expect(claude.querySelector("button")?.textContent).toBe("Connect");
+    expect(claude.textContent).not.toContain("Não conectado");
+    expect(claude.querySelector("button")?.textContent).toBe("Conectar");
     const chatgpt = container.querySelector('[aria-label="ChatGPT"]')!;
     expect(chatgpt.textContent).toContain("Not installed");
     expect(chatgpt.querySelector("button")).toBeNull();
-    expect(button("Continue")?.disabled).toBe(true);
+    expect(button("Continuar")?.disabled).toBe(true);
     expect(container.textContent).not.toContain("Connect an AI provider to continue.");
   });
 
@@ -194,7 +194,7 @@ describe("onboarding", () => {
     await vi.waitFor(() =>
       expect(row().querySelector("a")?.getAttribute("href")).toBe("https://auth.openai.com/oauth/authorize?state=s"),
     );
-    await act(async () => button("Cancel")!.click());
+    await act(async () => button("Cancelar")!.click());
     await settle();
 
     vi.mocked(setupApi.codexAuthEvents).mockResolvedValue({
@@ -228,11 +228,11 @@ describe("onboarding", () => {
     await vi.waitFor(() =>
       expect(row().querySelector("a")?.getAttribute("href")).toBe("https://claude.ai/oauth/authorize?state=s"),
     );
-    await act(async () => button("Cancel")!.click());
+    await act(async () => button("Cancelar")!.click());
     await settle();
     expect(setupApi.claudeAuthCancel).toHaveBeenCalled();
-    expect(button("Cancel")).toBeUndefined();
-    expect(row().querySelector("button")?.textContent).toBe("Connect");
+    expect(button("Cancelar")).toBeUndefined();
+    expect(row().querySelector("button")?.textContent).toBe("Conectar");
   });
 
   it("lets Claude sign in with a pasted setup token", async () => {
@@ -258,10 +258,10 @@ describe("onboarding", () => {
     await settle();
     expect(setupApi.claudeTokenSave).toHaveBeenCalledWith("sk-ant-oat01-fixture", undefined);
     await vi.waitFor(() =>
-      expect(container.querySelector('[aria-label="Claude"]')?.textContent).toContain("Connected"),
+      expect(container.querySelector('[aria-label="Claude"]')?.textContent).toContain("Conectado"),
     );
-    expect(container.querySelector("h1")?.textContent).toBe("Connect your plan");
-    expect(button("Continue")?.disabled).toBe(false);
+    expect(container.querySelector("h1")?.textContent).toBe("Conecte seu plano");
+    expect(button("Continuar")?.disabled).toBe(false);
   });
 
   it("picks repositories across organizations in one list and saves them", async () => {
@@ -283,7 +283,7 @@ describe("onboarding", () => {
     });
     vi.mocked(setupApi.listReviewBoard).mockResolvedValue([]);
     await render(status({ auth: github, nextStep: 3 }));
-    expect(container.querySelector("h1")?.textContent).toBe("Pick your repositories");
+    expect(container.querySelector("h1")?.textContent).toBe("Escolha seus repositórios");
     await vi.waitFor(() => expect(container.querySelectorAll('[role="checkbox"]')).toHaveLength(2));
     expect(container.querySelector('[role="checkbox"][aria-checked="true"]')?.textContent).toContain("acme/app");
     await act(async () =>
@@ -291,12 +291,12 @@ describe("onboarding", () => {
         .find((item) => item.textContent?.includes("acme/api"))!
         .click(),
     );
-    await act(async () => button("Continue with 2 repositories")!.click());
+    await act(async () => button("Continuar com 2 repositórios")!.click());
     await settle();
     expect(setupApi.saveSelectedWorkspaces).toHaveBeenCalledWith(["acme"]);
     expect(setupApi.saveRepoSubscription).toHaveBeenCalledTimes(1);
     expect(setupApi.saveRepoSubscription).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), true);
-    expect(container.querySelector("h1")?.textContent).toBe("You're all set");
+    expect(container.querySelector("h1")?.textContent).toBe("Tudo pronto");
     expect(container.textContent).toContain("2 selected");
   });
 
@@ -335,13 +335,13 @@ describe("onboarding", () => {
     ]);
     vi.mocked(setupApi.startReview).mockResolvedValue(undefined);
     await render(status({ auth: github, selectedRepos: [repo(1, "app")], complete: true, nextStep: 4 }));
-    expect(container.querySelector("h1")?.textContent).toBe("You're all set");
+    expect(container.querySelector("h1")?.textContent).toBe("Tudo pronto");
     expect(container.textContent).toContain("ChatGPT · dev@example.com");
     expect(setupApi.pollReviews).toHaveBeenCalled();
     await vi.waitFor(() => expect(container.querySelector('[aria-label="Add billing"]')).not.toBeNull());
     expect(container.querySelector('[aria-label="Old"]')).toBeNull();
     expect(container.querySelector('[aria-label="Done already"]')).toBeNull();
-    await act(async () => button("Review")!.click());
+    await act(async () => button("Revisão")!.click());
     await settle();
     expect(setupApi.startReview).toHaveBeenCalledWith(9);
     expect(navigate).toHaveBeenCalledWith({ to: "/platform/reviews" });

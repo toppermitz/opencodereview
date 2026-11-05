@@ -61,10 +61,10 @@ mod progress_tests;
 
 const OCR_REPOSITORY_URL: &str = "https://github.com/BridgLabs/opencodereview";
 
-/// Closing line of every visible OpenCodeReview comment. Reviews post from the
-/// user's own GitHub account, so each one says where it came from.
+/// Closing line of the review summary. Inline findings stay first-person; this
+/// is the only place the brand appears on a posted review.
 fn ocr_footer() -> String {
-    format!("<sub>Reviewed by [OpenCodeReview]({OCR_REPOSITORY_URL}).</sub>")
+    format!("<sub>Revisado com [OpenCodeReview]({OCR_REPOSITORY_URL}).</sub>")
 }
 
 #[derive(Clone)]

@@ -24,7 +24,7 @@ const candidate = (id: string, selected: boolean, blockedReason: string | null =
   chunkId: 1,
   aiDecision: selected ? "kept" : "discarded",
   aiReason: null,
-  body: "[Finding] Example",
+  body: "[Achado] Example",
   originalBody: null,
   comment: { path: "src/example.ts", line: 1 },
 });
@@ -46,10 +46,10 @@ const draft: FindingSelectionDraft = { runId: 10, prId: 1, revision: 2, selected
 
 describe("review point classification", () => {
   it.each([
-    ["**[Question] Confirm**\n\n**[Finding] Fix**", "mixed"],
-    ["**[Finding] Fix**\n\n**[Question] Confirm**", "mixed"],
-    ["[Question] Confirm\n```text\n[Finding] Example\n```", "question"],
-    ["[Finding] Fix\n~~~text\n[Question] Example\n~~~", "finding"],
+    ["**[Pergunta] Confirm**\n\n**[Achado] Fix**", "mixed"],
+    ["**[Achado] Fix**\n\n**[Pergunta] Confirm**", "mixed"],
+    ["[Pergunta] Confirm\n```text\n[Achado] Example\n```", "question"],
+    ["[Achado] Fix\n~~~text\n[Pergunta] Example\n~~~", "finding"],
     ["No findings.", "unknown"],
   ])("classifies all unfenced points: %s", (body, expected) => {
     expect(reviewPointKind(body)).toBe(expected);
@@ -87,20 +87,22 @@ describe("finding groups", () => {
 
 describe("finding audit summary", () => {
   it("distinguishes unavailable history from zero discarded candidates", () => {
-    expect(findingAuditSummary(undefined)).toBe("Loading candidate audit…");
-    expect(findingAuditSummary({ ...view, audit: null })).toBe("Discard history unavailable for this run.");
+    expect(findingAuditSummary(undefined)).toBe("Carregando auditoria de candidatos…");
+    expect(findingAuditSummary({ ...view, audit: null })).toBe(
+      "Histórico de descarte indisponível para esta execução.",
+    );
     expect(findingAuditSummary({ ...view, audit: { ...view.audit!, candidates: [] } })).toBe(
-      "0 candidates · 0 discarded by AI",
+      "0 candidatos · 0 descartados pela IA",
     );
   });
   it("counts explicit AI discards independently of human selection and blockers", () => {
-    expect(findingAuditSummary(view)).toBe("3 candidates · 2 discarded by AI · 1 blocked");
+    expect(findingAuditSummary(view)).toBe("3 candidatos · 2 descartados pela IA · 1 bloqueado");
     expect(
       findingAuditSummary({
         ...view,
         audit: { ...view.audit!, candidates: [{ ...candidate("a", true), aiDecision: "discarded" }] },
       }),
-    ).toBe("1 candidate · 1 discarded by AI");
+    ).toBe("1 candidato · 1 descartado pela IA");
   });
   it("keeps missing decisions and incomplete audits explicit", () => {
     const candidates: FindingCandidate[] = [
@@ -108,7 +110,7 @@ describe("finding audit summary", () => {
       { ...candidate("b", false), aiDecision: "pending" },
     ];
     expect(findingAuditSummary({ ...view, audit: { ...view.audit!, complete: false, candidates } })).toBe(
-      "2 candidates · 0 discarded by AI · 1 decision unavailable · 1 pending · incomplete audit",
+      "2 candidatos · 0 descartados pela IA · 1 decisão indisponível · 1 pendente · auditoria incompleta",
     );
   });
 });
@@ -150,7 +152,7 @@ describe("empty finding decision preparation", () => {
   ])("never saves a selection for %s", async (_label, changed) => {
     const save = vi.fn();
     await expect(prepareEmptyFindingDecision(1, 10, "abc", async () => changed, save)).rejects.toThrow(
-      "Review changed",
+      "A revisão mudou",
     );
     expect(save).not.toHaveBeenCalled();
   });
@@ -212,8 +214,8 @@ describe("finding selection confirmation", () => {
 
 describe("reviewBodyHasPostableFinding", () => {
   it("detects body-only findings and questions with markdown wrappers", () => {
-    expect(reviewBodyHasPostableFinding("**[Finding] Issue**")).toBe(true);
-    expect(reviewBodyHasPostableFinding("> **[Question] Intent?**")).toBe(true);
+    expect(reviewBodyHasPostableFinding("**[Achado] Issue**")).toBe(true);
+    expect(reviewBodyHasPostableFinding("> **[Pergunta] Intent?**")).toBe(true);
     expect(reviewBodyHasPostableFinding("No issues found.")).toBe(false);
   });
 });
@@ -222,16 +224,16 @@ describe("findingDisplayBody", () => {
   it("drops the GitHub-only lines and the title line, and keeps the rest", () => {
     const body = [
       "<!-- ocr:fingerprint=fnv64:1109cf9f37037de9 -->",
-      "<sub>🤖 Automated review by OpenCodeReview</sub>",
+      "<sub>🤖 OpenCodeReview</sub>",
       "",
-      "**[Finding] Sitemap gets a 24h max-age**",
+      "**[Achado] Sitemap gets a 24h max-age**",
       "",
       "The cached sitemap keeps the Cache API header.",
       "",
-      "<details><summary>Details</summary>Mentions [Finding] again.</details>",
+      "<details><summary>Details</summary>Mentions [Achado] again.</details>",
     ].join("\n");
     expect(findingDisplayBody(body)).toBe(
-      "The cached sitemap keeps the Cache API header.\n\n<details><summary>Details</summary>Mentions [Finding] again.</details>",
+      "The cached sitemap keeps the Cache API header.\n\n<details><summary>Details</summary>Mentions [Achado] again.</details>",
     );
   });
 
@@ -242,7 +244,7 @@ describe("findingDisplayBody", () => {
 
 describe("reviewBodySuggestions", () => {
   it("returns the suggestions section and never counts it as a finding", () => {
-    const section = "### 💡 Suggestions\n\nLower-priority points.\n\n- `a.rs:3` **Stale test name**. Rename it";
+    const section = "### 💡 Sugestões\n\nLower-priority points.\n\n- `a.rs:3` **Stale test name**. Rename it";
     expect(reviewBodySuggestions(`No findings.\n\n${section}`)).toBe(section);
     expect(reviewBodySuggestions(section)).toBe(section);
     expect(reviewBodySuggestions("No findings.")).toBe("");
@@ -252,23 +254,23 @@ describe("reviewBodySuggestions", () => {
 
   it("shows a section collapsed for GitHub as a heading", () => {
     const items = "Lower-priority points.\n\n- `a.rs:3` **Stale test name**. Rename it";
-    const collapsed = `<details>\n<summary>💡 Suggestions (1)</summary>\n\n${items}\n\n</details>`;
-    expect(reviewBodySuggestions(`No findings.\n\n${collapsed}`)).toBe(`### 💡 Suggestions (1)\n\n${items}`);
+    const collapsed = `<details>\n<summary>💡 Sugestões (1)</summary>\n\n${items}\n\n</details>`;
+    expect(reviewBodySuggestions(`No findings.\n\n${collapsed}`)).toBe(`### 💡 Sugestões (1)\n\n${items}`);
     expect(reviewBodyHasPostableFinding(collapsed)).toBe(false);
   });
 });
 
 describe("storedPointCounts", () => {
   it("counts like the backend: a mixed comment as both, an unmarked one as a finding, and body points", () => {
-    expect(storedPointCounts(["**[Question] Checked?**"], "1 review comments selected for publication.")).toEqual({
+    expect(storedPointCounts(["**[Pergunta] Checked?**"], "1 review comments selected for publication.")).toEqual({
       findings: 0,
       questions: 1,
     });
-    expect(storedPointCounts(["**[Finding] Bug**\n\n**[Question] Intended?**", "Plain note"], null)).toEqual({
+    expect(storedPointCounts(["**[Achado] Bug**\n\n**[Pergunta] Intended?**", "Plain note"], null)).toEqual({
       findings: 2,
       questions: 1,
     });
-    expect(storedPointCounts([], "**[Question] Checked?**\n\n```\n[Finding] not a title\n```")).toEqual({
+    expect(storedPointCounts([], "**[Pergunta] Checked?**\n\n```\n[Achado] not a title\n```")).toEqual({
       findings: 0,
       questions: 1,
     });

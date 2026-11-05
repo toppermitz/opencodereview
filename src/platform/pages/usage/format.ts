@@ -2,7 +2,7 @@ import type { Tone } from "../../../components/DesignSystem";
 import type { AiAccount, UsageGroupRow, UsageOutcome } from "../../../types";
 import { formatError } from "../../lib/utils";
 
-const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+const MONTHS = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 
 const trimmed = (value: number, digits: number) => String(Number(value.toFixed(digits)));
 
@@ -21,13 +21,13 @@ export function pct(part: number, whole: number, digits = 0) {
   return `${trimmed((part / whole) * 100, digits)}%`;
 }
 
-/** Axis label for a local `YYYY-MM-DD` day, such as `OCT 25`. */
+/** Axis label for a local `YYYY-MM-DD` day, such as `OUT 25`. */
 export function dayAxisLabel(day: string) {
   const [, month, date] = day.split("-").map(Number);
   return month >= 1 && month <= 12 && date ? `${MONTHS[month - 1]} ${date}` : day;
 }
 
-/** Tooltip label for a local `YYYY-MM-DD` day, such as `Oct 25, 2026`. */
+/** Tooltip label for a local `YYYY-MM-DD` day, such as `Out 25, 2026`. */
 export function dayLabel(day: string) {
   const [year, month, date] = day.split("-").map(Number);
   if (!(month >= 1 && month <= 12 && date)) return day;
@@ -46,22 +46,22 @@ export const isProvider = (value: string | null): value is AiAccount["provider"]
 export const attributedRows = (rows: UsageGroupRow[]) => rows.filter((row) => row.key !== "unattributed");
 
 export const UNATTRIBUTED_HINT =
-  "Runs from before OpenCodeReview tracked usage per account and model. Their tokens still count in the totals.";
+  "Execuções de antes do OpenCodeReview rastrear uso por conta e modelo. Os tokens ainda entram nos totais.";
 
 export const outcomeMeta: Record<UsageOutcome, { label: string; tone: Tone; segment: string }> = {
-  running: { label: "Running", tone: "brand", segment: "bg-brand/40" },
-  preview: { label: "Preview", tone: "warning", segment: "bg-amber-500" },
-  posted: { label: "Posted", tone: "success", segment: "bg-brand" },
-  superseded: { label: "Superseded", tone: "neutral", segment: "bg-surface-sunken" },
-  failed: { label: "Failed", tone: "danger", segment: "bg-rose-500" },
-  cancelled: { label: "Cancelled", tone: "neutral", segment: "bg-slate-400" },
-  skipped: { label: "Skipped", tone: "neutral", segment: "bg-slate-400" },
+  running: { label: "Em execução", tone: "brand", segment: "bg-brand/40" },
+  preview: { label: "Prévia", tone: "warning", segment: "bg-amber-500" },
+  posted: { label: "Publicado", tone: "success", segment: "bg-brand" },
+  superseded: { label: "Substituído", tone: "neutral", segment: "bg-surface-sunken" },
+  failed: { label: "Falhou", tone: "danger", segment: "bg-rose-500" },
+  cancelled: { label: "Cancelado", tone: "neutral", segment: "bg-slate-400" },
+  skipped: { label: "Ignorado", tone: "neutral", segment: "bg-slate-400" },
 };
 
 /** Maps an old server's missing routes to the Docker fix, like `reviewError`. */
 export function usageError(cause: unknown) {
   const message = formatError(cause);
   return message.includes("route not found")
-    ? "Usage is not available in the running server. Rebuild the Docker backend (docker compose up --build server)."
+    ? "Uso indisponível no servidor em execução. Reconstrua o backend Docker (docker compose up --build server)."
     : message;
 }

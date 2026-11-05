@@ -83,7 +83,7 @@ pub(crate) fn sanitize_review_comments(comments_json: Option<&str>) -> Result<Op
         if is_structured_review_point(body) {
             kept.push(item.clone());
         } else if looks_like_review_finding(body) {
-            return Err("Review inline comment does not use the required [Finding]/[Question] template.".to_string());
+            return Err("Comentário inline da revisão não usa o template obrigatório [Achado]/[Pergunta].".to_string());
         }
     }
     *items = kept;
@@ -110,10 +110,10 @@ pub(crate) fn repair_body_only_review_point(body: String, comments_json: Option<
         return body;
     }
     let is_question = looks_like_body_only_question(&body);
-    let title = body_only_review_title(&body, if is_question { "Question" } else { "Finding" });
+    let title = body_only_review_title(&body, if is_question { "Pergunta" } else { "Achado" });
     if is_question {
         format!(
-            "{REVIEW_ATTRIBUTION}\n\n**[Question] {title}**\n\n{}\n\n<details>\n<summary>🔎 Why I'm asking</summary>\n\n{}\n\nWhy: The original generated review described this as a question that needs author confirmation before a code change.\n\n</details>\n\n<details>\n<summary>💬 What to confirm</summary>\n\nConfirm the intended behavior and whether this needs a code change.\n\n</details>\n\n<details>\n<summary>🤖 Prompt for AI Agents</summary>\n\n```text\n{}\n\nReview question to verify:\n{}\n\nInspect the affected changed files and ask only if still ambiguous.\n```\n\n</details>",
+            "**[Pergunta] {title}**\n\n{}\n\n<details>\n<summary>{QUESTION_DETAILS_SUMMARY}</summary>\n\n{}\n\nPor quê: Vi isto como uma pergunta que precisa da sua confirmação antes de uma alteração no código.\n\n</details>\n\n<details>\n<summary>{QUESTION_ACTION_SUMMARY}</summary>\n\nConfirme o comportamento pretendido e se isto exige uma alteração no código.\n\n</details>\n\n<details>\n<summary>{AGENTS_PROMPT_SUMMARY}</summary>\n\n```text\n{}\n\nPergunta de revisão a verificar:\n{}\n\nInspecione os arquivos alterados afetados e pergunte somente se ainda houver ambiguidade.\n```\n\n</details>",
             body.trim(),
             body.trim(),
             QUESTION_PROMPT_PREAMBLE,
@@ -121,7 +121,7 @@ pub(crate) fn repair_body_only_review_point(body: String, comments_json: Option<
         )
     } else {
         format!(
-            "{REVIEW_ATTRIBUTION}\n\n**[Finding] {title}**\n\n{}\n\n<details>\n<summary>🔎 Details</summary>\n\n{}\n\nWhy: The original generated review described this as a finding that must stay visible until verified or fixed.\n\n</details>\n\n<details>\n<summary>🛠️ Suggested fix</summary>\n\nInvestigate and fix the issue described above, then validate with the relevant tests/typecheck.\n\n</details>\n\n<details>\n<summary>🤖 Prompt for AI Agents</summary>\n\n```text\n{}\n\nReview finding to verify:\n{}\n\nInspect the affected changed files and fix only if still valid.\n```\n\n</details>",
+            "**[Achado] {title}**\n\n{}\n\n<details>\n<summary>{FINDING_DETAILS_SUMMARY}</summary>\n\n{}\n\nPor quê: Vi isto como um achado que deve permanecer visível até ser verificado ou corrigido.\n\n</details>\n\n<details>\n<summary>{FINDING_ACTION_SUMMARY}</summary>\n\nInvestigue e corrija o problema descrito acima; depois valide com os testes/typecheck relevantes.\n\n</details>\n\n<details>\n<summary>{AGENTS_PROMPT_SUMMARY}</summary>\n\n```text\n{}\n\nAchado de revisão a verificar:\n{}\n\nInspecione os arquivos alterados afetados e corrija somente se ainda for válido.\n```\n\n</details>",
             body.trim(),
             body.trim(),
             FINDING_PROMPT_PREAMBLE,
@@ -136,10 +136,16 @@ pub(crate) fn looks_like_body_only_question(body: &str) -> bool {
     trimmed.ends_with('?')
         || lower.starts_with("question")
         || lower.starts_with("[question]")
+        || lower.starts_with("pergunta")
+        || lower.starts_with("[pergunta]")
         || lower.starts_with("is ")
         || lower.starts_with("are ")
         || lower.starts_with("should ")
         || lower.starts_with("can ")
+        || lower.starts_with("é ")
+        || lower.starts_with("são ")
+        || lower.starts_with("deve ")
+        || lower.starts_with("pode ")
 }
 
 pub(crate) fn body_only_review_title(body: &str, fallback: &str) -> String {
@@ -152,10 +158,22 @@ pub(crate) fn body_only_review_title(body: &str, fallback: &str) -> String {
         .trim()
         .trim_start_matches("[Finding]")
         .trim_start_matches("[Question]")
+        .trim_start_matches("[Achado]")
+        .trim_start_matches("[Pergunta]")
         .trim()
         .to_string();
     let lower = title.to_lowercase();
-    for prefix in ["found one ", "found a ", "finding:", "bug:", "issue:", "question:"] {
+    for prefix in [
+        "found one ",
+        "found a ",
+        "finding:",
+        "bug:",
+        "issue:",
+        "question:",
+        "achado:",
+        "pergunta:",
+        "problema:",
+    ] {
         if lower.starts_with(prefix) {
             title = title[prefix.len()..].trim().to_string();
             break;
@@ -187,12 +205,15 @@ pub(crate) fn validate_review_templates(body: &str, comments_json: Option<&str>)
         if is_no_issue_summary(body) || is_structured_review_point(body) || !looks_like_review_finding(body) {
             return Ok(());
         }
-        return Err("Review summary has a body-only finding/question but does not use the required [Finding]/[Question] template.".to_string());
+        return Err(
+            "O resumo da revisão tem um achado/pergunta só no corpo, mas não usa o template obrigatório [Achado]/[Pergunta]."
+                .to_string(),
+        );
     }
     for comment in comments {
         let text = comment.get("body").and_then(|value| value.as_str()).unwrap_or_default();
         if !is_structured_review_point(text) {
-            return Err("Review inline comment does not use the required [Finding]/[Question] template.".to_string());
+            return Err("Comentário inline da revisão não usa o template obrigatório [Achado]/[Pergunta].".to_string());
         }
     }
     Ok(())
@@ -202,22 +223,31 @@ pub(crate) fn looks_like_review_finding(body: &str) -> bool {
     let lower = body.trim().to_lowercase();
     lower.contains("[finding]")
         || lower.contains("[question]")
+        || lower.contains("[achado]")
+        || lower.contains("[pergunta]")
         || lower.contains("finding")
         || lower.contains("question")
+        || lower.contains("achado")
+        || lower.contains("pergunta")
         || lower.contains("bug")
         || lower.contains("issue")
+        || lower.contains("problema")
         || lower.contains("suggested fix")
+        || lower.contains("correção sugerida")
         || lower.contains("details")
+        || lower.contains("detalhes")
 }
 
 pub(crate) fn is_no_issue_summary(body: &str) -> bool {
     let lower = body.trim().to_lowercase();
     let words = lower
-        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '-'))
+        .split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '-' || "áàâãéêíóôõúç".contains(ch)))
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
     lower.contains("nothing to flag")
         || lower.contains("nothing evidence-backed to flag")
+        || lower.contains("nada a sinalizar")
+        || lower.contains("nada a apontar")
         || words.iter().enumerate().any(|(index, word)| {
             *word == "no"
                 && words
@@ -225,6 +255,24 @@ pub(crate) fn is_no_issue_summary(body: &str) -> bool {
                     .skip(index + 1)
                     .take(3)
                     .any(|word| matches!(*word, "issue" | "issues" | "bug" | "bugs" | "finding" | "findings"))
+        })
+        || words.iter().enumerate().any(|(index, word)| {
+            matches!(*word, "nenhum" | "nenhuma" | "sem")
+                && words.iter().skip(index + 1).take(3).any(|word| {
+                    matches!(
+                        *word,
+                        "problema"
+                            | "problemas"
+                            | "bug"
+                            | "bugs"
+                            | "achado"
+                            | "achados"
+                            | "issue"
+                            | "issues"
+                            | "finding"
+                            | "findings"
+                    )
+                })
         })
         || (words.iter().enumerate().any(|(index, word)| {
             *word == "no"
@@ -234,32 +282,50 @@ pub(crate) fn is_no_issue_summary(body: &str) -> bool {
                     .take(3)
                     .any(|word| matches!(*word, "question" | "questions"))
         }) && !contains_positive_finding_signal(&lower))
+        || (words.iter().enumerate().any(|(index, word)| {
+            matches!(*word, "nenhuma" | "nenhum" | "sem")
+                && words
+                    .iter()
+                    .skip(index + 1)
+                    .take(3)
+                    .any(|word| matches!(*word, "pergunta" | "perguntas" | "question" | "questions"))
+        }) && !contains_positive_finding_signal(&lower))
 }
 
 pub(crate) fn contains_positive_finding_signal(lower: &str) -> bool {
     lower.contains("finding")
+        || lower.contains("achado")
         || lower.contains("bug")
         || lower.contains("issue")
+        || lower.contains("problema")
         || lower.contains("regression")
+        || lower.contains("regressão")
         || lower.contains("can fail")
+        || lower.contains("pode falhar")
         || lower.contains("hide an untemplated")
 }
 
 /// Start of the summary section that lists lower-priority suggestions instead of posting them
-/// inline: a collapsed `<details>` block whose summary is `💡 Suggestions (n)`, so the review shows
-/// one line until the reader opens it. It never contains a [Finding]/[Question] marker, so
+/// inline: a collapsed `<details>` block whose summary is `💡 Sugestões (n)`, so the review shows
+/// one line until the reader opens it. It never contains a [Achado]/[Pergunta] marker, so
 /// suggestions never count as findings.
-pub(crate) const SUGGESTIONS_HEADING: &str = "<details>\n<summary>💡 Suggestions";
-/// The heading reviews used before the section was collapsed; stored reviews still carry it.
-const LEGACY_SUGGESTIONS_HEADING: &str = "### 💡 Suggestions";
+pub(crate) const SUGGESTIONS_HEADING: &str = "<details>\n<summary>💡 Sugestões";
+/// Headings reviews used before the Portuguese rename or the collapsed section; stored reviews still carry them.
+const LEGACY_SUGGESTIONS_HEADINGS: &[&str] = &[
+    "### 💡 Sugestões",
+    "<details>\n<summary>💡 Suggestions",
+    "### 💡 Suggestions",
+];
 pub(crate) const SUGGESTIONS_INTRO: &str =
-    "Lower-priority points, such as test gaps, stale names or docs, and duplication. They are not posted as inline comments.";
+    "Pontos de menor prioridade, como lacunas de teste, nomes ou docs desatualizados e duplicação. Não são publicados como comentários inline.";
+pub(crate) const SUGGESTED_CHANGE_LABEL: &str = "Alteração sugerida:";
+pub(crate) const LEGACY_SUGGESTED_CHANGE_LABEL: &str = "Suggested change:";
 
 /// `body` split before its suggestions section: the review points, then the section (empty when
 /// there is none).
 pub(crate) fn split_suggestions(body: &str) -> (&str, &str) {
-    let start = [SUGGESTIONS_HEADING, LEGACY_SUGGESTIONS_HEADING]
-        .into_iter()
+    let start = std::iter::once(SUGGESTIONS_HEADING)
+        .chain(LEGACY_SUGGESTIONS_HEADINGS.iter().copied())
         .filter_map(|heading| {
             if body.starts_with(heading) {
                 Some(0)
@@ -281,42 +347,86 @@ pub(crate) fn without_suggestions(body: &str) -> String {
     if section.is_empty() {
         return body.to_string();
     }
-    let rest = section
-        .strip_prefix(SUGGESTIONS_HEADING)
-        .and_then(|section| section.split_once("</details>"))
-        .map_or("", |(_, rest)| rest);
+    let rest = std::iter::once(SUGGESTIONS_HEADING)
+        .chain(LEGACY_SUGGESTIONS_HEADINGS.iter().copied())
+        .find_map(|heading| {
+            section
+                .strip_prefix(heading)
+                .and_then(|section| section.split_once("</details>"))
+                .map(|(_, rest)| rest)
+        })
+        .unwrap_or("");
     format!("{}{rest}", points.trim_end())
 }
 
-/// First line of every generated finding/question. Reviews post from the user's
-/// own GitHub account, so this line is what marks the comment as automated.
-pub(crate) const REVIEW_ATTRIBUTION: &str = "<sub>🤖 Automated review by OpenCodeReview</sub>";
+/// Legacy first line older comments carried. New comments omit it: the review
+/// footer already names OpenCodeReview, and inline comments stay first-person.
+pub(crate) const REVIEW_ATTRIBUTION: &str = "<sub>🤖 OpenCodeReview</sub>";
+pub(crate) const FINDING_MARKER: &str = "[Achado]";
+pub(crate) const QUESTION_MARKER: &str = "[Pergunta]";
+pub(crate) const FINDING_DETAILS_SUMMARY: &str = "🔎 Detalhes";
+pub(crate) const FINDING_ACTION_SUMMARY: &str = "🛠️ Correção sugerida";
+pub(crate) const QUESTION_DETAILS_SUMMARY: &str = "🔎 Por que pergunto";
+pub(crate) const QUESTION_ACTION_SUMMARY: &str = "💬 O que confirmar";
+pub(crate) const AGENTS_PROMPT_SUMMARY: &str = "🤖 Prompt para agentes de IA";
+pub(crate) const EVIDENCE_WHY_PREFIX: &str = "Por quê:";
+pub(crate) const NO_FINDINGS_SUMMARY: &str = "Nada a sinalizar.";
 
-/// Whether `line` is the attribution line, current or the legacy italic one that
+/// Whether `line` is the attribution line, current or a legacy English/italic one that
 /// comments posted by earlier versions still carry.
 pub(crate) fn is_review_attribution_line(line: &str) -> bool {
     let line = line.trim();
-    line.starts_with("<sub>🤖 Automated review") || line.starts_with("_Generated by automated code review_")
+    line.starts_with("<sub>🤖 OpenCodeReview")
+        || line.starts_with("<sub>🤖 Revisão automatizada")
+        || line.starts_with("<sub>🤖 Automated review")
+        || line.starts_with("_Generated by automated code review_")
 }
 
 pub(crate) fn contains_review_attribution(body: &str) -> bool {
     body.lines().any(is_review_attribution_line)
 }
 
-pub(crate) const FINDING_PROMPT_PREAMBLE: &str = "Verify this finding against the current code.\nFix only if still valid; skip the rest with a brief reason. Keep\nchanges minimal, and validate with the relevant tests/typecheck.";
-pub(crate) const QUESTION_PROMPT_PREAMBLE: &str = "Validate this review question against the current code.\nDo not apply a fix unless the author already answered. If answered,\nimplement only the confirmed path and validate with the relevant\ntests/typecheck.";
+/// Whether a title line (already stripped of markdown emphasis) is a finding or question marker.
+pub(crate) fn strip_point_marker(title: &str) -> Option<(&'static str, &str)> {
+    if let Some(rest) = title
+        .strip_prefix(FINDING_MARKER)
+        .or_else(|| title.strip_prefix("[Finding]"))
+    {
+        Some(("finding", rest))
+    } else if let Some(rest) = title
+        .strip_prefix(QUESTION_MARKER)
+        .or_else(|| title.strip_prefix("[Question]"))
+    {
+        Some(("question", rest))
+    } else {
+        None
+    }
+}
+
+pub(crate) fn has_point_marker_prefix(title: &str) -> bool {
+    strip_point_marker(title).is_some()
+}
+
+pub(crate) const FINDING_PROMPT_PREAMBLE: &str = "Verifique este achado no código atual.\nCorrija somente se ainda for válido; senão, pule o restante com um breve motivo. Mantenha\nas alterações mínimas e valide com os testes/typecheck relevantes.";
+pub(crate) const QUESTION_PROMPT_PREAMBLE: &str = "Valide esta pergunta de revisão no código atual.\nNão aplique correção a menos que o autor já tenha respondido. Se respondeu,\nimplemente somente o caminho confirmado e valide com os testes/typecheck\nrelevantes.";
 
 pub(crate) fn is_structured_review_point(body: &str) -> bool {
     let lower = body.to_lowercase();
-    let is_finding = lower.contains("[finding]")
-        && body.contains("🔎 Details")
-        && body.contains("🛠️ Suggested fix")
-        && body.contains(FINDING_PROMPT_PREAMBLE);
-    let is_question = lower.contains("[question]")
-        && body.contains("🔎 Why I'm asking")
-        && body.contains("💬 What to confirm")
-        && body.contains(QUESTION_PROMPT_PREAMBLE);
-    (is_finding || is_question) && body.contains("🤖 Prompt for AI Agents")
+    let is_finding = (lower.contains("[achado]") || lower.contains("[finding]"))
+        && (body.contains(FINDING_DETAILS_SUMMARY) || body.contains("🔎 Details"))
+        && (body.contains(FINDING_ACTION_SUMMARY) || body.contains("🛠️ Suggested fix"))
+        && (body.contains(FINDING_PROMPT_PREAMBLE)
+            || body.contains(
+                "Verify this finding against the current code.\nFix only if still valid; skip the rest with a brief reason. Keep\nchanges minimal, and validate with the relevant tests/typecheck.",
+            ));
+    let is_question = (lower.contains("[pergunta]") || lower.contains("[question]"))
+        && (body.contains(QUESTION_DETAILS_SUMMARY) || body.contains("🔎 Why I'm asking"))
+        && (body.contains(QUESTION_ACTION_SUMMARY) || body.contains("💬 What to confirm"))
+        && (body.contains(QUESTION_PROMPT_PREAMBLE)
+            || body.contains(
+                "Validate this review question against the current code.\nDo not apply a fix unless the author already answered. If answered,\nimplement only the confirmed path and validate with the relevant\ntests/typecheck.",
+            ));
+    (is_finding || is_question) && (body.contains(AGENTS_PROMPT_SUMMARY) || body.contains("🤖 Prompt for AI Agents"))
 }
 
 /// Flatten `merge_chunk_findings` output (`{comments:[{chunkId, comment}]}`) into
@@ -410,7 +520,7 @@ pub(crate) fn validate_final_comments(raw: &str, head_sha: &str, diff: &str) -> 
     for item in items.iter() {
         let body = item.get("body").and_then(|v| v.as_str()).unwrap_or_default();
         if !is_structured_review_point(body) && looks_like_review_finding(body) {
-            return Err("Review inline comment does not use the required [Finding]/[Question] template.".to_string());
+            return Err("Comentário inline da revisão não usa o template obrigatório [Achado]/[Pergunta].".to_string());
         }
     }
     let mut seen = std::collections::HashSet::new();

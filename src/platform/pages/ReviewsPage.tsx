@@ -52,27 +52,27 @@ const ReviewFlow = lazy(() => import("../components/ReviewFlow").then((module) =
 const sections: ReviewSection[] = [
   {
     id: "needs_you",
-    title: "Needs you",
+    title: "Precisa de você",
     lanes: ["manual_required", "ready", "failed", "needs_setup"],
     defaultOpen: true,
     attention: true,
   },
-  { id: "ai_working", title: "AI reviewing", lanes: ["reviewing", "queued", "open"], defaultOpen: true },
+  { id: "ai_working", title: "IA revisando", lanes: ["reviewing", "queued", "open"], defaultOpen: true },
   {
     id: "outposts",
-    title: "Completed",
+    title: "Concluído",
     lanes: ["reviewed_cleanly", "auto_posted", "posted", "approved"],
     defaultOpen: false,
     history: true,
   },
   {
     id: "ignored",
-    title: "Drafts and skipped",
+    title: "Rascunhos e ignorados",
     lanes: ["draft", "auto_skipped", "skipped", "size_skipped"],
     defaultOpen: false,
     history: true,
   },
-  { id: "archive", title: "Closed and merged", lanes: ["closed", "merged"], defaultOpen: false, history: true },
+  { id: "archive", title: "Fechados e mesclados", lanes: ["closed", "merged"], defaultOpen: false, history: true },
 ];
 
 export function ReviewsPage() {
@@ -422,11 +422,11 @@ export function ReviewsPage() {
   const nextPollSeconds = nextPollAt ? Math.ceil((nextPollAt - now) / 1000) : null;
   const nextPollLabel =
     pollStatusQuery.data?.running || poll.isPending
-      ? "Polling now"
+      ? "Consultando agora"
       : nextPollSeconds === null
-        ? "Next poll pending"
+        ? "Próxima consulta pendente"
         : nextPollSeconds <= 0
-          ? "Ready to poll"
+          ? "Pronto para consultar"
           : `Next poll in ${nextPollSeconds}s`;
   const streamLabel = streamStatusLabel(runQuery.streamState);
   return (
@@ -452,11 +452,11 @@ export function ReviewsPage() {
             listWidth.dragging ? "select-none" : "transition-[width] duration-150",
           )}
           style={{ width: listWidth.width }}
-          aria-label="Review processes"
+          aria-label="Processos de revisão"
         >
           <div
             className="absolute top-0 -right-1 z-10 h-full w-2 cursor-col-resize transition-colors hover:bg-brand/30"
-            title="Drag to resize · double-click to reset"
+            title="Arraste para redimensionar · clique duplo para resetar"
             {...listWidth.handleProps}
           />
           <div className="review-workspace-list-header flex flex-none flex-col gap-2.5 px-3 pt-3 pb-2">
@@ -476,7 +476,7 @@ export function ReviewsPage() {
                 tone="ghost"
                 size="icon"
                 hidden={listWidth.compact}
-                aria-label="Poll now"
+                aria-label="Consultar agora"
                 title={nextPollLabel}
                 onClick={() => poll.mutate()}
                 disabled={poll.isPending || pollStatusQuery.data?.running}
@@ -490,8 +490,8 @@ export function ReviewsPage() {
                 size="icon"
                 hidden={listWidth.compact}
                 className={cx("relative", (filtersOpen || filterCount > 0) && "bg-surface-muted text-fg")}
-                aria-label="Filter reviews"
-                title="Filter by people or repository"
+                aria-label="Filtrar revisões"
+                title="Filtrar por pessoas ou repositório"
                 aria-expanded={filtersOpen}
                 aria-controls="review-process-filters"
                 onClick={() => setFiltersOpen((open) => !open)}
@@ -507,8 +507,8 @@ export function ReviewsPage() {
                 tone="ghost"
                 size="icon"
                 className="review-processes-toggle"
-                aria-label="Hide processes"
-                title="Hide processes"
+                aria-label="Ocultar processos"
+                title="Ocultar processos"
                 aria-controls="review-processes"
                 aria-expanded={workspace.processesOpen}
                 onClick={() => dispatchWorkspace({ type: "toggle-processes" })}
@@ -518,10 +518,10 @@ export function ReviewsPage() {
             </div>
             {!listWidth.compact && (
               <DSInput
-                aria-label="Search reviews"
+                aria-label="Buscar revisões"
                 icon={<Search className="size-4" />}
                 value={search}
-                placeholder="Search PRs, repos, authors…"
+                placeholder="Buscar MRs, repos, autores…"
                 onChange={(event) => setSearch(event.target.value)}
               />
             )}
@@ -529,15 +529,15 @@ export function ReviewsPage() {
               <div id="review-process-filters" className="review-process-filters flex flex-col gap-2">
                 <MultiSelect
                   label="People"
-                  placeholder="Filter people"
+                  placeholder="Filtrar pessoas"
                   options={authorOptions}
                   selected={selectedAuthors}
                   loading={boardQuery.isLoading}
                   onToggle={(value) => toggleFilter(setSelectedAuthors, value)}
                 />
                 <MultiSelect
-                  label="Repositories"
-                  placeholder="Filter repositories"
+                  label="Repositórios"
+                  placeholder="Filtrar repositórios"
                   presentation="dialog"
                   options={repositoryOptions}
                   selected={selectedRepositories}
@@ -548,8 +548,8 @@ export function ReviewsPage() {
                   <DSButton
                     tone="link"
                     className="review-process-filters-clear self-start"
-                    aria-label="Clear review filters"
-                    title="Clear all filters"
+                    aria-label="Limpar filtros de revisão"
+                    title="Limpar todos os filtros"
                     onClick={clearFilters}
                   >
                     Clear filters
@@ -560,10 +560,12 @@ export function ReviewsPage() {
           </div>
           <div className="review-workspace-list-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3">
             {boardQuery.isLoading ? (
-              workspace.processesOpen && <BrandLoading size="compact" label="Loading reviews…" />
+              workspace.processesOpen && <BrandLoading size="compact" label="Carregando revisões…" />
             ) : filteredItems.length === 0 ? (
               <DSEmptyState>
-                {query ? "No merge requests match your search." : "Poll GitLab to find merge requests."}
+                {query
+                  ? "Nenhum merge request corresponde à busca."
+                  : "Consulte o GitLab para encontrar merge requests."}
               </DSEmptyState>
             ) : (
               <ReviewSections
@@ -591,7 +593,7 @@ export function ReviewsPage() {
             {!listWidth.compact && (
               <>
                 <span className="truncate tabular-nums">
-                  {pollStatusQuery.data?.lastError ? "Polling failed · retrying" : nextPollLabel}
+                  {pollStatusQuery.data?.lastError ? "Consulta falhou · tentando de novo" : nextPollLabel}
                 </span>
                 {streamPrId && <span className="ml-auto truncate">{streamLabel}</span>}
               </>
@@ -607,8 +609,8 @@ export function ReviewsPage() {
                     tone="ghost"
                     size="icon"
                     className="review-processes-toggle"
-                    aria-label="Show processes"
-                    title="Show processes"
+                    aria-label="Mostrar processos"
+                    title="Mostrar processos"
                     aria-controls="review-processes"
                     aria-expanded={false}
                     onClick={() => dispatchWorkspace({ type: "toggle-processes" })}
@@ -630,7 +632,7 @@ export function ReviewsPage() {
                     {monitoredRun && (
                       <div className="review-run-metrics mt-1.5 flex flex-wrap gap-1.5">
                         {monitoredRun.model && (
-                          <DSBadge title="Provider, model and effort">{monitoredRun.model}</DSBadge>
+                          <DSBadge title="Provedor, modelo e esforço">{monitoredRun.model}</DSBadge>
                         )}
                         <DSBadge>
                           Total time <b className="font-semibold text-fg">{formatFlowDuration(totals.durationMs)}</b>
@@ -653,8 +655,8 @@ export function ReviewsPage() {
                   href={monitoring.url}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label="Open on GitLab"
-                  title="Open on GitLab"
+                  aria-label="Abrir no GitLab"
+                  title="Abrir no GitLab"
                 >
                   <GitLabMark className="size-4" />
                 </a>
@@ -685,7 +687,7 @@ export function ReviewsPage() {
                 </div>
               )}
               {runQuery.error && <DSError>{formatError(runQuery.error)}</DSError>}
-              <Suspense fallback={<BrandLoading label="Loading process canvas…" />}>
+              <Suspense fallback={<BrandLoading label="Carregando canvas do processo…" />}>
                 <ReviewFlow
                   key={`${monitoring.id}:${monitoredRun?.id ?? "new"}`}
                   phaseJson={monitoredRun?.phaseJson}
@@ -724,7 +726,7 @@ export function ReviewsPage() {
                         onClick={() => retryResult.mutate(monitoring.id)}
                       >
                         <RefreshCw className="size-3.5" />
-                        {retryResult.isPending ? "Retrying publication…" : "Retry publication"}
+                        {retryResult.isPending ? "Tentando publicar de novo…" : "Tentar publicar de novo"}
                       </DSButton>
                     )
                   }
@@ -769,7 +771,7 @@ export function ReviewsPage() {
               </Suspense>
             </>
           ) : boardQuery.isLoading ? (
-            !workspace.processesOpen && <BrandLoading label="Loading reviews…" />
+            !workspace.processesOpen && <BrandLoading label="Carregando revisões…" />
           ) : (
             <div className="review-workspace-empty m-6">
               <DSEmptyState>Poll GitLab, then select a merge request to inspect its process.</DSEmptyState>

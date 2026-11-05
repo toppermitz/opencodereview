@@ -27,7 +27,7 @@ export function BrandLoadingIcon({ size = 20 }: { size?: number }) {
 }
 
 export function BrandLoading({
-  label = "Loading…",
+  label = "Carregando…",
   size = "default",
 }: {
   label?: string;

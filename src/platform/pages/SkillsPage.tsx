@@ -238,7 +238,7 @@ export function SkillsPage() {
                 onClick={() => create.mutate(content)}
               >
                 <Save className="size-3.5" />
-                {create.isPending ? "Saving…" : "Save new version"}
+                {create.isPending ? "Salvando…" : "Save new version"}
               </DSButton>
             </div>
           </header>

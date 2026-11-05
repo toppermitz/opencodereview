@@ -47,8 +47,11 @@ pub fn point_kind(body: &str) -> &'static str {
             continue;
         }
         let title = line.trim_start_matches(['*', '_', '>', '-', '#', ' ']);
-        finding |= title.starts_with("[Finding]");
-        question |= title.starts_with("[Question]");
+        match crate::review::strip_point_marker(title) {
+            Some(("finding", _)) => finding = true,
+            Some(("question", _)) => question = true,
+            _ => {}
+        }
     }
     match (finding, question) {
         (true, true) => "mixed",

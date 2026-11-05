@@ -247,7 +247,7 @@ function PasteCodeSignIn({
           placeholder="Paste the code"
         />
         <button type="submit" className={brandButton} disabled={locked || !flow.code.trim()}>
-          {flow.submitted || flow.submit.isPending ? "Checking…" : "Connect"}
+          {flow.submitted || flow.submit.isPending ? "Verificando…" : "Conectar"}
         </button>
         <button
           type="button"
@@ -255,7 +255,7 @@ function PasteCodeSignIn({
           disabled={flow.cancel.isPending}
           onClick={() => flow.cancel.mutate(undefined, { onSettled: onCancel })}
         >
-          Cancel
+          Cancelar
         </button>
       </form>
       {flow.submitted && <Waiting>Checking the code with {api.name}…</Waiting>}
@@ -311,10 +311,10 @@ export function ClaudeTokenSignIn({
           onChange={(event) => setToken(event.target.value)}
         />
         <button type="submit" className={brandButton} disabled={!token.trim() || save.isPending}>
-          {save.isPending ? "Saving…" : "Save token"}
+          {save.isPending ? "Salvando…" : "Save token"}
         </button>
         <button type="button" className={quietButton} onClick={onCancel}>
-          Cancel
+          Cancelar
         </button>
       </form>
     </SignInFrame>

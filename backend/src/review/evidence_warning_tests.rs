@@ -87,7 +87,10 @@ fn frozen_review_completes_with_an_unspecified_supporting_reference() {
             reference: None,
         }]
     );
-    assert_eq!(fs::read_to_string(root.join("summary.md")).unwrap(), "No findings.");
+    assert_eq!(
+        fs::read_to_string(root.join("summary.md")).unwrap(),
+        "Nada a sinalizar."
+    );
     let comments: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(root.join("comments.json")).unwrap()).unwrap();
     assert!(comments["comments"].as_array().unwrap().is_empty());

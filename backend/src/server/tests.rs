@@ -246,7 +246,7 @@ fn clean_reviews_are_completed_without_finding_selection_even_with_auto_post_ena
         .unwrap();
     let run_id = db.start_review_skeleton_with(pr_id, None).unwrap();
     db.set_review_run_running(run_id, "[]").unwrap();
-    db.finish_review_run(run_id, "No findings", None, "[]").unwrap();
+    db.finish_review_run(run_id, "Nada a sinalizar", None, "[]").unwrap();
     let inputs = review::ReviewInputs {
         frozen: None,
         run_id,
@@ -505,14 +505,14 @@ fn completed_phase_json_preserves_deep_topology() {
 
 #[test]
 fn review_body_finding_counts_as_finding() {
-    assert!(review_has_findings(None, Some("[Finding] Body-only issue\n\nDetails")));
+    assert!(review_has_findings(None, Some("[Achado] Body-only issue\n\nDetails")));
     assert!(review_has_findings(
         Some("{\"comments\":[]}"),
-        Some("**[Finding] Markdown body-only issue**\n\nDetails")
+        Some("**[Achado] Markdown body-only issue**\n\nDetails")
     ));
     assert!(review_has_findings(
         Some("{\"comments\":[]}"),
-        Some("> **[Question] Markdown body-only question**\n\nDetails")
+        Some("> **[Pergunta] Markdown body-only question**\n\nDetails")
     ));
     assert!(!review_has_findings(
         Some("{\"comments\":[]}"),
@@ -564,7 +564,7 @@ fn legacy_review_outcomes_preserve_effective_state() {
         head_sha: "head-two".to_string(),
         reviewed_head_sha: Some("reviewed-two".to_string()),
         comments_json: Some("{\"comments\":[]}".to_string()),
-        review_body: Some("[Finding] Still needs action".to_string()),
+        review_body: Some("[Achado] Still needs action".to_string()),
     };
     let superseded_clean = crate::db::LegacyReviewOutcome {
         run_id: 3,
@@ -601,20 +601,18 @@ fn unstructured_body_is_not_posted_as_comment() {
 
 #[test]
 fn body_only_finding_is_posted_as_generated_review_body() {
-    let run = review_run(Some("[Finding] Body-only issue\n\nDetails"), Some("{\"comments\":[]}"));
+    let run = review_run(Some("[Achado] Body-only issue\n\nDetails"), Some("{\"comments\":[]}"));
     let draft = compose_review_post("owner/repo", 1, &run, "COMMENT", false);
-    assert!(draft
-        .body
-        .starts_with("<sub>🤖 Automated review by OpenCodeReview</sub>"));
-    assert!(draft.body.contains("[Finding] Body-only issue"));
+    assert!(draft.body.contains("[Achado] Body-only issue"));
+    assert!(!draft.body.contains("<sub>🤖"));
     assert_eq!(draft.comments.as_array().map(Vec::len), Some(0));
 }
 
 #[test]
 fn request_changes_uses_body_only_finding_body() {
-    let run = review_run(Some("[Finding] Body-only issue\n\nDetails"), Some("{\"comments\":[]}"));
+    let run = review_run(Some("[Achado] Body-only issue\n\nDetails"), Some("{\"comments\":[]}"));
     let draft = compose_review_post("owner/repo", 1, &run, "REQUEST_CHANGES", false);
-    assert!(draft.body.contains("[Finding] Body-only issue"));
+    assert!(draft.body.contains("[Achado] Body-only issue"));
 }
 
 #[test]
@@ -634,9 +632,9 @@ fn result_comment_links_to_ocr_repository() {
         &[],
     );
     assert!(clean.contains(
-        "### ✅ OpenCodeReview found no issues\n\nReviewed [`abcdef12`](https://gitlab.example.com/owner/repo/-/commit/abcdef123456). Nothing here needs action."
+        "### ✅ Não encontrei problemas\n\nRevisei [`abcdef12`](https://gitlab.example.com/owner/repo/-/commit/abcdef123456). Nada aqui precisa de ação."
     ));
-    assert!(clean.ends_with("<sub>Reviewed by [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>"));
+    assert!(clean.ends_with("<sub>Revisado com [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>"));
     assert!(clean.contains("ocr-result-key:v1 repo=owner/repo pr=7"));
     assert!(clean.contains("<!-- ocr-status-publication:v1 run=42 -->"));
     assert!(clean.contains("head=abcdef123456 reviewed_head=abcdef123456"));
@@ -665,17 +663,15 @@ fn findings_review_payload_uses_result_summary_and_keeps_recovery_marker() {
     let value: serde_json::Value = serde_json::from_str(&payload).expect("json");
     let body = value.get("body").and_then(|body| body.as_str()).unwrap_or_default();
     assert!(body.starts_with(
-        "### ⚠️ OpenCodeReview posted findings\n\nReviewed [`abcdef`](https://gitlab.example.com/owner/repo/-/commit/abcdef)."
+        "### ⚠️ Publiquei achados\n\nRevisei [`abcdef`](https://gitlab.example.com/owner/repo/-/commit/abcdef)."
     ));
-    assert!(body.contains("Reviewed by [OpenCodeReview](https://github.com/BridgLabs/opencodereview)"));
+    assert!(body.contains("Revisado com [OpenCodeReview](https://github.com/BridgLabs/opencodereview)"));
     assert!(body.ends_with("\n\n<!-- ocr-review-post:v1 run=7 -->"));
 }
 
 #[test]
 fn findings_review_payload_lists_each_inline_comment_in_a_table() {
-    let point = |kind: &str, title: &str| {
-        format!("<sub>🤖 Automated review by OpenCodeReview</sub>\n\n**[{kind}] {title}**\n\nDetails.")
-    };
+    let point = |kind: &str, title: &str| format!("**[{kind}] {title}**\n\nDetails.");
     let comments = serde_json::json!({ "comments": [
         { "path": "db/migrate/0042_billing_schema.sql", "line": 18, "body": format!("{}\n\n<!-- ocr:severity=high -->", point("Finding", "Rollback drops invoices written after deploy")) },
         { "path": "src/billing/invoices.ts", "line": 57, "body": point("Question", "Should the old schema stay readable during deploy?") },
@@ -694,28 +690,28 @@ fn findings_review_payload_lists_each_inline_comment_in_a_table() {
     .unwrap();
     let value: serde_json::Value = serde_json::from_str(&payload).unwrap();
     assert_eq!(value["comments"].as_array().map(Vec::len), Some(4));
-    assert_eq!(value["body"].as_str().unwrap(), "### ⚠️ OpenCodeReview found 3 issues and 1 question\n\n\
-Reviewed [`5c540aa1`](https://gitlab.example.com/owner/repo/-/commit/5c540aa1234567). Each issue below has the details and a suggested fix.\n\n\
-| | Issue | Where |\n|---|---|---|\n\
+    assert_eq!(value["body"].as_str().unwrap(), "### ⚠️ Encontrei 3 problemas e 1 pergunta\n\n\
+Revisei [`5c540aa1`](https://gitlab.example.com/owner/repo/-/commit/5c540aa1234567). Cada problema abaixo tem os detalhes e uma correção sugerida.\n\n\
+| | Problema | Onde |\n|---|---|---|\n\
 | 🔴 | Rollback drops invoices written after deploy | `db/migrate/0042_billing_schema.sql:18` |\n\
 | 🟠 | Totals use `a \\| b` instead of `a \\|\\| b` | `src/billing/total.ts` |\n\
-| 🟡 | Missing rollout note | General |\n\
+| 🟡 | Missing rollout note | Geral |\n\
 | ❓ | Should the old schema stay readable during deploy? | `src/billing/invoices.ts:57` |\n\n\
-<sub>Reviewed by [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>\n\n\
+<sub>Revisado com [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>\n\n\
 <!-- ocr-review-post:v1 run=7 -->");
 }
 
 #[test]
 fn findings_summary_headings_count_questions_and_truncate_long_titles() {
-    let point = |kind: &str, title: &str| serde_json::json!({ "path": "a.rs", "line": 1, "body": format!("<sub>🤖 Automated review by OpenCodeReview</sub>\n\n**[{kind}] {title}**\n\nDetails.") });
+    let point = |kind: &str, title: &str| serde_json::json!({ "path": "a.rs", "line": 1, "body": format!("**[{kind}] {title}**\n\nDetails.") });
     let questions = posted_findings_review_body(
         "owner/repo",
         "abcdef1234",
         &[point("Question", "One?"), point("Question", "Two?")],
     );
-    assert!(questions.starts_with("### ❓ OpenCodeReview has 2 questions\n\n"));
+    assert!(questions.starts_with("### ❓ Tenho 2 perguntas\n\n"));
     let single = posted_findings_review_body("owner/repo", "abcdef1234", &[point("Finding", &"x".repeat(300))]);
-    assert!(single.starts_with("### ⚠️ OpenCodeReview found 1 issue\n\n"));
+    assert!(single.starts_with("### ⚠️ Encontrei 1 problema\n\n"));
     assert!(single.contains(&format!("| 🟠 | {}… | `a.rs:1` |", "x".repeat(119))));
 }
 
@@ -761,9 +757,9 @@ fn evidence_warning_publication_preserves_findings_and_recovery_markers() {
         "skill",
         &warnings,
     );
-    assert!(limited.contains("OpenCodeReview found no issues") && limited.contains("[!WARNING]"));
+    assert!(limited.contains("Não encontrei problemas") && limited.contains("[!WARNING]"));
     assert!(limited.contains("ocr-result-data:v1"));
-    assert!(limited.find("[!WARNING]") < limited.find("<sub>Reviewed by [OpenCodeReview]"));
+    assert!(limited.find("[!WARNING]") < limited.find("<sub>Revisado com [OpenCodeReview]"));
     let empty = build_review_payload(
         "owner/repo",
         "head",
@@ -776,10 +772,10 @@ fn evidence_warning_publication_preserves_findings_and_recovery_markers() {
     .unwrap();
     let empty: serde_json::Value = serde_json::from_str(&empty).unwrap();
     let body = empty["body"].as_str().unwrap();
-    assert!(body.starts_with("### ⚠️ OpenCodeReview finished with warnings\n\nReviewed [`head`](https://gitlab.example.com/owner/repo/-/commit/head).\n\n> [!WARNING]"));
+    assert!(body.starts_with("### ⚠️ Terminei com avisos\n\nRevisei [`head`](https://gitlab.example.com/owner/repo/-/commit/head).\n\n> [!WARNING]"));
     assert!(
         body.contains("[!WARNING]")
-            && body.ends_with("Reviewed by [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>")
+            && body.ends_with("Revisado com [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>")
     );
     assert!(!body.contains("posted findings"));
 }
@@ -823,13 +819,13 @@ fn skip_decision_leaves_attention_and_survives_restore() {
             evidence_warnings: None,
             head_sha: "head".into(),
             complete: true,
-            original_body: "No findings.".into(),
+            original_body: "Nada a sinalizar.".into(),
             diff: None,
             candidates: vec![],
         },
     )
     .unwrap();
-    db.finish_review_run(run_id, "No findings.", None, "[]").unwrap();
+    db.finish_review_run(run_id, "Nada a sinalizar.", None, "[]").unwrap();
     let selection = db
         .save_finding_selection(pr_id, run_id, db.finding_audit(pr_id, run_id).unwrap().revision, &[])
         .unwrap();
@@ -889,7 +885,7 @@ fn skip_decision_leaves_attention_and_survives_restore() {
 fn relocated_selected_findings_survive_comment_publication() {
     let run = review_run(
         Some("1 review comments selected for publication."),
-        Some(r#"{"comments":[{"body":"[Finding] issue","path":"a.rs","line":312}]}"#),
+        Some(r#"{"comments":[{"body":"[Achado] issue","path":"a.rs","line":312}]}"#),
     );
     for suppressed in [0, 1] {
         let draft = finish_review_post(
@@ -901,9 +897,9 @@ fn relocated_selected_findings_survive_comment_publication() {
                 annotated_comments_json: "{\"comments\":[]}".into(),
                 suppressed_count: suppressed,
             },
-            "[Finding] issue relocated from a.rs:312",
+            "[Achado] issue relocated from a.rs:312",
         );
-        assert!(draft.body.contains("[Finding] issue"));
+        assert!(draft.body.contains("[Achado] issue"));
         assert!(validate_review_post_draft(&run, "COMMENT", &draft).unwrap());
     }
 }
@@ -920,7 +916,7 @@ fn suggestions_post_with_the_review_but_never_on_their_own_after_duplicates() {
         suppressed_count: suppressed,
     };
     let only = review_run(
-        Some(&format!("No findings.\n\n{suggestions}")),
+        Some(&format!("Nada a sinalizar.\n\n{suggestions}")),
         Some(r#"{"comments":[]}"#),
     );
     assert!(review_has_findings(
@@ -936,22 +932,17 @@ fn suggestions_post_with_the_review_but_never_on_their_own_after_duplicates() {
         // The collapsed block arrives whole, closed, as the review wrote it.
         assert!(draft.body.contains(suggestions.trim()), "{event}: {}", draft.body);
         assert!(draft.body.contains("</details>"), "{event}");
-        assert!(!draft.body.contains("No findings."), "{event}");
+        assert!(!draft.body.contains("Nada a sinalizar."), "{event}");
     }
     let inline = review_run(
-        Some(&format!(
-            "Automated review produced 1 inline comment(s).\n\n{suggestions}"
-        )),
-        Some(r#"{"comments":[{"body":"[Finding] issue","path":"a.rs","line":3}]}"#),
+        Some(&format!("Produzi 1 comentário(s) inline.\n\n{suggestions}")),
+        Some(r#"{"comments":[{"body":"[Achado] issue","path":"a.rs","line":3}]}"#),
     );
     let draft = finish_review_post(
         &inline,
         "COMMENT",
         false,
-        dedupe(
-            serde_json::json!([{"body":"[Finding] issue","path":"a.rs","line":3}]),
-            0,
-        ),
+        dedupe(serde_json::json!([{"body":"[Achado] issue","path":"a.rs","line":3}]), 0),
         "",
     );
     assert!(draft.body.contains(suggestions.trim()), "{}", draft.body);
@@ -960,12 +951,12 @@ fn suggestions_post_with_the_review_but_never_on_their_own_after_duplicates() {
     // A review stored before the section was collapsed still posts its suggestions.
     let legacy = review_run(
         Some(
-            "No findings.\n\n### 💡 Suggestions\n\n- `a.rs:3` **Stale test name**. Detail Suggested change: Rename it",
+            "Nada a sinalizar.\n\n### 💡 Sugestões\n\n- `a.rs:3` **Stale test name**. Detail Alteração sugerida: Rename it",
         ),
         Some(r#"{"comments":[]}"#),
     );
     let draft = finish_review_post(&legacy, "COMMENT", false, dedupe(serde_json::json!([]), 0), "");
-    assert!(draft.body.contains("### 💡 Suggestions"), "{}", draft.body);
+    assert!(draft.body.contains("### 💡 Sugestões"), "{}", draft.body);
     assert!(draft.body.contains("**Stale test name**"));
 }
 
@@ -977,14 +968,17 @@ fn a_review_keeps_its_suggestions_only_when_the_setting_is_on() {
     )]);
     let deferred = crate::review::deferred_files_note(&["b.rs".to_string()]);
     assert!(!deferred.is_empty());
-    let body = format!("No findings.\n\n{suggestions}{deferred}");
+    let body = format!("Nada a sinalizar.\n\n{suggestions}{deferred}");
     // Off by default: the stored body has no suggestions, so a suggestions-only review is clean,
     // and what follows the section stays.
     let kept = crate::review::kept_review_body(&db, &body);
-    assert_eq!(kept, format!("No findings.{deferred}"));
+    assert_eq!(kept, format!("Nada a sinalizar.{deferred}"));
     assert!(review_suggestions(Some(&kept)).is_empty());
     assert!(!review_has_findings(Some(r#"{"comments":[]}"#), Some(&kept)));
-    assert_eq!(crate::review::kept_review_body(&db, "No findings."), "No findings.");
+    assert_eq!(
+        crate::review::kept_review_body(&db, "Nada a sinalizar."),
+        "Nada a sinalizar."
+    );
     // On: the body is kept exactly as the review wrote it.
     db.save_setting("review_suggestions_enabled", "true").unwrap();
     let kept = crate::review::kept_review_body(&db, &body);
@@ -996,7 +990,7 @@ fn a_review_keeps_its_suggestions_only_when_the_setting_is_on() {
 fn empty_selected_publication_fails_unless_all_comments_are_proven_duplicates() {
     let run = review_run(
         Some("2 review comments selected for publication."),
-        Some(r#"{"comments":[{"body":"[Finding] first"},{"body":"[Finding] second"}]}"#),
+        Some(r#"{"comments":[{"body":"[Achado] first"},{"body":"[Achado] second"}]}"#),
     );
     let mut draft = ReviewPostDraft {
         body: String::new(),
@@ -1454,7 +1448,7 @@ fn a_review_with_only_suggestions_auto_posts_without_a_person() {
     let section = crate::review::evidence::suggestions_section(&[
         serde_json::json!({"path":"src/a.rs","line":2,"title":"Stale test name","detail":"Detail","action":"Rename it"}),
     ]);
-    let body = format!("No findings.\n\n{section}");
+    let body = format!("Nada a sinalizar.\n\n{section}");
     let run_id = db.start_review_skeleton_with(pr_id, None).unwrap();
     db.set_review_run_running(run_id, "[]").unwrap();
     db.store_finding_audit(

@@ -125,7 +125,7 @@ export function MultiSelect({
         <span className="settings-multiselect-chips flex min-w-0 flex-wrap gap-1">
           {selectedOptions.length === 0 ? (
             <span className="settings-multiselect-placeholder text-fg-subtle">
-              {loading ? "Loading…" : placeholder}
+              {loading ? "Carregando…" : placeholder}
             </span>
           ) : (
             selectedOptions.slice(0, 4).map((option) => (

@@ -241,9 +241,9 @@ pub(crate) fn combine(
     crate::review::findings::validate_decisions(&payload.sources, Some(&decisions), &raw)?;
     let mut body = if bodies.is_empty() {
         if comments.is_empty() {
-            "No findings.".into()
+            crate::review::NO_FINDINGS_SUMMARY.into()
         } else {
-            format!("Automated review produced {} inline comment(s).", comments.len())
+            format!("Produzi {} comentário(s) inline.", comments.len())
         }
     } else {
         bodies.join("\n\n")

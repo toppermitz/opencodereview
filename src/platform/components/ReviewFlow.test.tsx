@@ -311,7 +311,7 @@ describe("review inspector navigation", () => {
       .join("\n");
     const container = document.createElement("div");
     container.innerHTML = renderView("ready", {
-      phases: [{ id: "ready", label: "Ready", status: "ok" }],
+      phases: [{ id: "ready", label: "Pronto", status: "ok" }],
       result: { status: "Published", detail: "2 findings", state: "completed" },
     });
     document.head.append(style);
@@ -348,9 +348,9 @@ describe("review inspector navigation", () => {
     } as ReviewRun;
     const html = renderView("chunks", { run, runStatus: "failed", phases: [phase] });
     expect(html).toContain("Preparation failed");
-    expect(html).toContain("No model execution started");
+    expect(html).toContain("Nenhuma execução de modelo iniciada");
     expect(html).toContain("0 tokens");
-    expect(html).not.toContain("Chunk details unavailable");
+    expect(html).not.toContain("Detalhes do chunk indisponíveis");
   });
 
   it("offers Re-run full in the failed stage inspector when coverage reuse is unsafe", () => {
@@ -358,7 +358,7 @@ describe("review inspector navigation", () => {
     const html = renderView("context", {
       onFullReview,
       runStatus: "failed",
-      phases: [{ id: "context", label: "Context", status: "failed" }],
+      phases: [{ id: "context", label: "Contexto", status: "failed" }],
       run: {
         id: 10,
         prId: 1,
@@ -380,11 +380,11 @@ describe("review inspector navigation", () => {
       runStatus: "skipped",
       run: { id: 10, prId: 1, status: "skipped" } as ReviewRun,
       phases: [
-        { id: "review", label: "Review", status: "skipped", inferenceSkipped: true },
-        { id: "ready", label: "Ready", status: "ok" },
+        { id: "review", label: "Revisão", status: "skipped", inferenceSkipped: true },
+        { id: "ready", label: "Pronto", status: "ok" },
       ],
     });
-    expect(review).toMatchObject({ text: "Skipped" });
+    expect(review).toMatchObject({ text: "Ignorado" });
     expect(review.icon).toContain("lucide-skip-forward");
     const pending = icon("final", {
       runStatus: "reviewing",
@@ -393,7 +393,7 @@ describe("review inspector navigation", () => {
         { id: "final", label: "Final", status: "pending" },
       ],
     });
-    expect(pending.text).toBe("Pending");
+    expect(pending.text).toBe("Pendente");
     expect(pending.icon).not.toContain("lucide-skip-forward");
     const failed = icon("chunks", {
       runStatus: "failed",
@@ -443,8 +443,8 @@ describe("review inspector navigation", () => {
       run,
       runStatus: "running",
       phases: [
-        { id: "index", label: "Prepare repository", status: "ok" },
-        { id: "context", label: "Context", status: "running" },
+        { id: "index", label: "Preparar repositório", status: "ok" },
+        { id: "context", label: "Contexto", status: "running" },
         { id: "chunks", label: "Chunks", status: "running" },
       ],
     });
@@ -459,7 +459,7 @@ describe("review inspector navigation", () => {
     expect(document.querySelector(".lucide-loader-circle, .review-flow-spinning")).toBeNull();
     expect(html).toContain("review-flow-node-last-completed");
 
-    const simpleReview = renderView(null, { phases: [{ id: "review", label: "Review", status: "pending" }] });
+    const simpleReview = renderView(null, { phases: [{ id: "review", label: "Revisão", status: "pending" }] });
     expect(simpleReview).toContain('data-review-stage-icon="review"');
   });
 
@@ -488,7 +488,7 @@ describe("review inspector navigation", () => {
         <ReviewFlow
           run={run}
           runStatus="preview"
-          phases={[{ id: "context", label: "Context", status: "ok" }]}
+          phases={[{ id: "context", label: "Contexto", status: "ok" }]}
           selectedView="context"
           onSelectView={() => undefined}
         />
@@ -514,13 +514,13 @@ describe("review inspector navigation", () => {
           runStatus={null}
           selectedView={null}
           onSelectView={onSelectView}
-          control={{ kind: "run", label: "Run review", disabled: false, busy, onClick }}
+          control={{ kind: "run", label: "Executar revisão", disabled: false, busy, onClick }}
         />
       </QueryClientProvider>
     );
     try {
       await act(async () => root.render(render(false)));
-      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Run review"]')!.click());
+      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Executar revisão"]')!.click());
       expect(onClick).toHaveBeenCalledTimes(1);
       expect(onSelectView).not.toHaveBeenCalled();
       const dimensions = { width: 216, height: 92 };
@@ -534,7 +534,7 @@ describe("review inspector navigation", () => {
       );
       expect(flowCapture.nodes.find((node) => node.id === "index")?.measured).toEqual(dimensions);
       expect(flowCapture.nodes.find((node) => node.id === "ready")?.measured?.height).toBe(100);
-      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Run review"]')!.click());
+      await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Executar revisão"]')!.click());
       expect(onClick).toHaveBeenCalledTimes(1);
       await act(async () =>
         container
@@ -549,7 +549,7 @@ describe("review inspector navigation", () => {
     }
   });
   it.each(["run", "stop", "rerun"] as const)("renders an accessible %s control before Index", (kind) => {
-    const label = kind === "run" ? "Run review" : kind === "stop" ? "Stop review" : "Re-run review";
+    const label = kind === "run" ? "Executar revisão" : kind === "stop" ? "Parar revisão" : "Reexecutar revisão";
     const props = { control: { kind, label, disabled: false, onClick: vi.fn() } };
     const html = renderView(null, props);
     expect(html).toContain(`aria-label="${label}"`);
@@ -561,10 +561,10 @@ describe("review inspector navigation", () => {
 
   it("makes the result a terminal report with status and findings instead of stage metrics", () => {
     const html = renderView("ready", {
-      phases: [{ id: "ready", label: "Ready", status: "ok" }],
+      phases: [{ id: "ready", label: "Pronto", status: "ok" }],
       result: { state: "completed", status: "Needs decision", detail: "5 findings" },
     });
-    expect(html).toContain("Review result");
+    expect(html).toContain("Resultado da revisão");
     expect(html).toContain("Needs decision");
     expect(html).toContain("5 findings");
     expect(html).toContain('data-auto-pan="false"');
@@ -575,11 +575,11 @@ describe("review inspector navigation", () => {
 
   it("shows a clean result as completed with a not-found icon", () => {
     const html = renderView("ready", {
-      phases: [{ id: "ready", label: "Ready", status: "ok" }],
-      result: { state: "completed", status: "Completed", detail: "No findings" },
+      phases: [{ id: "ready", label: "Pronto", status: "ok" }],
+      result: { state: "completed", status: "Concluído", detail: "Nada a sinalizar" },
     });
-    expect(html).toContain("Completed");
-    expect(html).toContain("No findings");
+    expect(html).toContain("Concluído");
+    expect(html).toContain("Nada a sinalizar");
     expect(html).toContain('data-review-result-icon="not-found"');
     expect(html).toContain("review-flow-node-completed");
     expect(html).not.toContain("review-flow-node-awaiting_action");
@@ -597,7 +597,7 @@ describe("review inspector navigation", () => {
   it.each(["overview", "ready"])("renders %s findings directly without the View dropdown", (view) => {
     const html = renderView(view);
     expect(html).toContain("Final findings");
-    expect(html).toContain('aria-label="Close details"');
+    expect(html).toContain('aria-label="Fechar detalhes"');
     expect(html).not.toContain('aria-label="Detail view"');
     expect(html).not.toContain("<select");
   });

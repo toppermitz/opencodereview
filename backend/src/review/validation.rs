@@ -257,7 +257,7 @@ pub(crate) fn is_no_issue_summary(body: &str) -> bool {
                     .any(|word| matches!(*word, "issue" | "issues" | "bug" | "bugs" | "finding" | "findings"))
         })
         || words.iter().enumerate().any(|(index, word)| {
-            matches!(*word, "nenhum" | "nenhuma" | "sem")
+            matches!(*word, "nenhum" | "nenhuma")
                 && words.iter().skip(index + 1).take(3).any(|word| {
                     matches!(
                         *word,
@@ -273,6 +273,24 @@ pub(crate) fn is_no_issue_summary(body: &str) -> bool {
                             | "findings"
                     )
                 })
+        })
+        // `sem` only counts when the problem noun is the next word ("sem problemas"),
+        // not when it appears later ("sem validação … problemas").
+        || words.windows(2).any(|pair| {
+            pair[0] == "sem"
+                && matches!(
+                    pair[1],
+                    "problema"
+                        | "problemas"
+                        | "bug"
+                        | "bugs"
+                        | "achado"
+                        | "achados"
+                        | "issue"
+                        | "issues"
+                        | "finding"
+                        | "findings"
+                )
         })
         || (words.iter().enumerate().any(|(index, word)| {
             *word == "no"
@@ -405,6 +423,13 @@ pub(crate) fn strip_point_marker(title: &str) -> Option<(&'static str, &str)> {
 
 pub(crate) fn has_point_marker_prefix(title: &str) -> bool {
     strip_point_marker(title).is_some()
+}
+
+/// Title line of a finding or question (`**[Achado] …**` / legacy `[Finding]`).
+/// Used to split a body that holds several general points after attribution was removed.
+pub(crate) fn is_review_point_title_line(line: &str) -> bool {
+    let title = line.trim().trim_matches('*').trim();
+    has_point_marker_prefix(title)
 }
 
 pub(crate) const FINDING_PROMPT_PREAMBLE: &str = "Verifique este achado no código atual.\nCorrija somente se ainda for válido; senão, pule o restante com um breve motivo. Mantenha\nas alterações mínimas e valide com os testes/typecheck relevantes.";

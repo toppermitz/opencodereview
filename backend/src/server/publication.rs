@@ -1229,25 +1229,24 @@ pub(crate) fn build_review_payload(
         .and_then(|value| value.get("comments").cloned())
         .unwrap_or_else(|| serde_json::json!([]));
     let inline = comments.as_array().map(Vec::as_slice).unwrap_or_default();
-    let (body, generated) = if body.trim().is_empty() && !evidence_warnings.is_empty() && inline.is_empty() {
-        (
-            format!(
-                "### ⚠️ Terminei com avisos\n\nRevisei [`{}`](https://{}/{full_name}/-/commit/{head_sha}).",
-                short_sha(head_sha),
-                gitlab::gitlab_host()
-            ),
-            true,
+    let body = if body.trim().is_empty() && !evidence_warnings.is_empty() && inline.is_empty() {
+        format!(
+            "### ⚠️ Terminei com avisos\n\nRevisei [`{}`](https://{}/{full_name}/-/commit/{head_sha}).",
+            short_sha(head_sha),
+            gitlab::gitlab_host()
         )
     } else if body.trim().is_empty() && matches!(event, "COMMENT" | "REQUEST_CHANGES") {
-        (posted_findings_review_body(full_name, head_sha, inline), true)
+        posted_findings_review_body(full_name, head_sha, inline)
     } else {
-        (body.to_string(), false)
+        body.to_string()
     };
     let body = crate::review::warnings::append(&body, evidence_warnings);
-    let body = if generated {
-        format!("{body}\n\n{}", ocr_footer())
-    } else {
+    // Footer is the only brand mark on a posted review. Append it for both generated
+    // empty drafts and precomposed bodies from `finish_review_post`.
+    let body = if body.trim().is_empty() || body.contains("Revisado com [OpenCodeReview]") {
         body
+    } else {
+        format!("{body}\n\n{}", ocr_footer())
     };
     let body = marker.map(|marker| format!("{body}\n\n{marker}")).unwrap_or(body);
     serde_json::to_string(

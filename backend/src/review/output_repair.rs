@@ -426,7 +426,12 @@ pub(super) fn run<T>(
     fs::write(prompt_path, repair_prompt).map_err(|error| error.to_string())?;
     let result = (|| {
         if transcript.exists() {
-            fs::rename(transcript, directory.join("transcript.retry-1.json")).map_err(|error| error.to_string())?;
+            // Keep the execution engine with the first transcript so repair's write does not
+            // overwrite it and leave the original Codex tokens as generic "codex".
+            super::usage::rename_transcript_with_engine(
+                transcript,
+                &directory.join("transcript.retry-1.json"),
+            )?;
         }
         fs::remove_file(&report_path).map_err(|error| error.to_string())?;
         if decisions.is_some() {

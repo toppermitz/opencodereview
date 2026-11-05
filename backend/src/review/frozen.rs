@@ -578,11 +578,7 @@ pub(super) fn execute(
         }
         if paths.transcript.exists() {
             let failover = next_failover_transcript(paths.transcript);
-            fs::rename(paths.transcript, &failover).map_err(|error| error.to_string())?;
-            let engine = super::usage::stage_engine_path(paths.transcript);
-            if engine.exists() {
-                let _ = fs::rename(&engine, super::usage::stage_engine_path(&failover));
-            }
+            super::usage::rename_transcript_with_engine(paths.transcript, &failover)?;
         }
         progress(
             &crate::review::progress::execution_phase(

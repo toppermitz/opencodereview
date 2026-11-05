@@ -91,6 +91,41 @@ fn codex_usage_resolves_to_engine_captured_at_execution() {
 }
 
 #[test]
+fn engine_sidecar_moves_with_output_repair_transcript() {
+    let directory = std::env::temp_dir().join(format!(
+        "ocr-repair-engine-{}",
+        crate::sandbox::secret().unwrap()
+    ));
+    std::fs::create_dir_all(&directory).unwrap();
+    let transcript = directory.join("transcript.json");
+    let retry = directory.join("transcript.retry-1.json");
+    std::fs::write(
+        &transcript,
+        r#"{"type":"turn.completed","usage":{"input_tokens":100,"cached_input_tokens":0,"output_tokens":10}}
+"#,
+    )
+    .unwrap();
+    super::usage::write_stage_engine(&transcript, "gpt-5.5");
+    super::usage::rename_transcript_with_engine(&transcript, &retry).unwrap();
+
+    // Repair writes a new transcript and sidecar; the original must keep gpt-5.5.
+    std::fs::write(
+        &transcript,
+        r#"{"type":"turn.completed","usage":{"input_tokens":5,"cached_input_tokens":0,"output_tokens":1}}
+"#,
+    )
+    .unwrap();
+    super::usage::write_stage_engine(&transcript, "gpt-6-astra");
+
+    let usage = super::parse_transcript_usage(&transcript);
+    assert_eq!(usage.model.as_deref(), Some("gpt-5.5"));
+    assert_eq!(usage.input_tokens, 105);
+    assert!(usage.by_model.iter().any(|entry| entry.model == "gpt-5.5"));
+    assert!(usage.by_model.iter().any(|entry| entry.model == "gpt-6-astra"));
+    std::fs::remove_dir_all(&directory).unwrap();
+}
+
+#[test]
 fn falls_back_to_result_usage_and_parses_stream_lines() {
     let raw = "{\"type\":\"system\"}\n{\"type\":\"result\",\"usage\":{\"input_tokens\":30,\"output_tokens\":3,\"cache_read_input_tokens\":10}}\n";
     let events = super::transcript_events(raw).unwrap();

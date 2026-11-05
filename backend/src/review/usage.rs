@@ -62,6 +62,16 @@ pub(crate) fn read_stage_engine(transcript: &Path) -> Option<String> {
         .filter(|model| !model.is_empty())
 }
 
+/// Moves a transcript and, when present, its engine sidecar together (failover and output repair).
+pub(crate) fn rename_transcript_with_engine(from: &Path, to: &Path) -> Result<(), String> {
+    fs::rename(from, to).map_err(|error| error.to_string())?;
+    let engine = stage_engine_path(from);
+    if engine.exists() {
+        let _ = fs::rename(&engine, stage_engine_path(to));
+    }
+    Ok(())
+}
+
 /// Parses a stream-json transcript (one event per line) into an array of events.
 pub(crate) fn transcript_events(raw: &str) -> Option<serde_json::Value> {
     if raw.trim().is_empty() {

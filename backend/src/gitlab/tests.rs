@@ -1,6 +1,15 @@
 use super::*;
 
 #[test]
+fn glab_paginate_joins_concatenated_array_pages() {
+    let raw = br#"[{"id":1}][{"id":2},{"id":3}]"#;
+    let items = repo::parse_glab_paginate_json(raw).expect("join pages");
+    assert_eq!(items.len(), 3);
+    assert_eq!(items[0]["id"], 1);
+    assert_eq!(items[2]["id"], 3);
+}
+
+#[test]
 fn cancelled_evidence_capture_never_starts_a_gitlab_request() {
     let cancel = std::sync::atomic::AtomicBool::new(true);
     assert_eq!(

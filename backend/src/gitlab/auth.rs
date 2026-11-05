@@ -145,46 +145,46 @@ pub(crate) fn apply_gitlab_host(command: &mut Command) -> Result<(), String> {
     let host = require_gitlab_host()?;
     apply_glab_config_dir(command);
     command.env("GITLAB_HOST", &host);
+    // Dev fallback first; otherwise the OAuth device-flow token for Self-Hosted.
     if let Ok(token) = std::env::var("GITLAB_TOKEN") {
         let token = token.trim();
         if !token.is_empty() {
             command.env("GITLAB_TOKEN", token);
+            return Ok(());
+        }
+    }
+    if let Some(token) = crate::gitlab::oauth::resolve_oauth_access_token() {
+        // glab 1.128 still sends OAUTH_TOKEN as Private-Token unless told it is OAuth2.
+        command.env("OAUTH_TOKEN", &token);
+        command.env("GLAB_IS_OAUTH2", "true");
+        if let Ok(mut cached) = GIT_TOKEN.lock() {
+            *cached = Some(token);
         }
     }
     Ok(())
 }
 
+pub(crate) fn clear_token_cache() {
+    if let Ok(mut cached) = GIT_TOKEN.lock() {
+        *cached = None;
+    }
+}
+
 pub(crate) fn git_token() -> Option<String> {
-    if let Some(token) = GIT_TOKEN.get() {
-        return Some(token.clone());
+    if let Ok(cached) = GIT_TOKEN.lock() {
+        if let Some(token) = cached.as_ref() {
+            return Some(token.clone());
+        }
     }
     let token = resolve_git_token();
-    if let Some(token) = &token {
-        let _ = GIT_TOKEN.set(token.clone());
+    if let (Some(token), Ok(mut cached)) = (&token, GIT_TOKEN.lock()) {
+        *cached = Some(token.clone());
     }
     token
 }
 
 pub(crate) fn resolve_git_token() -> Option<String> {
-    if let Ok(token) = std::env::var("GITLAB_TOKEN") {
-        let token = token.trim().to_string();
-        if !token.is_empty() {
-            return Some(token);
-        }
-    }
-    let host = require_gitlab_host().ok()?;
-    let mut token_cmd = Command::new("glab");
-    token_cmd
-        .args(["auth", "token", "--hostname", &host])
-        .stdin(Stdio::null());
-    apply_glab_config_dir(&mut token_cmd);
-    let _ = token_cmd.env("GITLAB_HOST", &host);
-    let output = token_cmd.output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let token = String::from_utf8(output.stdout).ok()?.trim().to_string();
-    (!token.is_empty()).then_some(token)
+    crate::gitlab::oauth::resolve_oauth_access_token()
 }
 
 /// Configure a `git` command to authenticate HTTPS requests with a GitLab token
@@ -277,6 +277,14 @@ pub fn sign_out() -> Result<(), String> {
     if std::env::var_os("GITLAB_TOKEN").is_some() {
         return Err("GitLab is connected through GITLAB_TOKEN in the environment. Remove it from the OpenCodeReview configuration to sign out.".into());
     }
+    let path = crate::gitlab::oauth::oauth_store_path();
+    let had_oauth = path.is_file();
+    crate::gitlab::oauth::clear_stored(&path);
+    clear_token_cache();
+    forget_identity();
+    if had_oauth {
+        return Ok(());
+    }
     let host = require_gitlab_host()?;
     let login = current_login();
     let mut command = Command::new("glab");
@@ -313,9 +321,13 @@ pub fn auth_status() -> GitLabAuthStatus {
             detail: "OCR_GITLAB_HOST is required (bare host or host:port for your GitLab Self-Hosted instance)".into(),
         };
     }
+    let via_env = std::env::var_os("GITLAB_TOKEN").is_some();
+    let via_oauth = crate::gitlab::oauth::oauth_store_path().is_file();
     if let Some(login) = current_login() {
-        let detail = if std::env::var_os("GITLAB_TOKEN").is_some() {
+        let detail = if via_env {
             "glab authenticated via GITLAB_TOKEN"
+        } else if via_oauth {
+            "authenticated via OAuth device flow"
         } else {
             "glab authenticated"
         };
@@ -326,206 +338,30 @@ pub fn auth_status() -> GitLabAuthStatus {
             detail: detail.to_string(),
         };
     }
-    let mut status_cmd = Command::new("glab");
-    status_cmd.args(["auth", "status", "--hostname", &host]);
-    apply_glab_config_dir(&mut status_cmd);
-    let _ = status_cmd.env("GITLAB_HOST", &host);
-    match status_cmd.output() {
-        Ok(output) => {
-            let text = format!(
-                "{}\n{}",
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            );
-            let logged_in = output.status.success()
-                && (text.to_ascii_lowercase().contains("logged in")
-                    || text.to_ascii_lowercase().contains("authenticated"));
-            let detail = text
-                .lines()
-                .map(str::trim)
-                .filter(|line| !line.is_empty())
-                .take(6)
-                .collect::<Vec<_>>()
-                .join("\n");
-            GitLabAuthStatus {
-                logged_in,
-                login: parse_glab_login(&text),
-                host,
-                detail,
-            }
-        }
-        Err(error) => GitLabAuthStatus {
+    if via_oauth || via_env {
+        return GitLabAuthStatus {
             logged_in: false,
             login: None,
             host,
-            detail: format!("Could not run glab: {error}. Is the GitLab CLI installed?"),
-        },
+            detail: "GitLab credentials are present but the API user could not be read. Connect again.".into(),
+        };
+    }
+    let detail = if std::env::var_os("OCR_GITLAB_CLIENT_ID").map(|v| !v.is_empty()).unwrap_or(false) {
+        "Not connected. Use Connect GitLab to authorize with a device code.".into()
+    } else {
+        "Not connected. Set OCR_GITLAB_CLIENT_ID to your GitLab OAuth Application ID, then Connect GitLab.".into()
+    };
+    GitLabAuthStatus {
+        logged_in: false,
+        login: None,
+        host,
+        detail,
     }
 }
 
-pub(crate) fn parse_glab_login(text: &str) -> Option<String> {
-    for marker in ["as ", "account "] {
-        for line in text.lines() {
-            if let Some(idx) = line.to_ascii_lowercase().find(marker) {
-                let rest = &line[idx + marker.len()..];
-                let login: String = rest
-                    .chars()
-                    .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.' | '[' | ']'))
-                    .collect();
-                if !login.is_empty() {
-                    return Some(login.trim_matches(|c| c == '[' || c == ']').to_string());
-                }
-            }
-        }
-    }
-    None
-}
-
-pub(crate) fn find_device_code(line: &str) -> Option<String> {
-    line.split_whitespace().find_map(|token| {
-        let tok = token.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '-');
-        let parts: Vec<&str> = tok.split('-').collect();
-        let looks_like_code = parts.len() == 2
-            && parts
-                .iter()
-                .all(|p| p.len() == 4 && p.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
-        looks_like_code.then(|| tok.to_string())
-    })
-}
-
-pub(crate) fn find_url(line: &str) -> Option<String> {
-    line.split_whitespace().find(|w| w.starts_with("https://")).map(|w| {
-        w.trim_matches(|c: char| {
-            !(c.is_ascii_alphanumeric() || matches!(c, '/' | ':' | '.' | '-' | '_' | '?' | '=' | '&'))
-        })
-        .to_string()
-    })
-}
-
-/// Drive `glab auth login --device` (OAuth device flow) from the GUI.
-/// Self-Hosted needs an explicit API host/protocol; without `--device`/`--web`
-/// glab waits on an interactive login-type prompt that never arrives over pipes.
+/// Drive GitLab's OAuth device authorization grant from the GUI, then store the
+/// access token for `glab` (`OAUTH_TOKEN`). See `oauth::run_device_flow`.
 pub fn run_auth_flow(cancel: &AtomicBool, action: &str, emit: &mut dyn FnMut(serde_json::Value)) {
-    let host = match require_gitlab_host() {
-        Ok(host) => host,
-        Err(message) => {
-            emit(serde_json::json!({ "kind": "done", "success": false, "message": message }));
-            return;
-        }
-    };
     let _ = action;
-    let args = [
-        "auth",
-        "login",
-        "--hostname",
-        host.as_str(),
-        "--api-host",
-        host.as_str(),
-        "--api-protocol",
-        "https",
-        "--git-protocol",
-        "https",
-        "--device",
-        "--insecure-storage",
-    ];
-    let mut auth_cmd = Command::new("glab");
-    auth_cmd
-        .args(args)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    apply_glab_config_dir(&mut auth_cmd);
-    let _ = auth_cmd.env("GITLAB_HOST", &host);
-    let mut child = match auth_cmd.spawn() {
-        Ok(child) => child,
-        Err(error) => {
-            emit(
-                serde_json::json!({ "kind": "done", "success": false, "message": format!("Could not start glab: {error}. Is the GitLab CLI installed?") }),
-            );
-            return;
-        }
-    };
-    let pid = child.id();
-    let mut stdin = child.stdin.take();
-    let (tx, rx) = mpsc::channel::<String>();
-    for stream in [
-        child
-            .stdout
-            .take()
-            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
-        child
-            .stderr
-            .take()
-            .map(|s| Box::new(s) as Box<dyn std::io::Read + Send>),
-    ]
-    .into_iter()
-    .flatten()
-    {
-        let tx = tx.clone();
-        std::thread::spawn(move || {
-            for line in BufReader::new(stream).lines().map_while(Result::ok) {
-                if tx.send(line).is_err() {
-                    break;
-                }
-            }
-        });
-    }
-    drop(tx);
-    let started = Instant::now();
-    let (mut code_sent, mut url_sent) = (false, false);
-    loop {
-        if cancel.load(Ordering::Relaxed) {
-            crate::review::kill_tree(pid, &mut child);
-            emit(serde_json::json!({ "kind": "done", "success": false, "message": "Cancelled." }));
-            return;
-        }
-        if started.elapsed() > Duration::from_secs(300) {
-            crate::review::kill_tree(pid, &mut child);
-            emit(
-                serde_json::json!({ "kind": "done", "success": false, "message": "Timed out. Run `glab auth login` in a terminal to finish." }),
-            );
-            return;
-        }
-        while let Ok(line) = rx.try_recv() {
-            if !code_sent {
-                if let Some(code) = find_device_code(&line) {
-                    code_sent = true;
-                    emit(serde_json::json!({ "kind": "prompt", "code": code }));
-                    if let Some(mut handle) = stdin.take() {
-                        let _ = handle.write_all(b"\n");
-                        let _ = handle.flush();
-                    }
-                }
-            }
-            if !url_sent {
-                if let Some(url) = find_url(&line) {
-                    url_sent = true;
-                    emit(serde_json::json!({ "kind": "prompt", "url": url }));
-                }
-            }
-        }
-        match child.try_wait() {
-            Ok(Some(status)) => {
-                while let Ok(line) = rx.try_recv() {
-                    if !url_sent {
-                        if let Some(url) = find_url(&line) {
-                            url_sent = true;
-                            emit(serde_json::json!({ "kind": "prompt", "url": url }));
-                        }
-                    }
-                }
-                emit(serde_json::json!({
-                  "kind": "done",
-                  "success": status.success(),
-                  "message": if status.success() { "Signed in to GitLab.".to_string() } else { "glab didn't finish. If no code appeared, run `glab auth login` in a terminal.".to_string() },
-                }));
-                return;
-            }
-            Ok(None) => std::thread::sleep(Duration::from_millis(300)),
-            Err(error) => {
-                emit(serde_json::json!({ "kind": "done", "success": false, "message": error.to_string() }));
-                return;
-            }
-        }
-    }
+    crate::gitlab::oauth::run_device_flow(cancel, emit);
 }

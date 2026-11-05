@@ -40,6 +40,9 @@ pub(crate) fn glab_capture_cancellable(
         }
         options.open(path).map_err(|e| e.to_string())
     };
+    if cancel.load(Ordering::Relaxed) {
+        return Err("cancelled".into());
+    }
     let mut command = Command::new("glab");
     command
         .args(args)

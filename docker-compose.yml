@@ -105,6 +105,7 @@ services:
       - "127.0.0.1:1455:1456"
     environment:
       OCR_GITLAB_HOST: ${OCR_GITLAB_HOST:?set OCR_GITLAB_HOST to your GitLab Self-Hosted host}
+      OCR_GITLAB_CLIENT_ID: ${OCR_GITLAB_CLIENT_ID:?set OCR_GITLAB_CLIENT_ID to your GitLab OAuth Application ID}
       OCR_BIND: 0.0.0.0:8787
       OCR_DATA_DIR: /data
       # Read once at startup and removed from the environment, so no CLI the server runs sees them.

@@ -79,7 +79,7 @@ bench/                                   Public benchmark adapters (ReviewBench,
 docker compose up --build
 ```
 
-Open `http://localhost:1421`. Services: `web` (nginx on 1421, proxying `/api`), `server` (API on `127.0.0.1:8787`), `review-runner` (20 replicas by default, `OCR_REVIEW_RUNNERS`), `review-egress`, `postgres` and `database-secret`. State lives in the `ocr-data` and `postgres-data` volumes. `GITLAB_TOKEN` is only a development fallback. `OCR_GITLAB_HOST` is required for the Self-Hosted instance.
+Open `http://localhost:1421`. Services: `web` (nginx on 1421, proxying `/api`), `server` (API on `127.0.0.1:8787`), `review-runner` (20 replicas by default, `OCR_REVIEW_RUNNERS`), `review-egress`, `postgres` and `database-secret`. State lives in the `ocr-data` and `postgres-data` volumes. `GITLAB_TOKEN` is only a development fallback. `OCR_GITLAB_HOST` and `OCR_GITLAB_CLIENT_ID` (OAuth Application ID with Device authorization) are required for the Self-Hosted instance. Connect GitLab uses the OAuth device grant and passes the access token to `glab` as `OAUTH_TOKEN`.
 
 ## Development commands
 

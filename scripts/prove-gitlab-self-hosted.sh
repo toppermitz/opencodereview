@@ -50,10 +50,17 @@ check_source_swap() {
   fi
   if ! rg -n 'OCR_GITLAB_HOST' docker-compose.yml >/dev/null; then
     bad "docker-compose.yml missing OCR_GITLAB_HOST"
+  elif ! rg -n 'OCR_GITLAB_CLIENT_ID' docker-compose.yml >/dev/null; then
+    bad "docker-compose.yml missing OCR_GITLAB_CLIENT_ID"
   elif rg -n 'OCR_GH_HOST|apt-get install.*\bgh\b|cli\.github\.com' docker-compose.yml docker/Dockerfile >/dev/null; then
     bad "Docker still references OCR_GH_HOST or installs gh"
   else
-    ok "Compose requires OCR_GITLAB_HOST; Dockerfile no longer installs gh"
+    ok "Compose requires OCR_GITLAB_HOST and OCR_GITLAB_CLIENT_ID; Dockerfile no longer installs gh"
+  fi
+  if ! rg -n 'oauth/authorize_device|OAUTH_TOKEN' backend/src/gitlab >/dev/null; then
+    bad "GitLab OAuth device flow / OAUTH_TOKEN wiring missing"
+  else
+    ok "GitLab OAuth device flow stores a token for glab"
   fi
   if ! rg -n '"/auth/gitlab/status"' backend/src/server/http.rs src/services/setupApiAccess.ts >/dev/null; then
     bad "HTTP/UI missing /auth/gitlab/status"

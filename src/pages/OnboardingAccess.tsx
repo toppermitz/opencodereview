@@ -53,7 +53,9 @@ export function GitlabStep({
           glyph={<GitLabMark className="size-5" />}
           name="GitLab"
           detail={
-            connected ? (login ?? "Connected") : "Uses the GitLab CLI sign-in, kept in OpenCodeReview's Docker volume."
+            connected
+              ? (login ?? "Connected")
+              : "Authorize with a GitLab device code; the token stays in OpenCodeReview's Docker volume."
           }
           status={
             connected ? (
@@ -75,7 +77,7 @@ export function GitlabStep({
               {busy &&
                 (prompt.code ? (
                   <>
-                    <p className="text-small font-medium text-fg">Enter this code on GitLab to approve access</p>
+                    <p className="text-small font-medium text-fg">Enter this device code on GitLab to approve access</p>
                     <CopyCode code={prompt.code} />
                     <div className="flex flex-wrap items-center gap-3">
                       <p className="flex items-center gap-2 text-small text-fg-muted">

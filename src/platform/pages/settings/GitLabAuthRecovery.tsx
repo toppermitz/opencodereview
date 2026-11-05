@@ -21,7 +21,9 @@ export function GitLabAuthRecovery({
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="text-sm font-semibold">GitLab authorization</div>
-          <div className="mt-1 text-sm text-fg-muted">Complete the GitLab flow to refresh org access.</div>
+          <div className="mt-1 text-sm text-fg-muted">
+            Enter the device code on GitLab to refresh access. Prefer the verification link when shown.
+          </div>
         </div>
         <DSButton onClick={onRefresh} disabled={loading}>
           <RefreshCw className="size-3.5" />

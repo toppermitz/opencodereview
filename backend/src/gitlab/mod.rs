@@ -1,10 +1,9 @@
 use std::collections::{HashMap, HashSet};
-use std::io::{BufRead, BufReader, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{mpsc, Mutex, OnceLock};
-use std::time::{Duration, Instant};
+use std::sync::atomic::AtomicBool;
+use std::sync::{Mutex, OnceLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -12,13 +11,14 @@ static GL_LOGIN: Mutex<Option<String>> = Mutex::new(None);
 static GL_TEAM_SLUGS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
 static GL_HOST: OnceLock<String> = OnceLock::new();
 static GLAB_CONFIG_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
-static GIT_TOKEN: OnceLock<String> = OnceLock::new();
+static GIT_TOKEN: Mutex<Option<String>> = Mutex::new(None);
 
 mod activation;
 pub(crate) use activation::{activation_pr, conversation_comments_page, unedited_author_command, ConversationComment};
 
 mod auth;
 mod comments;
+mod oauth;
 mod pr;
 mod repo;
 mod review_requests;

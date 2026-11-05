@@ -32,7 +32,7 @@ git clone https://github.com/BridgLabs/opencodereview && cd opencodereview && do
 
 Open [http://localhost:1421](http://localhost:1421) and follow onboarding:
 
-1. **GitLab**: sign in with the GitLab CLI against your Self-Hosted instance (`OCR_GITLAB_HOST`).
+1. **GitLab**: authorize with a device code against your Self-Hosted instance (`OCR_GITLAB_HOST` and `OCR_GITLAB_CLIENT_ID`).
 2. **Your plan**: connect at least one account. Claude uses `claude setup-token` (you paste back the code it shows); ChatGPT uses the `codex login` browser flow or a device code.
 3. **Repositories**: choose the repositories to monitor. They are cloned and indexed in the background.
 4. **First review**: pick an open merge request. After that, new merge requests in monitored repositories are reviewed automatically.
@@ -48,7 +48,7 @@ Set `OCR_VERSION` (for example `OCR_VERSION=0.1.0`) to stay on one release; the 
 ## Requirements
 
 - Docker Engine or Docker Desktop with Docker Compose v2 (the Compose file uses `additional_contexts`).
-- A GitLab Self-Hosted account with access to the repositories you want reviewed, and `OCR_GITLAB_HOST` set to that instance.
+- A GitLab Self-Hosted account with access to the repositories you want reviewed, plus `OCR_GITLAB_HOST` and `OCR_GITLAB_CLIENT_ID` (OAuth Application ID with Device authorization).
 - At least one of:
   - a Claude subscription that works with Claude Code (Pro, Max, Team or Enterprise);
   - a ChatGPT plan that includes Codex.
@@ -64,15 +64,28 @@ Everything else is configured in the app under **Settings** (providers, reposito
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `OCR_GITLAB_HOST` | required | GitLab Self-Hosted host, as a bare `host` or `host:port` (for example `gitlab.example.com`). |
+| `OCR_GITLAB_CLIENT_ID` | required | Application ID of a non-confidential OAuth app on that instance with Device authorization enabled (see below). |
 | `OCR_WEB_APP_URL` | `http://localhost:1421` | The origin the UI is served from. Requests from other origins are rejected; change it when you open the UI from another address. |
 | `OCR_REVIEW_RUNNERS` | `20` | Review runner containers; idle ones use almost no memory. |
 | `OCR_VERSION` | `latest` | Image tag used with `docker-compose.images.yml`, for example `0.1.0`. |
 | `OCR_REVIEW_DEBUG_DIR` | empty | Path inside the server container (for example `/data/review-debug`) where private review debug artifacts, which contain pull request code, are written. Leave empty in normal use. |
 
+### GitLab OAuth application (once per instance)
+
+Create an OAuth application on your GitLab Self-Hosted instance (User → Edit profile → Applications, or Admin → Applications):
+
+- **Name:** `OpenCodeReview` (or similar)
+- **Redirect URI:** `http://127.0.0.1/` (required by GitLab’s form; the device flow never redirects here)
+- **Confidential:** unchecked
+- **Device authorization:** enabled
+- **Scopes:** `api`, `read_api`, `read_user`, `write_repository`, `openid`, `profile`
+
+Copy the Application ID into `OCR_GITLAB_CLIENT_ID`. Ignore the Client Secret.
+
 For example:
 
 ```bash
-OCR_GITLAB_HOST=gitlab.example.com docker compose up --build
+OCR_GITLAB_HOST=gitlab.example.com OCR_GITLAB_CLIENT_ID=your-application-id docker compose up --build
 ```
 
 ## How it works

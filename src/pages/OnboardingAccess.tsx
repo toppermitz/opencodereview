@@ -252,7 +252,7 @@ export function PlanStep({ onBack, onContinue }: { onBack: () => void; onContinu
                       className={rowActionQuiet}
                       onClick={() => setSignIn({ provider: provider.provider, method: "oauth" })}
                     >
-                      Connect
+                      Conectar
                     </button>
                   ) : undefined
                 }

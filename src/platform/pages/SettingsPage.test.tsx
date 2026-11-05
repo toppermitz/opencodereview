@@ -240,7 +240,7 @@ describe("settings workspace", () => {
     await navigate("Seleção de MRs");
     const concurrency = container.querySelector<HTMLInputElement>('input[aria-label="Revisões ao mesmo tempo"]')!;
     await inputValue(concurrency, "8");
-    await act(async () => button("Save changes").click());
+    await act(async () => button("Salvar alterações").click());
     expect(vi.mocked(setupApi.saveSettingsBatch).mock.calls[0][0]).toEqual({ settings: { review_concurrency: "8" } });
   });
 
@@ -250,7 +250,7 @@ describe("settings workspace", () => {
     expect(button("Off").classList.contains("active")).toBe(true);
     await act(async () => button("On").click());
     expect(button("On").classList.contains("active")).toBe(true);
-    await act(async () => button("Save changes").click());
+    await act(async () => button("Salvar alterações").click());
     expect(vi.mocked(setupApi.saveSettingsBatch).mock.calls[0][0]).toEqual({
       settings: { review_suggestions_enabled: "true" },
     });
@@ -260,7 +260,7 @@ describe("settings workspace", () => {
   it("keeps one global action pair and saves changes from every section together", async () => {
     const header = container.querySelector("[data-page-header]")!;
     expect(header.contains(button("Cancelar"))).toBe(true);
-    expect(header.contains(button("Save changes"))).toBe(true);
+    expect(header.contains(button("Salvar alterações"))).toBe(true);
     expect(
       Array.from(container.querySelectorAll("button")).filter((item) => item.textContent === "Cancelar"),
     ).toHaveLength(1);
@@ -272,14 +272,14 @@ describe("settings workspace", () => {
     await inputValue(container.querySelector<HTMLInputElement>('[aria-label="Ignored keywords"]')!, "renovate");
     expect(container.querySelectorAll(".settings-unsaved-dot")).toHaveLength(2);
     expect(setupApi.saveSettingsBatch).not.toHaveBeenCalled();
-    await act(async () => button("Save changes").click());
+    await act(async () => button("Salvar alterações").click());
     expect(setupApi.saveSettingsBatch).toHaveBeenCalledTimes(1);
     const payload = vi.mocked(setupApi.saveSettingsBatch).mock.calls[0][0];
     expect(payload.repositories).toEqual({ logins: ["example"], repoIds: [1, 2], monitorAll: [] });
     expect(payload.settings).toMatchObject({ review_assigned_only: "true", auto_skip_keywords: '["deps","renovate"]' });
     expect(payload.settings).not.toHaveProperty("review_routing");
     expect(container.querySelectorAll(".settings-unsaved-dot")).toHaveLength(0);
-    expect(button("Save changes").disabled).toBe(true);
+    expect(button("Salvar alterações").disabled).toBe(true);
     expect(container.textContent).toContain("All changes saved.");
   });
 
@@ -292,7 +292,7 @@ describe("settings workspace", () => {
     await act(async () => all.click());
     expect(second().checked).toBe(true);
     expect(second().disabled).toBe(true);
-    await act(async () => button("Save changes").click());
+    await act(async () => button("Salvar alterações").click());
     const payload = vi.mocked(setupApi.saveSettingsBatch).mock.calls[0][0];
     expect(payload.repositories).toEqual({ logins: ["example"], repoIds: [1], monitorAll: ["example"] });
   });
@@ -302,7 +302,7 @@ describe("settings workspace", () => {
     await inputValue(container.querySelector<HTMLInputElement>('[aria-label="Ignored keywords"]')!, "renovate");
     await act(async () => button("Assigned").click());
     await act(async () => button("Cancelar").click());
-    expect(button("Save changes").disabled).toBe(true);
+    expect(button("Salvar alterações").disabled).toBe(true);
     expect(container.querySelectorAll(".settings-unsaved-dot")).toHaveLength(0);
     expect(container.querySelector<HTMLInputElement>('[aria-label="Ignored keywords"]')!.value).toBe("");
     expect(setupApi.saveSettingsBatch).not.toHaveBeenCalled();
@@ -313,17 +313,17 @@ describe("settings workspace", () => {
     await navigate("Seleção de MRs");
     await act(async () => button("Assigned").click());
     await act(async () => button("5m").click());
-    await act(async () => button("Save changes").click());
+    await act(async () => button("Salvar alterações").click());
     expect(container.textContent).toContain("Your edits are still pending");
-    expect(button("Save changes").disabled).toBe(false);
+    expect(button("Salvar alterações").disabled).toBe(false);
     expect(client.getQueryData<Settings>(["setup", "settings", "review"])!.reviewAssignedOnly).toBe(false);
     expect(container.querySelectorAll(".settings-unsaved-dot")).toHaveLength(1);
-    await act(async () => button("Save changes").click());
+    await act(async () => button("Salvar alterações").click());
     const calls = vi.mocked(setupApi.saveSettingsBatch).mock.calls;
     expect(calls).toHaveLength(2);
     expect(calls[1][0]).toEqual(calls[0][0]);
     expect(calls[0][0].repositories).toBeUndefined();
-    expect(button("Save changes").disabled).toBe(true);
+    expect(button("Salvar alterações").disabled).toBe(true);
   });
 
   it("blocks duplicate saves, cancellation and edits while the batch is pending", async () => {
@@ -336,7 +336,7 @@ describe("settings workspace", () => {
     );
     await navigate("Seleção de MRs");
     await act(async () => button("Assigned").click());
-    const saveButton = button("Save changes");
+    const saveButton = button("Salvar alterações");
     await act(async () => {
       saveButton.click();
       saveButton.click();
@@ -344,10 +344,10 @@ describe("settings workspace", () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(button("Saving…").disabled).toBe(true);
+    expect(button("Salvando…").disabled).toBe(true);
     expect(button("Cancelar").disabled).toBe(true);
     expect(button("All PRs").disabled).toBe(true);
-    await act(async () => button("Saving…").click());
+    await act(async () => button("Salvando…").click());
     expect(setupApi.saveSettingsBatch).toHaveBeenCalledTimes(1);
     await act(async () =>
       finish({
@@ -356,7 +356,7 @@ describe("settings workspace", () => {
         selectedRepos: [],
       }),
     );
-    expect(button("Save changes").disabled).toBe(true);
+    expect(button("Salvar alterações").disabled).toBe(true);
   });
 
   it("preserves drafts across refetches and only submits fields still changed", async () => {
@@ -372,7 +372,7 @@ describe("settings workspace", () => {
     expect(button("Assigned").classList.contains("active")).toBe(true);
     expect(button("5m").classList.contains("active")).toBe(true);
     await act(async () => button("All PRs").click());
-    expect(button("Save changes").disabled).toBe(true);
+    expect(button("Salvar alterações").disabled).toBe(true);
     await act(async () => {
       client.setQueryData<Settings>(["setup", "settings", "review"], (current) => ({
         ...current!,
@@ -381,7 +381,7 @@ describe("settings workspace", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(button("Assigned").classList.contains("active")).toBe(true);
-    expect(button("Save changes").disabled).toBe(true);
+    expect(button("Salvar alterações").disabled).toBe(true);
   });
 
   it("includes blank numeric edits in the global draft", async () => {
@@ -390,9 +390,9 @@ describe("settings workspace", () => {
     await inputValue(maxFiles, "");
     expect(maxFiles.value).toBe("");
     await inputValue(maxFiles, "40");
-    await act(async () => button("Save changes").click());
+    await act(async () => button("Salvar alterações").click());
     expect(vi.mocked(setupApi.saveSettingsBatch).mock.calls[0][0]).toEqual({ settings: { review_max_files: "40" } });
-    expect(button("Save changes").disabled).toBe(true);
+    expect(button("Salvar alterações").disabled).toBe(true);
   });
 
   it("guards navigation with pending changes and clears the guard on cancel", async () => {
@@ -430,7 +430,8 @@ describe("settings workspace", () => {
   });
 
   it("searches repository rows and preserves unsaved selection across sections", async () => {
-    const search = container.querySelector<HTMLInputElement>("input[aria-label='Search repositories']");
+    await navigate("Acesso a repositórios");
+    const search = container.querySelector<HTMLInputElement>("input[aria-label='Buscar repositórios']");
     expect(search).not.toBeNull();
     expect(container.querySelectorAll(".settings-repository-option")).toHaveLength(2);
     await inputValue(search!, "another");
@@ -438,13 +439,13 @@ describe("settings workspace", () => {
     const checkbox = container.querySelector<HTMLInputElement>(".settings-repository-option input")!;
     await act(async () => checkbox.click());
     expect(checkbox.checked).toBe(true);
-    expect(button("Save changes").disabled).toBe(false);
+    expect(button("Salvar alterações").disabled).toBe(false);
     await navigate("Seleção de MRs");
     await navigate("Acesso a repositórios");
     expect(container.querySelector<HTMLInputElement>(".settings-repository-option input")!.checked).toBe(true);
     await act(async () => button("Cancelar").click());
     expect(container.querySelector<HTMLInputElement>(".settings-repository-option input")!.checked).toBe(false);
-    expect(button("Save changes").disabled).toBe(true);
+    expect(button("Salvar alterações").disabled).toBe(true);
     await inputValue(search!, "no-such-repository");
     expect(container.textContent).toContain("No repositories match this search.");
   });

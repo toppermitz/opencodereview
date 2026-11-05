@@ -41,15 +41,17 @@ import {
 export const nodeTypes: NodeTypes = { reviewPhase: ReviewPhaseNode, reviewControl: ReviewControlNode };
 
 export function nodeStatus(data: ReviewFlowNodeData) {
-  if (data.phase.id === "chunks" && data.phase.inferenceSkipped && data.state === "failed") return "Preparation failed";
+  if (data.phase.id === "chunks" && data.phase.inferenceSkipped && data.state === "failed") {
+    return "Preparação falhou";
+  }
   return (
     data.result?.status ??
     (data.chunk?.cached
-      ? "Cached"
+      ? "Em cache"
       : data.chunk?.validating
-        ? "Validating"
+        ? "Validando"
         : data.phase.status === "skipped"
-          ? "Skipped"
+          ? "Ignorado"
           : flowStateLabel(data.state))
   );
 }
@@ -102,7 +104,8 @@ function ReviewStageIcon({
   result?: ReviewResultSummary;
 }) {
   const isChunk = chunkId !== undefined;
-  const isCleanResult = !isChunk && phaseId === "ready" && result?.detail === "No findings";
+  const isCleanResult =
+    !isChunk && phaseId === "ready" && (result?.detail === "Nada a sinalizar" || result?.detail === "No findings");
   const Icon = isChunk ? Layers2 : isCleanResult ? SearchX : (phaseIcons[phaseId] ?? ListChecks);
   const iconKey = isChunk ? "chunk" : phaseId;
   return (

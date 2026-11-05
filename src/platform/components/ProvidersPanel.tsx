@@ -72,7 +72,7 @@ export function ProvidersPanel() {
   return (
     <section className="settings-group flex flex-col gap-5">
       <header className="px-1">
-        <h2 className="text-small font-semibold text-fg">Providers</h2>
+        <h2 className="text-small font-semibold text-fg">Provedores</h2>
         <p className="mt-0.5 max-w-2xl text-caption text-fg-subtle">
           Reviews run on the AI plans you connect. When one provider's accounts hit their limits, reviews continue on
           the next.
@@ -175,7 +175,7 @@ function ProviderDetail({
     <section className="settings-group flex flex-col gap-5">
       <nav className="flex items-center gap-1.5 px-1 text-small" aria-label="Breadcrumb">
         <button type="button" className="cursor-pointer text-fg-subtle hover:text-fg" onClick={onBack}>
-          Providers
+          Provedores
         </button>
         <ChevronRight className="size-3.5 text-fg-subtle" />
         <span className="font-semibold text-fg">{providerName[provider]}</span>
@@ -190,7 +190,7 @@ function ProviderDetail({
             {connected && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2 py-0.5 text-caption font-medium text-emerald-500">
                 <span className="size-1.5 rounded-full bg-emerald-500" />
-                Connected
+                Conectado
               </span>
             )}
           </div>

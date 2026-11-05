@@ -56,12 +56,12 @@ describe("canvas actions and result", () => {
   it("distinguishes generation, decision and publication without inventing clean results", () => {
     expect(reviewResultSummary(card, null).status).toBe("Aguardando revisão");
     const run = { headSha: "current", status: "running" } as ReviewRun;
-    expect(reviewResultSummary(card, run)).toMatchObject({ status: "Waiting for review", state: "pending" });
+    expect(reviewResultSummary(card, run)).toMatchObject({ status: "Aguardando revisão", state: "pending" });
     expect(reviewResultSummary({ ...card, lane: "queued" }, { ...run, status: "posted" }).status).toBe("Na fila");
     expect(reviewResultSummary(card, { ...run, status: "failed" }).status).toBe("Revisão falhou");
     expect(reviewResultSummary({ ...card, lane: "ready" }, { ...run, status: "preview" }, 5)).toMatchObject({
       status: "Precisa da sua decisão",
-      detail: "5 findings",
+      detail: "5 achados",
       state: "awaiting_action",
     });
     expect(reviewResultSummary({ ...card, lane: "ready" }, { ...run, status: "preview" }, 0)).toMatchObject({
@@ -69,23 +69,25 @@ describe("canvas actions and result", () => {
       detail: "Nada a sinalizar",
       state: "awaiting_action",
     });
-    expect(reviewResultSummary(card, { ...run, status: "preview" }).detail).toBe("View findings and details");
+    expect(reviewResultSummary(card, { ...run, status: "preview" }).detail).toBe("Ver achados e detalhes");
     expect(
       reviewResultSummary(
         { ...card, resultState: "clean", resultPublicationStatus: "posted" },
         { ...run, status: "done" },
       ),
     ).toMatchObject({ status: "Concluído", detail: "Nada a sinalizar", state: "completed" });
-    expect(reviewResultSummary({ ...card, resultPublicationStatus: "failed" }, null).status).toBe("Publication failed");
+    expect(reviewResultSummary({ ...card, resultPublicationStatus: "failed" }, null).status).toBe("Publicação falhou");
     expect(reviewResultSummary({ ...card, resultState: "clean", resultObservedHeadSha: "old" }, null).detail).not.toBe(
       "Nada a sinalizar",
     );
-    expect(reviewResultSummary(card, { ...run, headSha: "old", status: "preview" }).status).toBe("Outdated result");
-    expect(reviewResultSummary(card, { ...run, status: "posted" }).status).toBe("Published");
+    expect(reviewResultSummary(card, { ...run, headSha: "old", status: "preview" }).status).toBe(
+      "Resultado desatualizado",
+    );
+    expect(reviewResultSummary(card, { ...run, status: "posted" }).status).toBe("Publicado");
     expect(reviewResultSummary(card, { ...run, status: "skipped" }).status).toBe("Ignorado");
-    expect(reviewResultSummary(card, { ...run, status: "approved" }).status).toBe("Marked reviewed");
+    expect(reviewResultSummary(card, { ...run, status: "approved" }).status).toBe("Marcado como revisado");
     expect(reviewResultSummary({ ...card, resultPublicationStatus: "superseded" }, null).status).toBe(
-      "Outdated result",
+      "Resultado desatualizado",
     );
   });
 

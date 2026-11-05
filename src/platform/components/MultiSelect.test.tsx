@@ -35,8 +35,8 @@ function Fixture() {
   const [selected, setSelected] = useState(new Set<string>());
   return (
     <MultiSelect
-      label="Repositories"
-      placeholder="Filter repositories"
+      label="Repositórios"
+      placeholder="Filtrar repositórios"
       presentation="dialog"
       options={repositories.map((value) => ({ value, label: value }))}
       selected={selected}
@@ -72,7 +72,7 @@ it("searches full repository names, keeps multiple selections and restores focus
     for (const option of options()) await act(async () => option.click());
     expect(dialog.open).toBe(true);
     expect(options().every((option) => option.getAttribute("aria-pressed") === "true")).toBe(true);
-    expect(dialog.querySelector("footer span")?.textContent).toBe("2 selected");
+    expect(dialog.querySelector("footer span")?.textContent).toBe("2 selecionados");
     const searchFor = async (value: string) =>
       act(async () => {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(search, value);
@@ -81,7 +81,7 @@ it("searches full repository names, keeps multiple selections and restores focus
     await searchFor("VERSION-MANAGER");
     expect(options().map((option) => option.textContent)).toEqual([repositories[1]]);
     await act(async () => options()[0].click());
-    expect(dialog.querySelector("footer span")?.textContent).toBe("1 selected");
+    expect(dialog.querySelector("footer span")?.textContent).toBe("1 selecionado");
     await searchFor("missing-repository");
     expect(dialog.querySelector(".settings-empty-inline")?.textContent).toBe("No matches");
     await searchFor("");

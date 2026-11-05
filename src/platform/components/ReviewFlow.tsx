@@ -233,7 +233,7 @@ export function ReviewFlow({
         >
           <header className="review-stage-header flex flex-none items-center justify-between border-b border-line px-4.5 py-2.5 [&_h2]:text-heading [&_h2]:text-fg">
             <h2>{selected ? phaseLabel(selected.data.phase) : "Review result"}</h2>
-            <DSButton tone="ghost" aria-label="Close details" onClick={closeInspector}>
+            <DSButton tone="ghost" aria-label="Fechar detalhes" onClick={closeInspector}>
               <X className="size-4" />
             </DSButton>
           </header>
@@ -253,7 +253,7 @@ export function ReviewFlow({
                   <span
                     className={`review-flow-status-pill inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-caption font-medium review-flow-status-${selected.data.state}`}
                   >
-                    <FlowStateIcon state={selected.data.state} skipped={nodeStatus(selected.data) === "Skipped"} />
+                    <FlowStateIcon state={selected.data.state} skipped={nodeStatus(selected.data) === "Ignorado"} />
                     {nodeStatus(selected.data)}
                   </span>
                   <span className="review-stage-times text-caption text-fg-muted tabular-nums" title={stageNote}>

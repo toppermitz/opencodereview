@@ -172,7 +172,7 @@ describe("onboarding", () => {
     expect(claude.textContent).not.toContain("Não conectado");
     expect(claude.querySelector("button")?.textContent).toBe("Conectar");
     const chatgpt = container.querySelector('[aria-label="ChatGPT"]')!;
-    expect(chatgpt.textContent).toContain("Not installed");
+    expect(chatgpt.textContent).toContain("Não instalado");
     expect(chatgpt.querySelector("button")).toBeNull();
     expect(button("Continuar")?.disabled).toBe(true);
     expect(container.textContent).not.toContain("Connect an AI provider to continue.");
@@ -204,7 +204,7 @@ describe("onboarding", () => {
     await act(async () => row().querySelector<HTMLButtonElement>('button[aria-label="More ChatGPT options"]')!.click());
     await act(async () =>
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-        .find((item) => item.textContent?.startsWith("Sign in with a code"))!
+        .find((item) => item.textContent?.startsWith("Entrar com um código"))!
         .click(),
     );
     await settle();
@@ -244,7 +244,7 @@ describe("onboarding", () => {
     );
     await act(async () =>
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-        .find((item) => item.textContent?.startsWith("Paste a token"))!
+        .find((item) => item.textContent?.startsWith("Colar um token"))!
         .click(),
     );
     const input = container.querySelector<HTMLInputElement>('input[aria-label="Claude token"]')!;
@@ -297,7 +297,7 @@ describe("onboarding", () => {
     expect(setupApi.saveRepoSubscription).toHaveBeenCalledTimes(1);
     expect(setupApi.saveRepoSubscription).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), true);
     expect(container.querySelector("h1")?.textContent).toBe("Tudo pronto");
-    expect(container.textContent).toContain("2 selected");
+    expect(container.textContent).toContain("2 selecionados");
   });
 
   it("confirms the setup and starts the first review on an open merge request", async () => {
@@ -341,7 +341,7 @@ describe("onboarding", () => {
     await vi.waitFor(() => expect(container.querySelector('[aria-label="Add billing"]')).not.toBeNull());
     expect(container.querySelector('[aria-label="Old"]')).toBeNull();
     expect(container.querySelector('[aria-label="Done already"]')).toBeNull();
-    await act(async () => button("Revisão")!.click());
+    await act(async () => button("Revisar")!.click());
     await settle();
     expect(setupApi.startReview).toHaveBeenCalledWith(9);
     expect(navigate).toHaveBeenCalledWith({ to: "/platform/reviews" });

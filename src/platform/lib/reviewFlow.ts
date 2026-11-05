@@ -73,15 +73,17 @@ export function reviewResultSummary(
       state: "superseded",
     };
   const noFindings = findingCount === 0 && questionCount === 0;
+  const achados = (n: number) => `${n} achado${n === 1 ? "" : "s"}`;
+  const perguntas = (n: number) => `${n} pergunta${n === 1 ? "" : "s"}`;
   const detail =
     card.suggestionsOnly && !findingCount && questionCount === 0
       ? "Só sugestões"
       : questionCount > 0
-        ? `${findingCount ?? 0} findings · ${questionCount} questions`
+        ? `${achados(findingCount ?? 0)} · ${perguntas(questionCount)}`
         : noFindings || result === "clean"
           ? "Nada a sinalizar"
           : findingCount !== undefined && findingCount > 0
-            ? `${findingCount} finding${findingCount === 1 ? "" : "s"}`
+            ? achados(findingCount)
             : result === "findings_local" || result === "findings_posted"
               ? "Achados gerados"
               : "Ver achados e detalhes";

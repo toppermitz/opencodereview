@@ -149,7 +149,7 @@ export function findingAuditSummary(view: FindingAuditView | undefined) {
     `${candidates.length} candidato${candidates.length === 1 ? "" : "s"}`,
     `${discarded} descartado${discarded === 1 ? "" : "s"} pela IA`,
     blocked && `${blocked} bloqueado${blocked === 1 ? "" : "s"}`,
-    unmapped && `${unmapped} decisão${unmapped === 1 ? "" : "ões"} indisponível${unmapped === 1 ? "" : "eis"}`,
+    unmapped && `${unmapped} ${unmapped === 1 ? "decisão indisponível" : "decisões indisponíveis"}`,
     pending && `${pending} pendente${pending === 1 ? "" : "s"}`,
     !complete && "auditoria incompleta",
   ]

@@ -151,7 +151,7 @@ export function SettingsPage() {
     onError: (cause) => setError(formatError(cause)),
   });
   const confirmSignOut = () => {
-    if (window.confirm("Sign out of GitLab? Reviews stop until you connect again.")) signOut.mutate();
+    if (window.confirm("Sair do GitLab? As revisões param até você conectar de novo.")) signOut.mutate();
   };
   const save = useMutation({
     mutationFn: setupApi.saveSettingsBatch,
@@ -355,7 +355,7 @@ export function SettingsPage() {
             Cancelar
           </DSButton>
           <DSButton tone="primary" onClick={saveChanges} disabled={saveDisabled}>
-            {save.isPending ? "Salvando…" : "Save changes"}
+            {save.isPending ? "Salvando…" : "Salvar alterações"}
           </DSButton>
         </div>
       }
@@ -410,8 +410,8 @@ export function SettingsPage() {
           </SettingsSection>
           <SettingsSection id="repositories" activeSection={activeSection}>
             <SettingsGroup
-              title="Repository access"
-              description="Select organizations first, then choose monitored repositories."
+              title="Acesso a repositórios"
+              description="Escolha as organizações e os repositórios monitorados."
               action={
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-medium text-fg-muted">{visibleSelectedCount} repos selected</span>
@@ -496,7 +496,7 @@ export function SettingsPage() {
                       status.auth.loggedIn ? (
                         !authUsesEnvToken && (
                           <DSButton onClick={() => confirmSignOut()} disabled={loading || signOut.isPending}>
-                            Sign out
+                            Sair
                           </DSButton>
                         )
                       ) : (

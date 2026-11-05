@@ -149,7 +149,7 @@ describe("finding selection groups", () => {
       expect(container.textContent).toContain("Invalid anchor");
       await click(chip(container, "Descartados pela IA"));
       expect(container.querySelector<HTMLInputElement>('[aria-label="Include finding discarded"]')!.checked).toBe(true);
-      expect(container.textContent).toContain("Manual override");
+      expect(container.textContent).toContain("Sobrescrita manual");
       expect(container.querySelectorAll(".finding-tab-panel")).toHaveLength(1);
       expect(chip(container, "Descartados pela IA").getAttribute("aria-controls")).toBe(
         container.querySelector(".finding-tab-panel")!.id,
@@ -184,7 +184,7 @@ describe("finding selection groups", () => {
       },
       async (container) => {
         expect(container.textContent).toContain("1 achado · 0 perguntas selecionadas");
-        expect(container.textContent).toContain("Sozinhas não justificam Solicitar mudanças");
+        expect(container.textContent).toContain("sozinhas não justificam Solicitar mudanças");
         await click(chip(container, "Perguntas — publicação opcional"));
         expect(container.querySelector<HTMLInputElement>('[aria-label="Include question question"]')!.checked).toBe(
           false,

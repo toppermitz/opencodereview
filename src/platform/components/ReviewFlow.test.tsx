@@ -347,7 +347,7 @@ describe("review inspector navigation", () => {
       tail: phase.detail,
     } as ReviewRun;
     const html = renderView("chunks", { run, runStatus: "failed", phases: [phase] });
-    expect(html).toContain("Preparation failed");
+    expect(html).toContain("Preparação falhou");
     expect(html).toContain("Nenhuma execução de modelo iniciada");
     expect(html).toContain("0 tokens");
     expect(html).not.toContain("Detalhes do chunk indisponíveis");
@@ -400,7 +400,7 @@ describe("review inspector navigation", () => {
       run: { id: 10, prId: 1, status: "failed" } as ReviewRun,
       phases: [{ id: "chunks", label: "Chunks", status: "failed", inferenceSkipped: true }],
     });
-    expect(failed.text).toBe("Preparation failed");
+    expect(failed.text).toBe("Preparação falhou");
     expect(failed.icon).not.toContain("lucide-skip-forward");
   });
 
@@ -426,7 +426,7 @@ describe("review inspector navigation", () => {
       runStatus: "preview",
       phases: [{ id: "chunks", label: "Chunks", status: "ok" }],
     });
-    expect(html).toContain("Cached");
+    expect(html).toContain("Em cache");
     expect(html).toContain("0 tokens");
     expect(html).toContain("Validated cache hit");
     expect(html).not.toContain("Tokens unavailable");

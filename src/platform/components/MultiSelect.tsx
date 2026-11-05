@@ -63,9 +63,9 @@ export function MultiSelect({
     <>
       <input
         className="settings-text-input h-9 w-full rounded-md border border-line bg-surface px-3 text-small text-fg outline-none focus:border-brand focus:ring-3 focus:ring-brand/15"
-        aria-label={`Search ${label.toLowerCase()}`}
+        aria-label={`Buscar ${label.toLowerCase()}`}
         value={query}
-        placeholder="Search…"
+        placeholder="Buscar…"
         onChange={(event) => setQuery(event.target.value)}
         // biome-ignore lint/a11y/noAutofocus: the search box is only mounted when the user opens the picker, so focus moves into it on purpose
         autoFocus
@@ -109,7 +109,9 @@ export function MultiSelect({
     <div ref={ref} className="settings-multiselect relative flex min-w-0 flex-col gap-1.5">
       <div className="settings-multiselect-label flex items-center justify-between text-caption font-medium text-fg-muted [&>span:last-child]:text-fg-subtle">
         <span id={`${id}-label`}>{label}</span>
-        <span>{selectedOptions.length} selected</span>
+        <span>
+          {selectedOptions.length} selecionado{selectedOptions.length === 1 ? "" : "s"}
+        </span>
       </div>
       <button
         ref={triggerRef}
@@ -203,7 +205,9 @@ export function MultiSelect({
             </header>
             <div className="max-h-[60vh] overflow-y-auto px-5 py-4">{content}</div>
             <footer className="flex items-center justify-between gap-2 border-t border-line bg-surface-muted/60 px-5 py-3 text-small text-fg-muted">
-              <span>{selectedOptions.length} selected</span>
+              <span>
+                {selectedOptions.length} selecionado{selectedOptions.length === 1 ? "" : "s"}
+              </span>
               <DSButton tone="primary" onClick={() => setOpen(false)}>
                 Done
               </DSButton>

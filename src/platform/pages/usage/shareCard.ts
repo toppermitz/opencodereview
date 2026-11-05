@@ -23,17 +23,23 @@ const PROVIDER_NAMES: Record<string, string> = {
 
 export function shareCardData(report: UsageReport): ShareCardData {
   const { totals } = report;
-  const plural = (count: number, word: string) => `${word}${count === 1 ? "" : "s"}`;
+  const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
   const providers = attributedRows(report.byProvider);
   return {
     days: report.days,
     tokens: compactTokens(totals.tokens),
     cacheRead: totals.cacheReadTokens > 0 ? compactTokens(totals.cacheReadTokens) : null,
     stats: [
-      { label: plural(totals.runs, "Revisar"), value: totals.runs.toLocaleString("en-US") },
-      { label: plural(totals.prs, "Merge request"), value: totals.prs.toLocaleString("en-US") },
-      { label: plural(totals.findingsFound, "Finding"), value: totals.findingsFound.toLocaleString("en-US") },
-      { label: "Median review", value: formatFlowDuration(totals.medianDurationMs) },
+      { label: plural(totals.runs, "Revisão", "Revisões"), value: totals.runs.toLocaleString("pt-BR") },
+      {
+        label: plural(totals.prs, "Merge request", "Merge requests"),
+        value: totals.prs.toLocaleString("pt-BR"),
+      },
+      {
+        label: plural(totals.findingsFound, "Achado", "Achados"),
+        value: totals.findingsFound.toLocaleString("pt-BR"),
+      },
+      { label: "Revisão mediana", value: formatFlowDuration(totals.medianDurationMs) },
     ],
     providers:
       providers.length >= 2

@@ -174,7 +174,7 @@ function Retry({ busy, onRetry, onCancel }: { busy: boolean; onRetry?: () => voi
         </button>
       )}
       <button type="button" className={quietButton} onClick={onCancel}>
-        Cancel
+        Cancelar
       </button>
     </div>
   );
@@ -387,7 +387,7 @@ export function CodexSignIn({
     );
   const cancelButton = (
     <button type="button" className={quietButton} disabled={cancel.isPending} onClick={() => cancel.mutate()}>
-      Cancel
+      Cancelar
     </button>
   );
   if (mode === "browser")

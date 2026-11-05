@@ -155,7 +155,7 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
             {save.isPending
               ? "Salvando…"
               : chosen.size
-                ? `Continuar com ${chosen.size} repositor${chosen.size === 1 ? "y" : "ies"}`
+                ? `Continuar com ${chosen.size} repositório${chosen.size === 1 ? "" : "s"}`
                 : "Continuar"}
           </button>
         }

@@ -61,6 +61,6 @@ describe("labelCard", () => {
     );
     expect(labelCard({ lane: "posted", suggestionsOnly: false, questionsOnly: false })).toBe("Achados publicados");
     expect(labelCard({ lane: "posted", suggestionsOnly: false, questionsOnly: true })).toBe("Perguntas publicadas");
-    expect(labelCard({ lane: "ready", suggestionsOnly: true, questionsOnly: true })).toBe("Ready to post");
+    expect(labelCard({ lane: "ready", suggestionsOnly: true, questionsOnly: true })).toBe("Pronto para publicar");
   });
 });

@@ -22,7 +22,7 @@ export function ReviewSettingsPanel({
     onSave(key, JSON.stringify(items.map((item) => item.trim()).filter(Boolean)));
   return (
     <SettingsSection id="selection" activeSection={activeSection}>
-      <SettingsGroup title="PR selection" description="Control which PRs enter the review queue.">
+      <SettingsGroup title="Seleção de MRs" description="Controla quais MRs entram na fila de revisão.">
         <SettingChoice
           title="Escopo da revisão"
           description="Use assignments and GitLab reviewers, or review all open MRs."

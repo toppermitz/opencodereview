@@ -617,7 +617,7 @@ impl Drop for BatchReader {
 }
 
 fn apply_github_auth(command: &mut Command) {
-    crate::github::apply_git_https_auth(command);
+    crate::gitlab::apply_git_https_auth(command);
 }
 
 pub(crate) fn git(repo_path: &Path, args: &[&str], cancel: Option<&AtomicBool>) -> Result<Vec<u8>, String> {

@@ -455,7 +455,7 @@ pub(crate) fn git_capture(
     // Host-aware HTTPS auth shared with clone/fetch elsewhere, so review git
     // transports authenticate against the resolved (possibly Enterprise) host
     // rather than a duplicated, drift-prone local copy.
-    crate::github::apply_git_https_auth(&mut command);
+    crate::gitlab::apply_git_https_auth(&mut command);
     let mut child = command.spawn().map_err(|error| error.to_string())?;
     let started = Instant::now();
     // Most git calls finish in a few milliseconds; the wait grows to 80ms only for long ones.

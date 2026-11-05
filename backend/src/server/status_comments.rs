@@ -1,5 +1,5 @@
 use super::*;
-use crate::github::StatusCommentApi;
+use crate::gitlab::StatusCommentApi;
 
 const STATUS_PUBLICATION_PREFIX: &str = "<!-- ocr-status-publication:v1 run=";
 const STATUS_PUBLICATION_SUFFIX: &str = " -->";
@@ -98,7 +98,7 @@ pub(crate) fn replace_owned_comment(
     };
     for (id, run) in owned {
         if id != kept && run.map(|run| run <= generation).unwrap_or(true) {
-            api.delete(repo, id)?;
+            api.delete(repo, number, id)?;
         }
     }
     Ok(kept)
@@ -115,7 +115,7 @@ pub(crate) fn delete_owned_comments_before(
 ) -> Result<(), String> {
     for (id, run) in owned_comment_generations(api, repo, number, classify)? {
         if run.map(|run| run < generation).unwrap_or(true) {
-            api.delete(repo, id)?;
+            api.delete(repo, number, id)?;
         }
     }
     Ok(())
@@ -186,7 +186,7 @@ pub(crate) fn retire_clean_comments_after_findings(db: &Database, full_name: &st
     };
     let marker = crate::db::result_marker_key(full_name, number, &installation_id);
     let _ = retire_clean_comments_before(
-        &mut github::GitHubStatusComments,
+        &mut gitlab::GitLabStatusComments,
         full_name,
         number,
         &marker,

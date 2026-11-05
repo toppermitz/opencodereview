@@ -19,7 +19,7 @@ pub fn execute(
     );
     let result = run_inner(inputs, cancel, progress, &run_dir).and_then(|mut output| {
         if let Some(expected) = &inputs.expected_scope {
-            let live = github::live_pr_state_cancellable(&inputs.full_name, inputs.number, cancel)?;
+            let live = gitlab::live_pr_state_cancellable(&inputs.full_name, inputs.number, cancel)?;
             if live.state != "OPEN"
                 || !crate::review::scope::equivalent(&inputs.repo_path, expected, &live.review_scope(), cancel)
             {

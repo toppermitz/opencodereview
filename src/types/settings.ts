@@ -128,15 +128,15 @@ export interface Repo {
   pollErrorAt: number | null;
 }
 
-/** `gh auth status` for the Settings GitHub-access panel. */
-export interface GitHubAuthStatus {
+/** `glab auth status` for the Settings GitLab-access panel. */
+export interface GitLabAuthStatus {
   loggedIn: boolean;
   login: string | null;
   host: string;
   detail: string;
 }
 
-/** Exactly what a review decision will post to GitHub — for a confirm/cancel step. */
+/** Exactly what a review decision will post to GitLab — for a confirm/cancel step. */
 export interface SkillVersion {
   id: number;
   version: number;

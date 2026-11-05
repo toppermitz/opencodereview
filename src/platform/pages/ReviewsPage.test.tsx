@@ -13,7 +13,7 @@ vi.mock("../../services/setupApi", () => ({
     listReviewBoard: vi.fn(),
     listPendingActions: vi.fn(),
     pollStatus: vi.fn(),
-    githubAuthStatus: vi.fn(),
+    gitlabAuthStatus: vi.fn(),
     markPrReviewSeen: vi.fn().mockResolvedValue(undefined),
     getReviewFindingAudit: vi.fn(),
     saveReviewFindingSelection: vi.fn(),
@@ -103,7 +103,7 @@ describe("review processes toggle", () => {
           prId: 1,
           kind: "review_requests_restore_failed",
           status: "seen",
-          message: "Check the requested reviewers on GitHub.",
+          message: "Check the requested reviewers on GitLab.",
         },
         { id: 2, prId: 2, kind: "review_requests_restore_failed", status: "unseen", message: "Other PR warning" },
       ],
@@ -120,7 +120,7 @@ describe("review processes toggle", () => {
           </QueryClientProvider>,
         ),
       );
-      expect(container.querySelector('[role="alert"]')?.textContent).toBe("Check the requested reviewers on GitHub.");
+      expect(container.querySelector('[role="alert"]')?.textContent).toBe("Check the requested reviewers on GitLab.");
       expect(container.textContent).not.toContain("Other PR warning");
       expect(container.textContent).not.toContain("Retry publication");
       expect(setupApi.decideReview).not.toHaveBeenCalled();
@@ -175,7 +175,7 @@ describe("review processes toggle", () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
       expect(container.querySelector(".brand-loading")).toBeNull();
-      expect(container.textContent).toContain("Poll GitHub, then select a pull request");
+      expect(container.textContent).toContain("Poll GitLab, then select a merge request");
     } finally {
       await act(async () => root.unmount());
       client.clear();
@@ -356,7 +356,7 @@ describe("review processes toggle", () => {
   });
 });
 
-it("selects the pull request a ?pr= link names, then drops the link from the URL", async () => {
+it("selects the merge request a ?pr= link names, then drops the link from the URL", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   const client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false } } });

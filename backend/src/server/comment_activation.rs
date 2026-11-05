@@ -5,7 +5,7 @@ pub(crate) fn activation_marker(full_name: &str, number: i64, installation: &str
 }
 
 pub(crate) fn queued_for_review_text(full_name: &str, head: &str) -> String {
-    format!("### ⏳ OpenCodeReview is reviewing this pull request\n\nQueued commit [`{}`](https://{}/{full_name}/commit/{head}). The results will appear here when the review finishes.\n\n{}", short_sha(head), github::gh_host(), ocr_footer())
+    format!("### ⏳ OpenCodeReview is reviewing this merge request\n\nQueued commit [`{}`](https://{}/{full_name}/-/commit/{head}). The results will appear here when the review finishes.\n\n{}", short_sha(head), gitlab::gitlab_host(), ocr_footer())
 }
 
 pub(crate) fn activation_confirmation_body(
@@ -25,8 +25,8 @@ pub(crate) fn scan_activation_pages(
     repo: &Repo,
     eligible: &HashMap<i64, (i64, String)>,
     started_at: i64,
-    page: impl FnMut(&str, usize) -> Result<Vec<github::ConversationComment>, String>,
-    is_author: impl FnMut(i64, &github::ConversationComment) -> Result<bool, String>,
+    page: impl FnMut(&str, usize) -> Result<Vec<gitlab::ConversationComment>, String>,
+    is_author: impl FnMut(i64, &gitlab::ConversationComment) -> Result<bool, String>,
 ) -> Result<(), String> {
     scan_activation_pages_with_lookup(db, repo, eligible, started_at, page, is_author, |_| Ok(None))
 }
@@ -36,8 +36,8 @@ pub(crate) fn scan_activation_pages_with_lookup(
     repo: &Repo,
     eligible: &HashMap<i64, (i64, String)>,
     started_at: i64,
-    mut page: impl FnMut(&str, usize) -> Result<Vec<github::ConversationComment>, String>,
-    mut is_author: impl FnMut(i64, &github::ConversationComment) -> Result<bool, String>,
+    mut page: impl FnMut(&str, usize) -> Result<Vec<gitlab::ConversationComment>, String>,
+    mut is_author: impl FnMut(i64, &gitlab::ConversationComment) -> Result<bool, String>,
     mut resolve: impl FnMut(i64) -> Result<Option<(i64, String)>, String>,
 ) -> Result<(), String> {
     let (enabled_at, since) = db.comment_scan_cursor(repo.id)?;
@@ -107,8 +107,8 @@ pub(crate) fn poll_author_commands(
         repo,
         eligible,
         crate::db::now_millis(),
-        |since, page| github::conversation_comments_page(&repo.full_name, since, page),
-        |number, user| github::unedited_author_command(&repo.full_name, number, user),
+        |since, page| gitlab::conversation_comments_page(&repo.full_name, since, page),
+        |number, user| gitlab::unedited_author_command(&repo.full_name, number, user),
         resolve,
     )
 }

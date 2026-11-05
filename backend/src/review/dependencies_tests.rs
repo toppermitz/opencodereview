@@ -1467,36 +1467,27 @@ fn pinned_gh_access_initializes_only_an_object_cache_and_denial_creates_nothing(
 }
 
 #[test]
-fn pinned_gh_contents_probe_is_host_scoped_sanitized_and_cancellable() {
+fn pinned_glab_contents_probe_is_sanitized_and_cancellable() {
     let cancel = AtomicBool::new(false);
-    verify_repository_read_access_using("acme/api", "github.example.com", &cancel, |args| {
-        assert_eq!(
-            args,
-            [
-                "api",
-                "--hostname",
-                "github.example.com",
-                "repos/acme/api/commits?per_page=1",
-                "--jq",
-                ".[0].sha"
-            ]
-        );
-        Ok(format!("{}\n", "a".repeat(40)).into_bytes())
+    verify_repository_read_access_using("acme/api", "gitlab.example.com", &cancel, |args| {
+        assert_eq!(args, ["api", "projects/acme%2Fapi/repository/commits?per_page=1"]);
+        Ok(format!(r#"[{{"id":"{}"}}]"#, "a".repeat(40)).into_bytes())
     })
     .unwrap();
-    let error = verify_repository_read_access_using("acme/api", "github.com", &cancel, |_| {
+    let error = verify_repository_read_access_using("acme/api", "gitlab.example.com", &cancel, |_| {
         Err("private-auth-fixture-do-not-persist".into())
     })
     .unwrap_err();
-    assert!(error.contains("authenticated gh read access"));
+    assert!(error.contains("authenticated glab read access"));
     assert!(!error.contains("private-auth-fixture"));
     assert!(
-        verify_repository_read_access_using("acme/api", "github.com", &cancel, |_| Ok(b"null\n".to_vec())).is_err()
+        verify_repository_read_access_using("acme/api", "gitlab.example.com", &cancel, |_| Ok(b"null\n".to_vec()))
+            .is_err()
     );
     let cancel = AtomicBool::new(true);
     assert_eq!(
-        verify_repository_read_access_using("acme/api", "github.com", &cancel, |_| panic!(
-            "Cancelled access must not call gh"
+        verify_repository_read_access_using("acme/api", "gitlab.example.com", &cancel, |_| panic!(
+            "Cancelled access must not call glab"
         ))
         .unwrap_err(),
         "cancelled"
@@ -1510,13 +1501,15 @@ fn disclosure(primary: &str, repository: &str, visibility: &[(&str, &str)]) -> R
         primary,
         &mut primary_public,
         repository,
-        "github.com",
+        "gitlab.example.com",
         &cancel,
         |args| {
-            let route = args[3].strip_prefix("repos/").unwrap();
-            assert_eq!(args, ["api", "--hostname", "github.com", args[3], "--jq", ".private"]);
-            let (_, private) = visibility.iter().find(|(name, _)| *name == route).unwrap();
-            Ok(format!("{private}\n").into_bytes())
+            assert_eq!(args[0], "api");
+            let route = args[1].strip_prefix("projects/").unwrap();
+            let decoded = route.replace("%2F", "/");
+            let (_, private) = visibility.iter().find(|(name, _)| *name == decoded).unwrap();
+            let visibility = if *private == "true" { "private" } else { "public" };
+            Ok(format!(r#"{{"visibility":"{visibility}"}}"#).into_bytes())
         },
     )
 }
@@ -1551,22 +1544,26 @@ fn linked_private_repository_never_reaches_a_wider_audience() {
     )
     .unwrap_err();
     assert!(error.contains("another owner"), "{error}");
-    // An unreadable visibility answer fails closed without echoing gh output.
+    // An unreadable visibility answer fails closed without echoing glab output.
     let cancel = AtomicBool::new(false);
-    let error = authorize_dependency_disclosure_using("acme/web", &mut None, "acme/lib", "github.com", &cancel, |_| {
-        Err("private-auth-fixture-do-not-persist".into())
-    })
-    .unwrap_err();
+    let error =
+        authorize_dependency_disclosure_using("acme/web", &mut None, "acme/lib", "gitlab.example.com", &cancel, |_| {
+            Err("private-auth-fixture-do-not-persist".into())
+        })
+        .unwrap_err();
     assert!(
         error.contains("visibility") && !error.contains("private-auth-fixture"),
         "{error}"
     );
-    assert!(
-        authorize_dependency_disclosure_using("acme/web", &mut None, "acme/lib", "github.com", &cancel, |_| Ok(
-            b"null\n".to_vec()
-        ))
-        .is_err()
-    );
+    assert!(authorize_dependency_disclosure_using(
+        "acme/web",
+        &mut None,
+        "acme/lib",
+        "gitlab.example.com",
+        &cancel,
+        |_| Ok(b"null\n".to_vec())
+    )
+    .is_err());
 }
 
 #[test]
@@ -1579,11 +1576,11 @@ fn disclosure_check_asks_for_the_primary_visibility_once() {
             "acme/web",
             &mut primary_public,
             repository,
-            "github.com",
+            "gitlab.example.com",
             &cancel,
             |args| {
-                primary_calls += usize::from(args[3] == "repos/acme/web");
-                Ok(b"true\n".to_vec())
+                primary_calls += usize::from(args[1] == "projects/acme%2Fweb");
+                Ok(br#"{"visibility":"private"}"#.to_vec())
             },
         )
         .unwrap();

@@ -20,7 +20,7 @@ const columns =
 export function FindingsCell({ found, posted }: { found: number; posted: number }) {
   if (found === 0 && posted === 0) return <span className="text-fg-subtle">–</span>;
   return (
-    <Tip content={`${found} found by the review · ${posted} posted to GitHub`} className="justify-end">
+    <Tip content={`${found} found by the review · ${posted} posted to GitLab`} className="justify-end">
       <span className="text-fg">{found.toLocaleString()}</span>
       {posted !== found && <span className="whitespace-pre text-fg-subtle"> · {posted.toLocaleString()} posted</span>}
     </Tip>
@@ -53,14 +53,14 @@ export function PrUsageList({ query, totalTokens, live }: { query: UsageQuery; t
     refetchInterval: live ? 5000 : false,
   });
   if (prs.isError && !prs.data) return <DSError>{usageError(prs.error)}</DSError>;
-  if (!prs.data) return <BrandLoading size="compact" label="Loading pull requests…" />;
+  if (!prs.data) return <BrandLoading size="compact" label="Loading merge requests…" />;
   const rows = prs.data.pages.flatMap((page) => page.items);
-  if (!rows.length) return <DSEmptyState>No pull requests ran a review in this period.</DSEmptyState>;
+  if (!rows.length) return <DSEmptyState>No merge requests ran a review in this period.</DSEmptyState>;
   const total = prs.data.pages.at(-1)?.total ?? rows.length;
   return (
     <div className="flex flex-col">
       <div className={cx(columns, "border-b border-line px-2 pb-2 text-caption text-fg-subtle")} aria-hidden="true">
-        <span>Pull request</span>
+        <span>Merge request</span>
         <span className="max-md:hidden">Runs</span>
         <span className="text-right">Tokens</span>
         <span className="max-md:hidden">Share</span>
@@ -119,7 +119,7 @@ export function PrUsageList({ query, totalTokens, live }: { query: UsageQuery; t
       </ul>
       <div className="flex items-center justify-between gap-3 pt-3 text-caption text-fg-subtle">
         <span className="tabular-nums">
-          {rows.length.toLocaleString()} of {total.toLocaleString()} pull requests
+          {rows.length.toLocaleString()} of {total.toLocaleString()} merge requests
         </span>
         {prs.hasNextPage && (
           <DSButton size="sm" onClick={() => void prs.fetchNextPage()} disabled={prs.isFetchingNextPage}>

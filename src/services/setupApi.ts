@@ -1,4 +1,4 @@
-import type { GitHubAuthStatus, Repo, Workspace } from "../types";
+import type { GitLabAuthStatus, Repo, Workspace } from "../types";
 import { setupApiAccess } from "./setupApiAccess";
 import { setupApiReviews } from "./setupApiReviews";
 import { setupApiUsage } from "./setupApiUsage";
@@ -7,12 +7,12 @@ import { setupApiWorkspace } from "./setupApiWorkspace";
 export type { IndexJob, IndexJobsResponse } from "./setupApiTransport";
 
 export interface SetupStatus {
-  auth: GitHubAuthStatus;
+  auth: GitLabAuthStatus;
   workspaces: Workspace[];
   selectedWorkspaces: Workspace[];
   selectedRepos: Repo[];
   complete: boolean;
-  /** 1 GitHub, 2 AI plan, 3 repositories, 4 done. */
+  /** 1 GitLab, 2 AI plan, 3 repositories, 4 done. */
   nextStep: 1 | 2 | 3 | 4;
 }
 
@@ -22,7 +22,7 @@ export const setupApi = {
   ...setupApiUsage,
   ...setupApiWorkspace,
   async setupStatus(): Promise<SetupStatus> {
-    const auth = await setupApiAccess.githubAuthStatus();
+    const auth = await setupApiAccess.gitlabAuthStatus();
     if (!auth.loggedIn)
       return { auth, workspaces: [], selectedWorkspaces: [], selectedRepos: [], complete: false, nextStep: 1 };
     const providers = await setupApiAccess.aiProviders().catch(() => []);

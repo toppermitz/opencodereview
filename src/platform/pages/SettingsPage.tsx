@@ -10,7 +10,7 @@ import { MultiSelect } from "../components/MultiSelect";
 import { PlatformPage } from "../components/PlatformHeader";
 import { ProvidersPanel } from "../components/ProvidersPanel";
 import { formatError, repoOwner, toggleSet } from "../lib/utils";
-import { GitHubAuthRecovery } from "./settings/GitHubAuthRecovery";
+import { GitLabAuthRecovery } from "./settings/GitLabAuthRecovery";
 import { RepositorySelector } from "./settings/RepositorySelector";
 import { ReviewSettingsPanel } from "./settings/ReviewSettingsPanel";
 import { IntegrationRow, SettingsGroup, SettingsSection } from "./settings/SettingsControls";
@@ -43,7 +43,7 @@ export function SettingsPage() {
   const [authFlowStarted, setAuthFlowStarted] = useState(false);
   const authEventsQuery = useQuery({
     queryKey: ["setup", "settings", "auth-events"],
-    queryFn: () => setupApi.githubAuthEvents(),
+    queryFn: () => setupApi.gitlabAuthEvents(),
     enabled: Boolean(statusQuery.data && (!statusQuery.data.auth.loggedIn || authFlowStarted)),
     refetchInterval: (query) => (query.state.data?.running ? 1000 : false),
   });
@@ -131,8 +131,8 @@ export function SettingsPage() {
     },
     onError: (cause) => setError(formatError(cause)),
   });
-  const connectGitHub = useMutation({
-    mutationFn: (action: "login" | "refresh") => setupApi.githubAuthStart(action),
+  const connectGitLab = useMutation({
+    mutationFn: (action: "login" | "refresh") => setupApi.gitlabAuthStart(action),
     onSuccess: () => {
       setError(null);
       setAuthFlowStarted(true);
@@ -141,7 +141,7 @@ export function SettingsPage() {
     onError: (cause) => setError(formatError(cause)),
   });
   const signOut = useMutation({
-    mutationFn: () => setupApi.githubAuthLogout(),
+    mutationFn: () => setupApi.gitlabAuthLogout(),
     onSuccess: async () => {
       setError(null);
       setAuthFlowStarted(false);
@@ -151,7 +151,7 @@ export function SettingsPage() {
     onError: (cause) => setError(formatError(cause)),
   });
   const confirmSignOut = () => {
-    if (window.confirm("Sign out of GitHub? Reviews stop until you connect again.")) signOut.mutate();
+    if (window.confirm("Sign out of GitLab? Reviews stop until you connect again.")) signOut.mutate();
   };
   const save = useMutation({
     mutationFn: setupApi.saveSettingsBatch,
@@ -233,7 +233,7 @@ export function SettingsPage() {
 
   const status = statusQuery.data;
   const authDisconnected = Boolean(status && !status.auth.loggedIn);
-  const authUsesEnvToken = Boolean(status?.auth.detail.includes("GH_TOKEN"));
+  const authUsesEnvToken = Boolean(status?.auth.detail.includes("GITLAB_TOKEN"));
   const authPrompt: { code?: string; url?: string } = Object.assign(
     {},
     ...(authEventsQuery.data?.events ?? []).filter((event) => event.kind === "prompt"),
@@ -283,7 +283,7 @@ export function SettingsPage() {
     reposQuery.isLoading ||
     refreshWorkspaces.isPending ||
     refreshRepos.isPending ||
-    connectGitHub.isPending ||
+    connectGitLab.isPending ||
     save.isPending;
   const workspaceOptions = workspaces.map((workspace) => ({
     value: workspace.login,
@@ -396,12 +396,12 @@ export function SettingsPage() {
             <DSError>{formatError(reviewSettingsQuery.error ?? statusQuery.error ?? reposQuery.error)}</DSError>
           )}
           {authDisconnected && activeSection !== "integrations" && (
-            <GitHubAuthRecovery
+            <GitLabAuthRecovery
               prompt={authPrompt}
               doneMessage={authDone?.message}
               doneSuccess={authDone?.success}
-              loading={connectGitHub.isPending}
-              onConnect={() => connectGitHub.mutate("login")}
+              loading={connectGitLab.isPending}
+              onConnect={() => connectGitLab.mutate("login")}
               onRefresh={() => void statusQuery.refetch()}
             />
           )}
@@ -423,7 +423,7 @@ export function SettingsPage() {
               }
             >
               {authDisconnected ? (
-                <DSEmptyState>Reconnect GitHub to manage repositories.</DSEmptyState>
+                <DSEmptyState>Reconnect GitLab to manage repositories.</DSEmptyState>
               ) : (
                 <div className="settings-select-stack flex flex-col gap-3.5 p-4">
                   <MultiSelect
@@ -485,10 +485,10 @@ export function SettingsPage() {
               {status ? (
                 <>
                   <IntegrationRow
-                    title="GitHub"
+                    title="GitLab"
                     detail={
                       status.auth.loggedIn
-                        ? `${status.auth.login ?? "GitHub CLI"} · ${authUsesEnvToken ? "GH_TOKEN from environment" : status.auth.host}`
+                        ? `${status.auth.login ?? "GitLab CLI"} · ${authUsesEnvToken ? "GITLAB_TOKEN from environment" : status.auth.host}`
                         : "Not connected"
                     }
                     connected={status.auth.loggedIn}
@@ -500,19 +500,19 @@ export function SettingsPage() {
                           </DSButton>
                         )
                       ) : (
-                        <DSButton tone="primary" onClick={() => connectGitHub.mutate("login")} disabled={loading}>
-                          {connectGitHub.isPending ? "Starting" : "Connect GitHub"}
+                        <DSButton tone="primary" onClick={() => connectGitLab.mutate("login")} disabled={loading}>
+                          {connectGitLab.isPending ? "Starting" : "Connect GitLab"}
                         </DSButton>
                       )
                     }
                   />
                   {!status.auth.loggedIn && (
-                    <GitHubAuthRecovery
+                    <GitLabAuthRecovery
                       prompt={authPrompt}
                       doneMessage={authDone?.message}
                       doneSuccess={authDone?.success}
-                      loading={connectGitHub.isPending}
-                      onConnect={() => connectGitHub.mutate("login")}
+                      loading={connectGitLab.isPending}
+                      onConnect={() => connectGitLab.mutate("login")}
                       onRefresh={() => void statusQuery.refetch()}
                     />
                   )}

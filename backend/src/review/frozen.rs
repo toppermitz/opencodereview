@@ -34,7 +34,7 @@ pub fn capture(
     cancel: &AtomicBool,
 ) -> Result<Arc<FrozenContext>, String> {
     let scope = Scope {
-        host: github::gh_host(),
+        host: gitlab::gitlab_host(),
         repository: inputs.full_name.clone(),
         head_sha: head.into(),
         base_sha: plan.reviewed_base_sha.clone().ok_or("Pinned base unavailable")?,

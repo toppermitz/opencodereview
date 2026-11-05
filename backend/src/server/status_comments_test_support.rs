@@ -1,4 +1,4 @@
-use crate::github::{StatusComment, StatusCommentApi};
+use crate::gitlab::{StatusComment, StatusCommentApi};
 
 const PUBLISHER: i64 = 77;
 
@@ -73,7 +73,7 @@ impl StatusCommentApi for FakeStatusComments {
         Ok(id)
     }
 
-    fn delete(&mut self, _repo: &str, id: i64) -> Result<(), String> {
+    fn delete(&mut self, _repo: &str, _number: i64, id: i64) -> Result<(), String> {
         self.deletes += 1;
         if self.fail_delete {
             return Err("delete failed".to_string());

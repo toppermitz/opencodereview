@@ -774,7 +774,7 @@ fn hydrate_pinned_review_dependencies_without_inference() {
     let recorded = db.review_run_scope(run.id).unwrap().unwrap();
     let plan = db.context_plan_for_review_run(run.id).unwrap().unwrap();
     let scope = crate::review_archive::Scope {
-        host: crate::github::gh_host(),
+        host: crate::gitlab::gitlab_host(),
         repository: repository.into(),
         head_sha: recorded.head_sha,
         base_sha: recorded.base_sha,
@@ -1147,7 +1147,7 @@ fn persisted_review_chunk_preparation_without_inference() {
         crate::review::scope::merge_base(&inputs.repo_path, &scope.base_sha, &scope.head_sha, &cancel).unwrap();
     assert_eq!(plan.merge_base_sha.as_deref(), Some(merge_base.as_str()));
     let archive_scope = crate::review_archive::Scope {
-        host: crate::github::gh_host(),
+        host: crate::gitlab::gitlab_host(),
         repository: inputs.full_name.clone(),
         head_sha: scope.head_sha.clone(),
         base_sha: scope.base_sha.clone(),

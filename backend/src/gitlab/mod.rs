@@ -8,10 +8,10 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
-static GH_LOGIN: Mutex<Option<String>> = Mutex::new(None);
-static GH_TEAM_SLUGS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
-static GH_HOST: OnceLock<String> = OnceLock::new();
-static GH_CONFIG_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
+static GL_LOGIN: Mutex<Option<String>> = Mutex::new(None);
+static GL_TEAM_SLUGS: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+static GL_HOST: OnceLock<String> = OnceLock::new();
+static GLAB_CONFIG_DIR: OnceLock<Option<PathBuf>> = OnceLock::new();
 static GIT_TOKEN: OnceLock<String> = OnceLock::new();
 
 mod activation;
@@ -25,14 +25,12 @@ mod review_requests;
 mod status_comments;
 mod transport;
 
-pub(crate) use auth::{apply_gh_host, apply_git_https_auth, is_valid_gh_host};
-pub use auth::{auth_status, current_login, gh_host, run_auth_flow, sign_out};
+pub(crate) use auth::{apply_git_https_auth, apply_gitlab_host, is_valid_gitlab_host, project_api_id};
+pub use auth::{auth_status, current_login, gitlab_host, run_auth_flow, sign_out};
 pub use comments::{
     dedupe_review_comments, find_review_id_by_marker, post_review, prepare_review, upsert_issue_comment_by_marker,
     DedupeResult, PreparedReview,
 };
-#[cfg(test)]
-pub(crate) use pr::parse_pr_file_pages;
 #[cfg(not(test))]
 pub(crate) use pr::pr_file_paths;
 pub use pr::{diff_anchors, pr_description};
@@ -42,8 +40,8 @@ pub use repo::{
 };
 #[cfg(test)]
 pub(crate) use status_comments::StatusComment;
-pub(crate) use status_comments::{GitHubStatusComments, StatusCommentApi};
-pub(crate) use transport::{gh_capture_cancellable, gh_json, iso8601_to_epoch_ms, run_raw};
+pub(crate) use status_comments::{GitLabStatusComments, StatusCommentApi};
+pub(crate) use transport::{glab_capture_cancellable, glab_json, iso8601_to_epoch_ms, run_raw};
 
 #[cfg(test)]
 pub(crate) use repo::{parse_live_pr_state, LIVE_PR_JSON_FIELDS};
@@ -51,31 +49,12 @@ pub(crate) use repo::{parse_live_pr_state, LIVE_PR_JSON_FIELDS};
 use crate::db::{RepoInput, WorkspaceInput};
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct GhUser {
-    login: String,
+struct GlUser {
+    id: i64,
+    username: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct GhOrg {
-    login: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct GhRepo {
-    name: String,
-    name_with_owner: String,
-    description: Option<String>,
-    is_private: bool,
-    default_branch_ref: Option<GhBranch>,
-}
-
-#[derive(Debug, Deserialize)]
-struct GhBranch {
-    name: String,
-}
-
+/// Merge request wire shape kept compatible with former GitHub PR consumers.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GhPullRequest {
@@ -94,6 +73,8 @@ pub struct GhPullRequest {
     pub review_requests: Option<Vec<GhPrPrincipal>>,
 }
 
+pub type MergeRequest = GhPullRequest;
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GhPrPrincipal {
@@ -109,7 +90,7 @@ pub struct GhPrAuthor {
 }
 
 pub fn avatar_url(login: &str) -> String {
-    format!("https://{}/{login}.png?size=64", gh_host())
+    format!("https://{}/{login}", gitlab_host())
 }
 
 #[cfg(test)]

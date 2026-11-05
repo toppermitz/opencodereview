@@ -43,7 +43,7 @@ export function UsageTotals({ totals }: { totals: Totals }) {
         label="Findings"
         value={totals.findingsFound.toLocaleString()}
         note={`${totals.findings.toLocaleString()} posted · ${totals.questionsFound.toLocaleString()} ${totals.questionsFound === 1 ? "question" : "questions"}`}
-        hint="Findings the reviews kept, published or not; posted counts the ones published to GitHub."
+        hint="Findings the reviews kept, published or not; posted counts the ones published to GitLab."
       />
       <Total
         label="Median time"

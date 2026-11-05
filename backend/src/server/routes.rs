@@ -17,10 +17,10 @@ pub(crate) fn route(request: Request, state: SharedState) -> Response {
     }
     let result = match (request.method.as_str(), request.path.as_str()) {
         ("GET", "/health") => health(&state),
-        ("GET", "/auth/github/status") => github_auth_status(),
+        ("GET", "/auth/gitlab/status") => gitlab_auth_status(),
         ("GET", "/auth/claude/status") => claude_auth_status(&state),
         ("POST", "/auth/claude/logout") => claude_auth_logout(&request, &state),
-        ("POST", "/auth/github/logout") => github_auth_logout(&request),
+        ("POST", "/auth/gitlab/logout") => gitlab_auth_logout(&request),
         ("POST", "/auth/claude/start") => start_claude_auth(&request, &state),
         ("GET", "/auth/claude/events") => claude_auth_events(&request),
         ("POST", "/auth/claude/input") => claude_auth_input(&request),
@@ -35,13 +35,13 @@ pub(crate) fn route(request: Request, state: SharedState) -> Response {
         ("POST", "/accounts/order") => reorder_accounts(&request, &state),
         ("GET", "/review-engines") => review_engines(&state),
         ("POST", "/review-engines") => save_review_engine(&request, &state),
-        ("POST", "/auth/github/start") => start_github_auth(&request, &state),
-        ("POST", "/auth/github/cancel") => cancel_github_auth(&request, &state),
-        ("GET", "/auth/github/events") => github_auth_events(&request, &state),
+        ("POST", "/auth/gitlab/start") => start_gitlab_auth(&request, &state),
+        ("POST", "/auth/gitlab/cancel") => cancel_gitlab_auth(&request, &state),
+        ("GET", "/auth/gitlab/events") => gitlab_auth_events(&request, &state),
         ("GET", "/settings") => get_settings(&state),
         ("POST", "/settings") => save_setting(&request, &state),
         ("POST", "/settings/batch") => save_settings_batch_http(&request, &state),
-        ("GET", "/github/workspaces") => refresh_github_workspaces(&state),
+        ("GET", "/gitlab/workspaces") => refresh_gitlab_workspaces(&state),
         ("GET", "/workspaces") => with_db_read(&state, |db| db.list_workspaces()),
         ("GET", "/indexing/jobs") => list_index_jobs(&state),
         ("GET", "/reviews/board") => list_review_board(&state),
@@ -149,26 +149,26 @@ pub(crate) fn health(state: &SharedState) -> Result<serde_json::Value, String> {
         ok: true,
         message: "OpenCodeReview server ready".to_string(),
         repos_dir: state.config.repos_dir.to_string_lossy().to_string(),
-        github: github_status(),
+        gitlab: gitlab_status(),
         git: command_status("git", &["--version"]),
         claude: command_status("claude", &["--version"]),
     };
     serde_json::to_value(response).map_err(|error| error.to_string())
 }
 
-pub(crate) fn github_auth_status() -> Result<serde_json::Value, String> {
+pub(crate) fn gitlab_auth_status() -> Result<serde_json::Value, String> {
     let _ = crate::accounts::sandbox_sync::sync_app_auth();
-    serde_json::to_value(github::auth_status()).map_err(|error| error.to_string())
+    serde_json::to_value(gitlab::auth_status()).map_err(|error| error.to_string())
 }
 
-pub(crate) fn github_auth_logout(request: &Request) -> Result<serde_json::Value, String> {
+pub(crate) fn gitlab_auth_logout(request: &Request) -> Result<serde_json::Value, String> {
     require_trusted_origin(request)?;
-    github::sign_out()?;
+    gitlab::sign_out()?;
     let _ = crate::accounts::sandbox_sync::sync_app_auth();
     Ok(serde_json::json!({ "ok": true }))
 }
 
-pub(crate) fn start_github_auth(request: &Request, state: &SharedState) -> Result<serde_json::Value, String> {
+pub(crate) fn start_gitlab_auth(request: &Request, state: &SharedState) -> Result<serde_json::Value, String> {
     require_trusted_origin(request)?;
     let payload: AuthStartRequest = if request.body.is_empty() {
         AuthStartRequest { action: None }
@@ -184,9 +184,9 @@ pub(crate) fn start_github_auth(request: &Request, state: &SharedState) -> Resul
     let cancel = Arc::new(AtomicBool::new(false));
     let already_running = {
         let mut slot = state
-            .github_auth_cancel
+            .gitlab_auth_cancel
             .lock()
-            .map_err(|_| "github auth lock poisoned".to_string())?;
+            .map_err(|_| "gitlab auth lock poisoned".to_string())?;
         if slot.is_some() {
             true
         } else {
@@ -196,31 +196,31 @@ pub(crate) fn start_github_auth(request: &Request, state: &SharedState) -> Resul
     };
     if already_running {
         let flow_secret = state
-            .github_auth_flow_secret
+            .gitlab_auth_flow_secret
             .lock()
             .map_err(|_| "flow secret lock poisoned".to_string())?
             .clone();
         return Ok(serde_json::json!({ "running": true, "flowSecret": flow_secret }));
     }
     state
-        .github_auth_events
+        .gitlab_auth_events
         .lock()
-        .map_err(|_| "github auth events lock poisoned".to_string())?
+        .map_err(|_| "gitlab auth events lock poisoned".to_string())?
         .clear();
     let secret = generate_flow_secret();
     *state
-        .github_auth_flow_secret
+        .gitlab_auth_flow_secret
         .lock()
         .map_err(|_| "flow secret lock poisoned".to_string())? = Some(secret.clone());
-    let events = state.github_auth_events.clone();
-    let slot = state.github_auth_cancel.clone();
+    let events = state.gitlab_auth_events.clone();
+    let slot = state.gitlab_auth_cancel.clone();
     thread::spawn(move || {
         let mut emit = |payload: serde_json::Value| {
             if let Ok(mut events) = events.lock() {
                 events.push(payload);
             }
         };
-        github::run_auth_flow(&cancel, &action, &mut emit);
+        gitlab::run_auth_flow(&cancel, &action, &mut emit);
         if let Ok(mut slot) = slot.lock() {
             *slot = None;
         }
@@ -228,27 +228,27 @@ pub(crate) fn start_github_auth(request: &Request, state: &SharedState) -> Resul
     Ok(serde_json::json!({ "running": true, "flowSecret": secret }))
 }
 
-pub(crate) fn cancel_github_auth(request: &Request, state: &SharedState) -> Result<serde_json::Value, String> {
+pub(crate) fn cancel_gitlab_auth(request: &Request, state: &SharedState) -> Result<serde_json::Value, String> {
     require_trusted_origin(request)?;
     if let Some(cancel) = state
-        .github_auth_cancel
+        .gitlab_auth_cancel
         .lock()
-        .map_err(|_| "github auth lock poisoned".to_string())?
+        .map_err(|_| "gitlab auth lock poisoned".to_string())?
         .take()
     {
         cancel.store(true, Ordering::Relaxed);
     }
     *state
-        .github_auth_flow_secret
+        .gitlab_auth_flow_secret
         .lock()
         .map_err(|_| "flow secret lock poisoned".to_string())? = None;
     Ok(serde_json::json!({ "running": false }))
 }
 
-pub(crate) fn github_auth_events(request: &Request, state: &SharedState) -> Result<serde_json::Value, String> {
+pub(crate) fn gitlab_auth_events(request: &Request, state: &SharedState) -> Result<serde_json::Value, String> {
     require_trusted_origin(request)?;
     let stored_secret = state
-        .github_auth_flow_secret
+        .gitlab_auth_flow_secret
         .lock()
         .map_err(|_| "flow secret lock poisoned".to_string())?
         .clone();
@@ -259,14 +259,14 @@ pub(crate) fn github_auth_events(request: &Request, state: &SharedState) -> Resu
         }
     }
     let running = state
-        .github_auth_cancel
+        .gitlab_auth_cancel
         .lock()
-        .map_err(|_| "github auth lock poisoned".to_string())?
+        .map_err(|_| "gitlab auth lock poisoned".to_string())?
         .is_some();
     let events = state
-        .github_auth_events
+        .gitlab_auth_events
         .lock()
-        .map_err(|_| "github auth events lock poisoned".to_string())?
+        .map_err(|_| "gitlab auth events lock poisoned".to_string())?
         .clone();
     Ok(serde_json::json!({ "running": running, "events": events }))
 }
@@ -316,14 +316,14 @@ pub(crate) fn get_archive_storage_status(state: &SharedState) -> Result<serde_js
     serde_json::to_value(&*status).map_err(|e| e.to_string())
 }
 
-pub(crate) fn refresh_github_workspaces(state: &SharedState) -> Result<serde_json::Value, String> {
-    let workspaces = github::list_workspaces()?;
+pub(crate) fn refresh_gitlab_workspaces(state: &SharedState) -> Result<serde_json::Value, String> {
+    let workspaces = gitlab::list_workspaces()?;
     with_db_raw(state, |db| db.upsert_workspaces(&workspaces))?;
     // One gh call per workspace; run them side by side so the slowest owner sets the wait.
     let listed: Vec<_> = std::thread::scope(|scope| {
         let handles: Vec<_> = workspaces
             .iter()
-            .map(|workspace| scope.spawn(move || github::list_repos(&workspace.login)))
+            .map(|workspace| scope.spawn(move || gitlab::list_repos(&workspace.login)))
             .collect();
         handles.into_iter().filter_map(|handle| handle.join().ok()).collect()
     });

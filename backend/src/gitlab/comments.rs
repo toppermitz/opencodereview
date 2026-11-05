@@ -1,9 +1,5 @@
 use super::*;
 
-/// Post a review to a PR via the GitHub REST API (write). `payload_json` is the
-/// `pulls/{n}/reviews` body: `{ commit_id, event, body, comments: [...] }`.
-/// Requires `api.github.com` (there is no git-only way to post a review).
-/// Returns the created review's id (so OpenCodeReview can later dismiss its OWN review).
 #[derive(Debug, Clone)]
 pub struct IssueCommentUpsert {
     pub id: i64,
@@ -50,7 +46,6 @@ impl PreparedReview {
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
                 Err(error) => return Err(error.to_string()),
             };
-            // Only exclusive creation grants ownership of the path for cleanup.
             let prepared = Self { path };
             let written = file.write_all(payload_json.as_bytes());
             drop(file);
@@ -65,37 +60,114 @@ pub fn prepare_review(payload_json: &str) -> Result<PreparedReview, String> {
     PreparedReview::in_directory(payload_json, &std::env::temp_dir())
 }
 
-/// Execute the publication command only after local payload preparation succeeds.
+fn mr_diff_refs(full_name: &str, number: i64) -> Result<(String, String, String), String> {
+    let project = project_api_id(full_name);
+    let route = format!("projects/{project}/merge_requests/{number}");
+    let bytes = run_raw("glab", &["api", &route])?;
+    let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let refs = value.get("diff_refs").ok_or("Missing merge request diff_refs")?;
+    Ok((
+        refs.get("base_sha")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        refs.get("start_sha")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string(),
+        refs.get("head_sha")
+            .and_then(|v| v.as_str())
+            .or_else(|| value.get("sha").and_then(|v| v.as_str()))
+            .unwrap_or_default()
+            .to_string(),
+    ))
+}
+
+/// Post a review as a summary note plus per-finding discussions on the MR.
+/// Returns the summary note id (or first discussion note id) for marker recovery.
 pub fn post_review(full_name: &str, number: i64, prepared: PreparedReview) -> Result<Option<i64>, String> {
-    let route = format!("repos/{full_name}/pulls/{number}/reviews");
-    let path_str = prepared.path.to_string_lossy().to_string();
-    let result = run_raw("gh", &["api", "--method", "POST", &route, "--input", &path_str]);
-    let bytes = result.map_err(|error| format!("could not post review (GitHub API): {error}"))?;
-    let review_id = serde_json::from_slice::<serde_json::Value>(&bytes)
-        .ok()
-        .and_then(|value| value.get("id").and_then(|id| id.as_i64()));
+    let payload: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&prepared.path).map_err(|e| e.to_string())?)
+            .map_err(|e| format!("could not parse review payload: {e}"))?;
+    let body = payload.get("body").and_then(|v| v.as_str()).unwrap_or_default();
+    let comments = payload
+        .get("comments")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+    let project = project_api_id(full_name);
+    let mut review_id = None;
+
+    if !body.trim().is_empty() {
+        let note = post_mr_note(full_name, number, body)?;
+        review_id = Some(note);
+    }
+
+    if !comments.is_empty() {
+        let (base_sha, start_sha, head_sha) = mr_diff_refs(full_name, number)?;
+        for comment in comments {
+            let path = comment.get("path").and_then(|v| v.as_str()).unwrap_or_default();
+            let line = comment.get("line").and_then(|v| v.as_i64()).unwrap_or_default();
+            let side = comment.get("side").and_then(|v| v.as_str()).unwrap_or("RIGHT");
+            let text = comment.get("body").and_then(|v| v.as_str()).unwrap_or_default();
+            if path.is_empty() || text.is_empty() {
+                continue;
+            }
+            let mut position = serde_json::json!({
+                "base_sha": base_sha,
+                "start_sha": start_sha,
+                "head_sha": head_sha,
+                "position_type": "text",
+                "old_path": path,
+                "new_path": path,
+            });
+            if side.eq_ignore_ascii_case("LEFT") {
+                position["old_line"] = serde_json::json!(line);
+            } else {
+                position["new_line"] = serde_json::json!(line);
+            }
+            let discussion = serde_json::json!({ "body": text, "position": position });
+            let stamp = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or_default();
+            let path_file = std::env::temp_dir().join(format!("ocr-discussion-{}-{stamp}.json", std::process::id()));
+            std::fs::write(&path_file, discussion.to_string()).map_err(|e| e.to_string())?;
+            let route = format!("projects/{project}/merge_requests/{number}/discussions");
+            let result = run_raw(
+                "glab",
+                &[
+                    "api",
+                    "--method",
+                    "POST",
+                    &route,
+                    "--input",
+                    &path_file.to_string_lossy(),
+                ],
+            );
+            let _ = std::fs::remove_file(&path_file);
+            let bytes = result.map_err(|error| format!("could not post review discussion (GitLab API): {error}"))?;
+            if review_id.is_none() {
+                review_id = serde_json::from_slice::<serde_json::Value>(&bytes)
+                    .ok()
+                    .and_then(|value| {
+                        value
+                            .pointer("/notes/0/id")
+                            .or_else(|| value.get("id"))
+                            .and_then(|id| id.as_i64())
+                    });
+            }
+        }
+    }
     Ok(review_id)
 }
 
+fn post_mr_note(full_name: &str, number: i64, body: &str) -> Result<i64, String> {
+    write_issue_comment(full_name, number, None, body, "MR review").map(|u| u.id)
+}
+
 pub fn find_review_id_by_marker(full_name: &str, number: i64, marker: &str) -> Result<Option<i64>, String> {
-    let route = format!("repos/{full_name}/pulls/{number}/reviews?per_page=100");
-    let bytes = transport::gh_capture(&["api", "--paginate", "--slurp", &route])?;
-    let pages = serde_json::from_slice::<serde_json::Value>(&bytes)
-        .map_err(|error| error.to_string())?
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    Ok(pages
-        .into_iter()
-        .flat_map(|page| page.as_array().cloned().unwrap_or_default())
-        .find_map(|review| {
-            review
-                .get("body")
-                .and_then(|body| body.as_str())
-                .is_some_and(|body| body.contains(marker))
-                .then(|| review.get("id").and_then(|id| id.as_i64()))
-                .flatten()
-        }))
+    find_issue_comment_id_by_marker(full_name, number, marker)
 }
 
 pub fn upsert_issue_comment_by_marker(
@@ -105,7 +177,7 @@ pub fn upsert_issue_comment_by_marker(
     body: &str,
 ) -> Result<IssueCommentUpsert, String> {
     let existing = find_issue_comment_id_by_marker(full_name, number, marker)?;
-    write_issue_comment(full_name, number, existing, body, "PR summary")
+    write_issue_comment(full_name, number, existing, body, "MR summary")
 }
 
 pub(crate) fn write_issue_comment(
@@ -119,27 +191,37 @@ pub(crate) fn write_issue_comment(
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or_default();
-    let path = std::env::temp_dir().join(format!("ocr-issue-comment-{}-{stamp}.json", std::process::id()));
+    let path = std::env::temp_dir().join(format!("ocr-mr-note-{}-{stamp}.json", std::process::id()));
     std::fs::write(&path, serde_json::json!({ "body": body }).to_string()).map_err(|error| error.to_string())?;
     let path_str = path.to_string_lossy().to_string();
+    let project = project_api_id(full_name);
     let (method, route, created) = if let Some(id) = existing {
-        ("PATCH", format!("repos/{full_name}/issues/comments/{id}"), false)
+        (
+            "PUT",
+            format!("projects/{project}/merge_requests/{number}/notes/{id}"),
+            false,
+        )
     } else {
-        ("POST", format!("repos/{full_name}/issues/{number}/comments"), true)
+        (
+            "POST",
+            format!("projects/{project}/merge_requests/{number}/notes"),
+            true,
+        )
     };
-    let result = run_raw("gh", &["api", "--method", method, &route, "--input", &path_str]);
+    let result = run_raw("glab", &["api", "--method", method, &route, "--input", &path_str]);
     let _ = std::fs::remove_file(&path);
-    let bytes = result.map_err(|error| format!("could not upsert {kind} comment (GitHub API): {error}"))?;
+    let bytes = result.map_err(|error| format!("could not upsert {kind} note (GitLab API): {error}"))?;
     let id = serde_json::from_slice::<serde_json::Value>(&bytes)
         .ok()
         .and_then(|value| value.get("id").and_then(|id| id.as_i64()))
-        .ok_or_else(|| "GitHub did not return issue comment id".to_string())?;
+        .ok_or_else(|| "GitLab did not return note id".to_string())?;
     Ok(IssueCommentUpsert { id, created })
 }
 
 pub fn find_issue_comment_id_by_marker(full_name: &str, number: i64, marker: &str) -> Result<Option<i64>, String> {
-    let route = format!("repos/{full_name}/issues/{number}/comments?per_page=100");
-    let bytes = run_raw("gh", &["api", "--paginate", "--slurp", &route])?;
+    let project = project_api_id(full_name);
+    let route = format!("projects/{project}/merge_requests/{number}/notes?per_page=100");
+    let bytes = run_raw("glab", &["api", "--paginate", "--slurp", &route])?;
     let pages = serde_json::from_slice::<serde_json::Value>(&bytes)
         .map_err(|error| error.to_string())?
         .as_array()
@@ -224,7 +306,6 @@ pub fn dedupe_review_comments(full_name: &str, number: i64, comments: serde_json
     dedupe_against(&existing_ocr_comments(full_name, number), comments)
 }
 
-/// The `[Finding]` or `[Question]` title of a rendered OpenCodeReview comment.
 fn point_title(body: &str) -> Option<&str> {
     let start = ["**[Finding] ", "**[Question] "]
         .iter()
@@ -233,9 +314,6 @@ fn point_title(body: &str) -> Option<&str> {
     Some(body[start..start + end].trim())
 }
 
-/// Whether an existing comment already carries this point: the same fingerprint, or the same
-/// title in the same file (where a later push may have moved it), or a close rewording within
-/// three lines. A different point on the same line is not a duplicate.
 fn already_posted<'a>(
     existing: &'a [ExistingOcrComment],
     fingerprint: &str,
@@ -308,6 +386,39 @@ pub(crate) struct ExistingOcrComment {
 }
 
 impl ExistingOcrComment {
+    fn from_discussion_note(note: &serde_json::Value, position: Option<&serde_json::Value>) -> Option<Self> {
+        let body = note.get("body").and_then(|v| v.as_str()).unwrap_or_default();
+        if !is_ocr_comment(body) {
+            return None;
+        }
+        let author = note
+            .pointer("/author/username")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
+            .to_string();
+        let path = position
+            .and_then(|p| p.get("new_path").or_else(|| p.get("old_path")))
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_string();
+        let line = position
+            .and_then(|p| p.get("new_line").or_else(|| p.get("old_line")).and_then(|v| v.as_i64()))
+            .unwrap_or_default();
+        Some(Self {
+            author,
+            url: note
+                .get("web_url") // may be absent on notes
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string(),
+            path,
+            line,
+            fingerprint: extract_ocr_fingerprint(body),
+            title: point_title(body).map(str::to_string),
+        })
+    }
+
+    #[cfg(test)]
     fn from_github(comment: &serde_json::Value) -> Option<Self> {
         let body = comment.get("body").and_then(|v| v.as_str()).unwrap_or_default();
         if !is_ocr_comment(body) {
@@ -315,10 +426,15 @@ impl ExistingOcrComment {
         }
         let field = |pointer: &str| comment.pointer(pointer).and_then(|v| v.as_str());
         Some(Self {
-            author: field("/user/login").unwrap_or("unknown").to_string(),
-            url: field("/html_url").unwrap_or_default().to_string(),
+            author: field("/user/login")
+                .or_else(|| field("/author/username"))
+                .unwrap_or("unknown")
+                .to_string(),
+            url: field("/html_url")
+                .or_else(|| field("/web_url"))
+                .unwrap_or_default()
+                .to_string(),
             path: field("/path").unwrap_or_default().to_string(),
-            // An outdated comment has no current line; its original one still places it.
             line: ["/line", "/original_line"]
                 .iter()
                 .find_map(|pointer| comment.pointer(pointer).and_then(|v| v.as_i64()))
@@ -330,18 +446,29 @@ impl ExistingOcrComment {
 }
 
 pub(crate) fn existing_ocr_comments(full_name: &str, number: i64) -> Vec<ExistingOcrComment> {
-    let route = format!("repos/{full_name}/pulls/{number}/comments?per_page=100");
-    let Ok(bytes) = run_raw("gh", &["api", "--paginate", &route]) else {
+    let project = project_api_id(full_name);
+    let route = format!("projects/{project}/merge_requests/{number}/discussions?per_page=100");
+    let Ok(bytes) = run_raw("glab", &["api", "--paginate", "--slurp", &route]) else {
         return Vec::new();
     };
-    let Ok(comments) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+    let Ok(pages) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
         return Vec::new();
     };
-    comments
+    pages
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(ExistingOcrComment::from_github)
+        .flat_map(|page| page.as_array().into_iter().flatten())
+        .flat_map(|discussion| {
+            let position = discussion.get("position");
+            discussion
+                .get("notes")
+                .and_then(|v| v.as_array())
+                .into_iter()
+                .flatten()
+                .filter_map(move |note| ExistingOcrComment::from_discussion_note(note, position))
+                .collect::<Vec<_>>()
+        })
         .collect()
 }
 

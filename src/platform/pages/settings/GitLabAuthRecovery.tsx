@@ -1,7 +1,7 @@
 import { RefreshCw } from "lucide-react";
 import { DSButton } from "../../../components/DesignSystem";
 
-export function GitHubAuthRecovery({
+export function GitLabAuthRecovery({
   prompt,
   doneMessage,
   doneSuccess,
@@ -20,8 +20,8 @@ export function GitHubAuthRecovery({
     <div className="grid gap-3 rounded-lg border border-line bg-[color-mix(in_srgb,var(--surface-2)_70%,transparent)] p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-sm font-semibold">GitHub authorization</div>
-          <div className="mt-1 text-sm text-fg-muted">Complete the GitHub flow to refresh org access.</div>
+          <div className="text-sm font-semibold">GitLab authorization</div>
+          <div className="mt-1 text-sm text-fg-muted">Complete the GitLab flow to refresh org access.</div>
         </div>
         <DSButton onClick={onRefresh} disabled={loading}>
           <RefreshCw className="size-3.5" />
@@ -35,7 +35,7 @@ export function GitHubAuthRecovery({
           target="_blank"
           rel="noreferrer"
         >
-          Open GitHub verification page
+          Open GitLab verification page
         </a>
       )}
       {prompt.code && (

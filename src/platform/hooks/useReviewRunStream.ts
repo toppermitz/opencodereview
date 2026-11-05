@@ -15,7 +15,7 @@ export function useReviewRunStream(prId: number | null, restartKey = 0) {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const runQuery = useQuery({
     queryKey: ["reviews", prId, "run"],
-    queryFn: () => setupApi.getReviewRun(required(prId, "pull request id")),
+    queryFn: () => setupApi.getReviewRun(required(prId, "merge request id")),
     enabled: prId !== null,
     refetchInterval: streamState === "fallback" ? 1500 : streamState === "closed" ? 5000 : false,
     refetchOnWindowFocus: false,

@@ -70,8 +70,8 @@ pub(crate) fn decide_review_http(
     }
     if matches!(payload.decision.as_str(), "approve_post" | "request_changes") {
         let author = with_db_raw(state, |db| db.pr_author(pr_id))?;
-        if github::current_login().is_some_and(|login| login.eq_ignore_ascii_case(&author)) {
-            return Err("GitHub does not allow approving or requesting changes on your own PR. Use Comment, Mark reviewed, or Skip instead.".to_string());
+        if gitlab::current_login().is_some_and(|login| login.eq_ignore_ascii_case(&author)) {
+            return Err("GitLab does not allow approving or requesting changes on your own merge request. Use Comment, Mark reviewed, or Skip instead.".to_string());
         }
     }
     if payload.decision == "request_changes"
@@ -145,7 +145,7 @@ pub(crate) fn decide_review_http(
             }
             posted_review_id = publish_review_with_recovery(
                 || {
-                    let snapshot = github::snapshot_review_requests(&full_name, number)?;
+                    let snapshot = gitlab::snapshot_review_requests(&full_name, number)?;
                     with_db_raw(state, |db| {
                         db.prepare_review_request_restoration(
                             run.id,
@@ -153,14 +153,14 @@ pub(crate) fn decide_review_http(
                             post_marker.as_deref().unwrap_or_default(),
                         )
                     })?;
-                    let prepared = github::prepare_review(&post)?;
+                    let prepared = gitlab::prepare_review(&post)?;
                     with_db_raw(state, |db| {
                         validate_live_review_scope(db, run.id, &full_name, number, &run.head_sha, &repo_path)
                     })?;
                     Ok(prepared)
                 },
-                |prepared| github::post_review(&full_name, number, prepared),
-                || github::find_review_id_by_marker(&full_name, number, post_marker.as_deref().unwrap_or_default()),
+                |prepared| gitlab::post_review(&full_name, number, prepared),
+                || gitlab::find_review_id_by_marker(&full_name, number, post_marker.as_deref().unwrap_or_default()),
                 || with_db_raw(state, |db| db.reset_review_posting(run.id)),
             )?;
             if let Some(review_id) = posted_review_id {
@@ -200,8 +200,12 @@ pub(crate) fn decide_review_http(
             )
         })?;
     }
-    let github_review_url =
-        posted_review_id.map(|id| format!("https://github.com/{full_name}/pull/{number}#pullrequestreview-{id}"));
+    let github_review_url = posted_review_id.map(|id| {
+        format!(
+            "https://{}/{full_name}/-/merge_requests/{number}#note_{id}",
+            gitlab::gitlab_host()
+        )
+    });
     let (observation, effective_state, publish_current_result) =
         effective_review_result_for_decision(&payload.decision, has_findings);
     let finalized = with_db_raw(state, |db| {
@@ -288,7 +292,7 @@ pub(crate) enum ReviewTargetChange {
     Closed,
 }
 
-pub(crate) fn classify_review_target(live: &github::LivePrState, expected_head: &str) -> ReviewTargetChange {
+pub(crate) fn classify_review_target(live: &gitlab::LivePrState, expected_head: &str) -> ReviewTargetChange {
     if live.state != "OPEN" {
         ReviewTargetChange::Closed
     } else if live.head_sha != expected_head {

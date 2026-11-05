@@ -5,7 +5,7 @@ import { attributedRows, compactTokens, dayAxisLabel, pct } from "./format";
 
 /**
  * Everything the share image shows. It is built only from aggregate numbers, so no repository,
- * pull request, account or model name can reach an image people post publicly.
+ * merge request, account or model name can reach an image people post publicly.
  */
 interface ShareCardData {
   days: UsageRange;
@@ -31,7 +31,7 @@ export function shareCardData(report: UsageReport): ShareCardData {
     cacheRead: totals.cacheReadTokens > 0 ? compactTokens(totals.cacheReadTokens) : null,
     stats: [
       { label: plural(totals.runs, "Review"), value: totals.runs.toLocaleString("en-US") },
-      { label: plural(totals.prs, "Pull request"), value: totals.prs.toLocaleString("en-US") },
+      { label: plural(totals.prs, "Merge request"), value: totals.prs.toLocaleString("en-US") },
       { label: plural(totals.findingsFound, "Finding"), value: totals.findingsFound.toLocaleString("en-US") },
       { label: "Median review", value: formatFlowDuration(totals.medianDurationMs) },
     ],

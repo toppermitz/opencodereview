@@ -10,7 +10,7 @@ pub(crate) fn list_workspace_repos(state: &SharedState, login: &str) -> Result<s
 }
 
 pub(crate) fn refresh_workspace_repos(state: &SharedState, login: &str) -> Result<serde_json::Value, String> {
-    let repos = github::list_repos(login)?;
+    let repos = gitlab::list_repos(login)?;
     with_db(state, |db| db.upsert_repos(&repos))
 }
 

@@ -265,7 +265,7 @@ impl Scope {
     pub fn validate(&self) -> Result<(), Error> {
         let names = self.repository.split('/').collect::<Vec<_>>();
         if self.host.len() > 253
-            || !crate::github::is_valid_gh_host(&self.host)
+            || !crate::gitlab::is_valid_gitlab_host(&self.host)
             || self.repository.len() > 256
             || names.len() != 2
             || names.iter().any(|name| {

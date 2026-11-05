@@ -75,7 +75,7 @@ function ShareDialog({ report, onClose }: { report: UsageReport; onClose: () => 
           <div>
             <h2 className="text-heading text-fg">Share your usage</h2>
             <p className="text-small text-fg-subtle">
-              Totals only: no repository, pull request, account or model names.
+              Totals only: no repository, merge request, account or model names.
             </p>
           </div>
           <DSButton tone="ghost" size="iconSm" aria-label="Close" onClick={onClose}>

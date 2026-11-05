@@ -106,7 +106,7 @@ fn sync_monitor_all_workspaces(state: &SharedState) {
         return;
     };
     for login in logins {
-        if let Ok(repos) = github::list_repos(&login) {
+        if let Ok(repos) = gitlab::list_repos(&login) {
             let _ = with_db_raw(state, |db| db.upsert_repos(&repos));
         }
     }
@@ -118,7 +118,7 @@ pub(crate) fn run_poll_reviews(state: &SharedState) -> Result<serde_json::Value,
     sync_monitor_all_workspaces(state);
     let (repos, settings) = with_db_raw(state, |db| Ok((db.monitored_repos()?, db.settings()?)))?;
     let mut target_logins = std::collections::HashSet::new();
-    if let Some(login) = settings.review_assigned_only.then(github::current_login).flatten() {
+    if let Some(login) = settings.review_assigned_only.then(gitlab::current_login).flatten() {
         target_logins.insert(login.to_ascii_lowercase());
     }
     target_logins.extend(
@@ -142,7 +142,7 @@ pub(crate) fn run_poll_reviews(state: &SharedState) -> Result<serde_json::Value,
         let listed = if partial_listing {
             list_open_prs_for_targets(&repo.full_name, &target_logins)
         } else {
-            github::list_open_prs(&repo.full_name)
+            gitlab::list_open_prs(&repo.full_name)
         };
         match listed {
             Ok(mut prs) => {
@@ -151,7 +151,7 @@ pub(crate) fn run_poll_reviews(state: &SharedState) -> Result<serde_json::Value,
                     if prs.iter().any(|pr| pr.number == number) {
                         continue;
                     }
-                    match github::activation_pr(&repo.full_name, number) {
+                    match gitlab::activation_pr(&repo.full_name, number) {
                         Ok(Some(pr)) => prs.push(pr),
                         Ok(None) => {}
                         Err(error) => errors.push(format!("{} #{number}: {error}", repo.full_name)),
@@ -173,7 +173,7 @@ pub(crate) fn run_poll_reviews(state: &SharedState) -> Result<serde_json::Value,
                 }
                 let mut resolved_candidates = HashMap::new();
                 if let Err(error) = poll_author_commands(state, &repo, &activation_candidates, |number| {
-                    let Some(pr) = github::activation_pr(&repo.full_name, number)? else {
+                    let Some(pr) = gitlab::activation_pr(&repo.full_name, number)? else {
                         return Ok(None);
                     };
                     if pr.changed_files.is_none() {
@@ -232,7 +232,7 @@ fn reconcile_pr_lifecycle(state: &SharedState, repo: &Repo, open_numbers: &[i64]
             {
                 continue;
             }
-            let live = match github::live_pr_state(&repo.full_name, number) {
+            let live = match gitlab::live_pr_state(&repo.full_name, number) {
                 Ok(live) => live,
                 Err(_) => continue,
             };
@@ -248,9 +248,9 @@ fn reconcile_pr_lifecycle(state: &SharedState, repo: &Repo, open_numbers: &[i64]
                 }
             }
             let reason = if live.state.eq_ignore_ascii_case("MERGED") {
-                "PR merged on GitHub"
+                "MR merged on GitLab"
             } else {
-                "PR closed on GitHub"
+                "MR closed on GitLab"
             };
             with_db_raw(state, |db| {
                 db.mark_pr_terminal_with_merged_at(pr_id, &live.state, reason, live.merged_at)
@@ -269,7 +269,7 @@ fn reconcile_pr_lifecycle(state: &SharedState, repo: &Repo, open_numbers: &[i64]
 }
 
 pub(crate) fn pr_assigned_to(
-    pr: &github::GhPullRequest,
+    pr: &gitlab::GhPullRequest,
     logins: &std::collections::HashSet<String>,
     teams: &std::collections::HashSet<String>,
 ) -> bool {
@@ -293,11 +293,11 @@ pub(crate) fn pr_assigned_to(
 pub(crate) fn list_open_prs_for_targets(
     full_name: &str,
     logins: &std::collections::HashSet<String>,
-) -> Result<Vec<github::GhPullRequest>, String> {
+) -> Result<Vec<gitlab::GhPullRequest>, String> {
     let mut prs = Vec::new();
     let mut seen = std::collections::HashSet::new();
     for login in logins {
-        for pr in github::list_open_prs_for_login(full_name, login)? {
+        for pr in gitlab::list_open_prs_for_login(full_name, login)? {
             if seen.insert(pr.number) {
                 prs.push(pr);
             }

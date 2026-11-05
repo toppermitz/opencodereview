@@ -420,7 +420,7 @@ fn indexes_rust_and_python_import_edges() {
     write_file(
         &dir,
         "backend/src/review.rs",
-        "use crate::{github, indexer};\nuse crate::db::{Database, Repo};\npub mod local;\nfn review() {}\n",
+        "use crate::{gitlab, indexer};\nuse crate::db::{Database, Repo};\npub mod local;\nfn review() {}\n",
     );
     write_file(
         &dir,

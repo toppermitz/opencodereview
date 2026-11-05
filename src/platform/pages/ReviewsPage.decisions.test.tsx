@@ -14,7 +14,7 @@ vi.mock("../../services/setupApi", () => ({
     listReviewBoard: vi.fn(),
     listPendingActions: vi.fn(),
     pollStatus: vi.fn(),
-    githubAuthStatus: vi.fn(),
+    gitlabAuthStatus: vi.fn(),
     markPrReviewSeen: vi.fn().mockResolvedValue(undefined),
     getReviewFindingAudit: vi.fn(),
     saveReviewFindingSelection: vi.fn(),
@@ -490,7 +490,7 @@ describe("review result decisions", () => {
         );
         expect(container.querySelector(".review-workspace-summary button")).toBeNull();
         if (populated) {
-          const githubLink = container.querySelector<HTMLAnchorElement>(".review-workspace-github-link");
+          const githubLink = container.querySelector<HTMLAnchorElement>(".review-workspace-gitlab-link");
           expect(githubLink?.getAttribute("href")).toBe("https://github.com/example/repo/pull/42");
           expect(githubLink?.target).toBe("_blank");
         }

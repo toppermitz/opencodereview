@@ -38,7 +38,7 @@ function Connected({ name, detail }: { name: string; detail: string }) {
   );
 }
 
-/** Confirms what is connected, then offers an open pull request that still needs its first review. */
+/** Confirms what is connected, then offers an open merge request that still needs its first review. */
 export function DoneStep({ login, repoCount }: { login?: string; repoCount: number }) {
   const navigate = useNavigate();
   const providers = useQuery({ queryKey: PROVIDERS_QUERY_KEY, queryFn: () => setupApi.aiProviders() });
@@ -71,13 +71,13 @@ export function DoneStep({ login, repoCount }: { login?: string; repoCount: numb
     <>
       <StepHeader
         title="You're all set"
-        subtitle="Your code is being indexed in the background. Review a pull request that's open right now."
+        subtitle="Your code is being indexed in the background. Review a merge request that's open right now."
       />
       <ul
         className="grid overflow-hidden rounded-2xl border border-line bg-surface-muted/60 sm:grid-cols-3 sm:divide-x max-sm:divide-y divide-line"
         aria-label="Connected"
       >
-        <Connected name="GitHub" detail={login ?? "Connected"} />
+        <Connected name="GitLab" detail={login ?? "Connected"} />
         <Connected name="AI plan" detail={plans.join(", ") || "Connected"} />
         <Connected name="Repositories" detail={`${repoCount} selected`} />
       </ul>
@@ -85,13 +85,13 @@ export function DoneStep({ login, repoCount }: { login?: string; repoCount: numb
         {finding ? (
           <li className="flex items-center gap-2 px-4 py-4 text-small text-fg-muted">
             <BrandLoadingIcon />
-            Looking for open pull requests…
+            Looking for open merge requests…
           </li>
         ) : pending.length === 0 ? (
           <li className="px-4 py-4 text-small text-fg-muted">
             {open.length
-              ? "Every open pull request is already reviewed. New ones are reviewed as soon as they're opened."
-              : "No open pull requests yet. New ones are reviewed as soon as they're opened."}
+              ? "Every open merge request is already reviewed. New ones are reviewed as soon as they're opened."
+              : "No open merge requests yet. New ones are reviewed as soon as they're opened."}
           </li>
         ) : (
           pending.map((pr) => (

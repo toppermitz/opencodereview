@@ -16,8 +16,8 @@ vi.mock("../services/setupApi", () => ({
   setupApi: {
     setupStatus: vi.fn(),
     aiProviders: vi.fn(),
-    githubAuthEvents: vi.fn(),
-    githubAuthStart: vi.fn(),
+    gitlabAuthEvents: vi.fn(),
+    gitlabAuthStart: vi.fn(),
     claudeAuthStart: vi.fn(),
     claudeAuthEvents: vi.fn(),
     claudeAuthInput: vi.fn(),
@@ -68,9 +68,9 @@ const repo = (id: number, name: string, change: Partial<Repo> = {}): Repo => ({
   pollErrorAt: null,
   ...change,
 });
-const github = { loggedIn: true, login: "octo", host: "github.com", detail: "Connected" };
+const github = { loggedIn: true, login: "octo", host: "gitlab.example.com", detail: "Connected" };
 const status = (change: Partial<SetupStatus>): SetupStatus => ({
-  auth: { loggedIn: false, login: null, host: "github.com", detail: "Not connected" },
+  auth: { loggedIn: false, login: null, host: "gitlab.example.com", detail: "Not connected" },
   workspaces: [],
   selectedWorkspaces: [],
   selectedRepos: [],
@@ -104,7 +104,7 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   vi.clearAllMocks();
-  vi.mocked(setupApi.githubAuthEvents).mockResolvedValue({ running: false, events: [] });
+  vi.mocked(setupApi.gitlabAuthEvents).mockResolvedValue({ running: false, events: [] });
 });
 
 afterEach(async () => {
@@ -136,12 +136,12 @@ async function render(setup: SetupStatus) {
 describe("onboarding", () => {
   it("starts with GitHub and keeps Continue disabled until it is connected", async () => {
     await render(status({}));
-    expect(container.querySelector("h1")?.textContent).toBe("Connect GitHub");
+    expect(container.querySelector("h1")?.textContent).toBe("Connect GitLab");
     expect(container.querySelector('[aria-label="Step 1 of 4"] [aria-current="step"]')).not.toBeNull();
-    expect(container.querySelector('[aria-label="GitHub"]')?.textContent).toContain("Not connected");
+    expect(container.querySelector('[aria-label="GitLab"]')?.textContent).toContain("Not connected");
     expect(button("Continue")?.disabled).toBe(true);
     await act(async () => button("Connect")!.click());
-    expect(setupApi.githubAuthStart).toHaveBeenCalled();
+    expect(setupApi.gitlabAuthStart).toHaveBeenCalled();
   });
 
   it("explains an unreachable server instead of showing a raw fetch error", async () => {
@@ -300,7 +300,7 @@ describe("onboarding", () => {
     expect(container.textContent).toContain("2 selected");
   });
 
-  it("confirms the setup and starts the first review on an open pull request", async () => {
+  it("confirms the setup and starts the first review on an open merge request", async () => {
     const pr = {
       id: 9,
       repoFullName: "acme/app",

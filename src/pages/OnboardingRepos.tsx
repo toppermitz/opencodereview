@@ -10,7 +10,7 @@ import { ctaPrimary, ctaSecondary, StepActions, StepHeader } from "./OnboardingP
 
 const owner = (repo: Repo) => repo.fullName.split("/")[0] || repo.owner;
 
-/** Every repository the GitHub sign-in can see, across all of its organizations, in one list. */
+/** Every repository the GitLab sign-in can see, across all of its organizations, in one list. */
 export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (count: number) => void }) {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<Set<number> | null>(null);
@@ -20,7 +20,7 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
   const logins = (workspaces.data ?? []).map((workspace) => workspace.login);
   const repos = useQuery({
     queryKey: ["setup", "repos", logins.join("|")],
-    // Refreshing the workspaces already pulled every repository from GitHub; read them back.
+    // Refreshing the workspaces already pulled every repository from GitLab; read them back.
     queryFn: async () =>
       (await Promise.all(logins.map((login) => setupApi.listWorkspaceRepos(login).catch(() => [] as Repo[])))).flat(),
     enabled: logins.length > 0,
@@ -62,7 +62,7 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
     <>
       <StepHeader
         title="Pick your repositories"
-        subtitle="OpenCodeReview indexes these and reviews their new pull requests."
+        subtitle="OpenCodeReview indexes these and reviews their new merge requests."
       />
       <section className="flex min-h-0 flex-col gap-2.5" aria-label="Repositories">
         <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-muted/60 px-3 focus-within:border-line-strong">
@@ -99,7 +99,7 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
             </li>
           ) : visible.length === 0 ? (
             <li className="p-6 text-center text-small text-fg-muted">
-              {all.length ? "No repositories match your search." : "No repositories found for this GitHub account."}
+              {all.length ? "No repositories match your search." : "No repositories found for this GitLab account."}
             </li>
           ) : (
             visible.map((repo) => {

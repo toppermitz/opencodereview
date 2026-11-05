@@ -1,5 +1,5 @@
 use super::*;
-use crate::github::StatusCommentApi;
+use crate::gitlab::StatusCommentApi;
 use std::collections::BTreeMap;
 
 const QUEUE_GENERATION_PREFIX: &str = "<!-- ocr-queue:v1 generation=";
@@ -96,7 +96,7 @@ pub(crate) fn reconcile_queue_acknowledgements_with(
 }
 
 pub(crate) fn reconcile_queue_acknowledgements(db: &Database) {
-    let _ = reconcile_queue_acknowledgements_with(db, &mut github::GitHubStatusComments);
+    let _ = reconcile_queue_acknowledgements_with(db, &mut gitlab::GitLabStatusComments);
 }
 
 /// Per-key background task: a request while a pass for the same key runs makes

@@ -45,7 +45,7 @@ impl Fixture {
     fn eligible(&self) -> HashMap<i64, (i64, String)> {
         HashMap::from([(7, (self.pr_id, "abc1234567".into()))])
     }
-    fn scan(&self, comments: Vec<github::ConversationComment>, author: bool) -> Result<(), String> {
+    fn scan(&self, comments: Vec<gitlab::ConversationComment>, author: bool) -> Result<(), String> {
         let mut comments = Some(comments);
         scan_activation_pages(
             &self.db,
@@ -73,7 +73,7 @@ impl Drop for Fixture {
         let _ = std::fs::remove_dir_all(&self.root);
     }
 }
-fn comment(id: i64) -> github::ConversationComment {
+fn comment(id: i64) -> gitlab::ConversationComment {
     serde_json::from_value(serde_json::json!({"id":id,"node_id":format!("node{id}"),"body":"/ocr review","created_at":"2099-01-01T00:00:00Z","updated_at":"2099-01-01T00:00:00Z","issue_url":"https://api.github.com/repos/acme/repo/issues/7","user":{"id":123,"type":"User"}})).unwrap()
 }
 
@@ -103,7 +103,7 @@ fn activation_exact_parser_rejects_edits_history_bots_and_other_routes() {
     assert_eq!(
         comment(1).command_number(
             "acme/repo",
-            github::iso8601_to_epoch_ms("2099-01-01T00:00:00Z").unwrap()
+            gitlab::iso8601_to_epoch_ms("2099-01-01T00:00:00Z").unwrap()
         ),
         None
     );
@@ -119,7 +119,7 @@ fn activation_requires_author_and_persists_queue_and_marker() {
     let (marker, body) = f.activation_marker_body();
     assert!(marker.contains("ocr-activation:v1"));
     assert!(body.contains("### ⏳ OpenCodeReview is reviewing this pull request"));
-    assert!(body.contains("[`abc12345`](https://github.com/acme/repo/commit/abc1234567)"));
+    assert!(body.contains("[`abc12345`](https://gitlab.example.com/acme/repo/-/commit/abc1234567)"));
     let reopened = crate::db::Db::for_test_at(f.root.join("test.sqlite")).open().unwrap();
     assert!(reopened.pr_comment_activated(1, 7).unwrap());
     assert_eq!(reopened.queued_pr_ids().unwrap(), vec![f.pr_id]);
@@ -398,7 +398,7 @@ fn fixture_state(f: &Fixture) -> SharedState {
     }))
 }
 
-fn snapshot(title: &str, head: &str, files: Option<i64>) -> github::GhPullRequest {
+fn snapshot(title: &str, head: &str, files: Option<i64>) -> gitlab::GhPullRequest {
     serde_json::from_value(serde_json::json!({"number":7,"title":title,"author":{"login":"author"},"isDraft":true,"headRefOid":head,"baseRefOid":"base","baseRefName":"main","changedFiles":files})).unwrap()
 }
 
@@ -503,7 +503,7 @@ fn queued_and_failed_prs_leave_the_board_once_they_match_an_ignored_keyword() {
         let mut settings = f.db.settings().unwrap();
         settings.auto_skip_keywords = vec!["chore(deps)".into()];
         let targets = std::collections::HashSet::new();
-        let pr: github::GhPullRequest = serde_json::from_value(serde_json::json!({"number":7,"title":"chore(deps): bump undici","author":{"login":"author"},"isDraft":false,"headRefOid":"abc1234567","baseRefOid":"base","baseRefName":"main","changedFiles":1})).unwrap();
+        let pr: gitlab::GhPullRequest = serde_json::from_value(serde_json::json!({"number":7,"title":"chore(deps): bump undici","author":{"login":"author"},"isDraft":false,"headRefOid":"abc1234567","baseRefOid":"base","baseRefName":"main","changedFiles":1})).unwrap();
         let polled = poll_one_pr(&state, &f.repo, &settings, &targets, &targets, &pr, false).unwrap();
         assert!(!polled.queue_eligible);
         assert_eq!(f.db.pr_state(1, 7).unwrap().unwrap().1, "auto_skipped");

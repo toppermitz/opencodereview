@@ -84,10 +84,10 @@ pub(crate) fn is_public_route(method: &str, path: &str) -> bool {
     matches!(
         (method, path),
         ("GET", "/health")
-            | ("GET", "/auth/github/status")
-            | ("POST", "/auth/github/start")
-            | ("POST", "/auth/github/cancel")
-            | ("GET", "/auth/github/events")
+            | ("GET", "/auth/gitlab/status")
+            | ("POST", "/auth/gitlab/start")
+            | ("POST", "/auth/gitlab/cancel")
+            | ("GET", "/auth/gitlab/events")
             | ("GET", "/auth/claude/status")
             | ("POST", "/auth/claude/start")
             | ("GET", "/auth/claude/events")

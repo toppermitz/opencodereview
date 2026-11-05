@@ -133,7 +133,7 @@ pub(crate) fn start_review_job_with_intent(
             })? {
                 return Err("cancelled".into());
             }
-            let live = github::live_pr_state_cancellable(&full_name, number, &cancel)?;
+            let live = gitlab::live_pr_state_cancellable(&full_name, number, &cancel)?;
             match classify_review_target(&live, &head_sha) {
                 ReviewTargetChange::Current => {}
                 change => {
@@ -162,7 +162,7 @@ pub(crate) fn start_review_job_with_intent(
                 }
                 db.last_review_scope(pr_id)
             })?;
-            let (pr_title, pr_body) = github::pr_description(&full_name, number)?;
+            let (pr_title, pr_body) = gitlab::pr_description(&full_name, number)?;
             if cancel.load(Ordering::Relaxed) {
                 return Err("cancelled".to_string());
             }

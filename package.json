@@ -1,7 +1,7 @@
 {
   "name": "opencodereview",
   "version": "0.2.0",
-  "description": "Self-hosted AI code review for GitHub pull requests.",
+  "description": "Self-hosted AI code review for GitLab Self-Hosted merge requests.",
   "license": "PolyForm-Small-Business-1.0.0",
   "author": "BRIDG LABS LTDA (https://github.com/BridgLabs)",
   "homepage": "https://github.com/BridgLabs/opencodereview#readme",

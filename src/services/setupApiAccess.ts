@@ -2,7 +2,7 @@ import type {
   AccountUsage,
   AiAccount,
   AiProvider,
-  GitHubAuthStatus,
+  GitLabAuthStatus,
   IndexGraph,
   Repo,
   RepoIndexStatus,
@@ -13,28 +13,28 @@ import type {
 import type { IndexJobsResponse } from "./setupApiTransport";
 import { http } from "./setupApiTransport";
 
-let githubFlowSecret: string | null = sessionStorage.getItem("ocr.githubFlowSecret");
+let gitlabFlowSecret: string | null = sessionStorage.getItem("ocr.gitlabFlowSecret");
 let claudeFlowSecret: string | null = sessionStorage.getItem("ocr.claudeFlowSecret");
 let codexFlowSecret: string | null = sessionStorage.getItem("ocr.codexFlowSecret");
 export const setupApiAccess = {
-  githubAuthStatus: () => http<GitHubAuthStatus>("/auth/github/status"),
-  githubAuthStart: async (action: "login" | "refresh" = "login") => {
-    const result = await http<{ running: boolean; flowSecret?: string }>("/auth/github/start", {
+  gitlabAuthStatus: () => http<GitLabAuthStatus>("/auth/gitlab/status"),
+  gitlabAuthStart: async (action: "login" | "refresh" = "login") => {
+    const result = await http<{ running: boolean; flowSecret?: string }>("/auth/gitlab/start", {
       method: "POST",
       body: JSON.stringify({ action }),
     });
     if (result.flowSecret) {
-      githubFlowSecret = result.flowSecret;
-      sessionStorage.setItem("ocr.githubFlowSecret", result.flowSecret);
+      gitlabFlowSecret = result.flowSecret;
+      sessionStorage.setItem("ocr.gitlabFlowSecret", result.flowSecret);
     }
   },
-  githubAuthEvents: () => {
+  gitlabAuthEvents: () => {
     const headers: Record<string, string> = { "content-type": "application/json" };
-    if (githubFlowSecret) headers["x-flow-secret"] = githubFlowSecret;
+    if (gitlabFlowSecret) headers["x-flow-secret"] = gitlabFlowSecret;
     return http<{
       running: boolean;
       events: Array<{ kind: string; code?: string; url?: string; success?: boolean; message?: string }>;
-    }>("/auth/github/events", { headers });
+    }>("/auth/gitlab/events", { headers });
   },
   listAccounts: () => http<AiAccount[]>("/accounts"),
   accountUsage: () => http<AccountUsage[]>("/accounts/usage"),
@@ -123,7 +123,7 @@ export const setupApiAccess = {
     if (codexFlowSecret) headers["x-flow-secret"] = codexFlowSecret;
     return http<{ running: boolean }>("/auth/codex/cancel", { method: "POST", headers, body: JSON.stringify({}) });
   },
-  githubAuthLogout: () => http<{ ok: boolean }>("/auth/github/logout", { method: "POST", body: JSON.stringify({}) }),
+  gitlabAuthLogout: () => http<{ ok: boolean }>("/auth/gitlab/logout", { method: "POST", body: JSON.stringify({}) }),
   getSettings: () => http<Settings>("/settings"),
   saveSettingsBatch: (payload: {
     settings: Record<string, string>;

@@ -393,9 +393,9 @@ impl RetentionCoordinator {
             if cancel.load(std::sync::atomic::Ordering::Relaxed) {
                 return Err("Merge backfill cancelled".into());
             }
-            if let Err(e) = self.query_github_batch(batch, db, cancel) {
+            if let Err(e) = self.query_gitlab_batch(batch, db, cancel) {
                 failed = true;
-                eprintln!("Batch GitHub merge query error: {e}");
+                eprintln!("Batch GitLab merge query error: {e}");
                 // Apply backoff to this batch
                 if let Ok(mut b) = self.backoff.lock() {
                     let backoff_until = Instant::now() + Duration::from_secs(300);
@@ -438,71 +438,53 @@ impl RetentionCoordinator {
         Ok(selected)
     }
 
-    fn query_github_batch(
+    fn query_gitlab_batch(
         &self,
         batch: &[(i64, String, i64)],
         db: &Database,
         cancel: &AtomicBool,
     ) -> Result<(), String> {
-        let mut fields = Vec::new();
-        for (index, (_pr_id, full_name, number)) in batch.iter().enumerate() {
-            let (owner, repo) = full_name
-                .split_once('/')
-                .ok_or_else(|| "Invalid repository identity".to_string())?;
-            fields.push(format!(
-                "p{index}:repository(owner:{},name:{}){{pullRequest(number:{}){{state mergedAt}}}}",
-                serde_json::json!(owner),
-                serde_json::json!(repo),
-                number
-            ));
-        }
-
-        let query = format!("query{{{}}}", fields.join(" "));
-        let response_bytes =
-            crate::github::gh_capture_cancellable(&["api", "graphql", "-f", &format!("query={query}")], cancel)?;
-
-        let response: serde_json::Value =
-            serde_json::from_slice(&response_bytes).map_err(|e| format!("Invalid JSON from GitHub GraphQL: {e}"))?;
-
-        let mut incomplete = response
-            .get("errors")
-            .and_then(|value| value.as_array())
-            .is_some_and(|errors| !errors.is_empty());
-        if let Some(data) = response.get("data").and_then(|d| d.as_object()) {
-            for (index, (pr_id, _full_name, _number)) in batch.iter().enumerate() {
-                let key = format!("p{index}");
-                let pr_node = data
-                    .get(&key)
-                    .and_then(|v| v.get("pullRequest"))
-                    .filter(|value| value.is_object());
-                let Some(pr) = pr_node else {
+        let mut incomplete = false;
+        for (pr_id, full_name, number) in batch {
+            if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                return Err("Merge backfill cancelled".into());
+            }
+            let project = crate::gitlab::project_api_id(full_name);
+            let route = format!("projects/{project}/merge_requests/{number}");
+            let response_bytes = match crate::gitlab::glab_capture_cancellable(&["api", &route], cancel) {
+                Ok(bytes) => bytes,
+                Err(_) => {
                     incomplete = true;
-                    // This specific PR or repo had an error or was null; back off on it
                     if let Ok(mut b) = self.backoff.lock() {
                         b.insert(*pr_id, Instant::now() + Duration::from_secs(600));
                     }
                     continue;
-                };
-
-                let state = pr["state"].as_str().unwrap_or("");
-                if state.eq_ignore_ascii_case("MERGED") {
-                    let merged_at = pr["mergedAt"]
-                        .as_str()
-                        .and_then(crate::github::iso8601_to_epoch_ms)
-                        .ok_or("GitHub returned a merged PR without a valid merge timestamp")?;
+                }
+            };
+            let mr: serde_json::Value =
+                serde_json::from_slice(&response_bytes).map_err(|e| format!("Invalid JSON from GitLab API: {e}"))?;
+            let state = mr.get("state").and_then(|v| v.as_str()).unwrap_or("");
+            match state {
+                "merged" => {
+                    let merged_at = mr
+                        .get("merged_at")
+                        .and_then(|v| v.as_str())
+                        .and_then(crate::gitlab::iso8601_to_epoch_ms)
+                        .ok_or("GitLab returned a merged MR without a valid merge timestamp")?;
                     db.set_pr_merged_at(*pr_id, merged_at)?;
-                } else if state.eq_ignore_ascii_case("CLOSED") {
-                    db.mark_pr_terminal(*pr_id, "closed", "PR closed on GitHub")?;
-                } else if !state.eq_ignore_ascii_case("OPEN") {
+                }
+                "closed" => {
+                    db.mark_pr_terminal(*pr_id, "closed", "MR closed on GitLab")?;
+                }
+                "opened" | "locked" => {}
+                _ => {
                     incomplete = true;
                 }
             }
-        } else {
-            return Err("GitHub GraphQL returned no data object".to_string());
         }
 
         if incomplete {
-            Err("GitHub returned incomplete merge information".into())
+            Err("GitLab returned incomplete merge information".into())
         } else {
             Ok(())
         }

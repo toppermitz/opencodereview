@@ -2,7 +2,7 @@ import { ChevronDown, RotateCcw } from "lucide-react";
 import { type ComponentProps, useEffect, useId, useRef, useState } from "react";
 import { BrandLoading } from "../../../components/BrandLoading";
 import { DSBadge, DSButton, DSEmptyState, DSError } from "../../../components/DesignSystem";
-import { GitHubMark } from "../../../components/GitHubMark";
+import { GitLabMark } from "../../../components/GitLabMark";
 import { Markdown } from "../../../components/Markdown";
 import type { ReviewCard, ReviewContextPlan, ReviewRun, UsageStats } from "../../../types";
 import { ArrowTabs } from "../../components/ArrowTabs";
@@ -89,21 +89,21 @@ export function ReviewDetail({
       label: allFindingsDuplicated ? "Mark covered" : "Post comments",
       description: allFindingsDuplicated
         ? "Record that another run already posted them."
-        : "Share findings without a GitHub verdict.",
+        : "Share findings without a GitLab verdict.",
       tone: "secondary",
       enabled: hasFindings || Boolean(suggestions),
     },
     {
       value: "approve_post",
       label: "Approve",
-      description: "Approve this pull request on GitHub.",
+      description: "Approve this merge request on GitLab.",
       tone: "primary",
       enabled: !hasFindings && !ownPr,
     },
     {
       value: "mark_reviewed",
       label: "Mark reviewed",
-      description: "Close locally without posting to GitHub.",
+      description: "Close locally without posting to GitLab.",
       tone: "secondary",
       enabled: ownPr || !hasActionableFindings || allFindingsDuplicated,
     },
@@ -132,10 +132,10 @@ export function ReviewDetail({
               href={card.url}
               target="_blank"
               rel="noreferrer"
-              aria-label="Open on GitHub"
-              title="Open on GitHub"
+              aria-label="Open on GitLab"
+              title="Open on GitLab"
             >
-              <GitHubMark className="size-4" />
+              <GitLabMark className="size-4" />
             </a>
           )}
           {canCancel ? (
@@ -247,7 +247,7 @@ export function ReviewDetail({
                     )}
                   </div>
                   <p className="m-0 mt-2 text-sm text-fg-muted">
-                    Review uses the immediate base branch, so comments target only this PR's delta.
+                    Review uses the immediate base branch, so comments target only this MR's delta.
                   </p>
                 </div>
               )}
@@ -304,7 +304,7 @@ export function ReviewDetail({
                                 {" "}
                                 ·{" "}
                                 <a className="underline" href={comment.duplicateUrl} target="_blank" rel="noreferrer">
-                                  View on GitHub
+                                  View on GitLab
                                 </a>
                               </>
                             )}
@@ -348,7 +348,7 @@ export function ReviewDetail({
         >
           <p className="m-0 text-small text-fg-muted">
             {ownPr
-              ? "This is your PR. GitHub blocks self-approval and request-changes; mark reviewed locally or skip."
+              ? "This is your MR. GitLab blocks self-approval and request-changes; mark reviewed locally or skip."
               : allFindingsDuplicated
                 ? `All ${duplicateCount} finding${duplicateCount === 1 ? "" : "s"} already posted by another OpenCodeReview run. Mark covered locally.`
                 : hasQuestions && !hasActionableFindings
@@ -357,9 +357,9 @@ export function ReviewDetail({
                     ? duplicateCount > 0
                       ? `Post new findings; ${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"} will be suppressed.`
                       : hasBodyFindings && comments.length === 0
-                        ? "Post findings to GitHub as a review comment, or skip without posting."
-                        : "Post inline findings to GitHub, or skip without posting."
-                    : "No findings. Approve on GitHub, mark reviewed locally, or skip."}
+                        ? "Post findings to GitLab as a review comment, or skip without posting."
+                        : "Post inline findings to GitLab, or skip without posting."
+                    : "No findings. Approve on GitLab, mark reviewed locally, or skip."}
           </p>
           <div className="review-decision-controls flex items-center gap-3">
             <ReviewDecisionCarousel

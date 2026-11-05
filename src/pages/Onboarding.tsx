@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BrandLoading } from "../components/BrandLoading";
 import { BrandMark } from "../components/BrandMark";
 import { setupApi } from "../services/setupApi";
-import { GithubStep, PlanStep } from "./OnboardingAccess";
+import { GitlabStep, PlanStep } from "./OnboardingAccess";
 import { DoneStep } from "./OnboardingDone";
 import { ctaPrimary, StepActions, StepDots, StepHeader } from "./OnboardingParts";
 import { ReposStep } from "./OnboardingRepos";
@@ -54,7 +54,7 @@ export function Onboarding() {
           <>
             <StepDots step={step} total={4} />
             {step === 1 && (
-              <GithubStep
+              <GitlabStep
                 connected={Boolean(status.data?.auth.loggedIn)}
                 login={status.data?.auth.login ?? undefined}
                 onChanged={refresh}

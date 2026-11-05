@@ -9,7 +9,7 @@ pub(crate) struct PolledPr {
 
 #[cfg(not(test))]
 fn list_pr_files(full_name: &str, number: i64) -> Result<Vec<String>, String> {
-    github::pr_file_paths(full_name, number)
+    gitlab::pr_file_paths(full_name, number)
 }
 
 #[cfg(test)]
@@ -44,7 +44,7 @@ pub(crate) enum FileListing {
 pub(crate) fn file_count_for_limit(
     state: &SharedState,
     repo: &Repo,
-    pr: &github::GhPullRequest,
+    pr: &gitlab::GhPullRequest,
     limit: i64,
     list_files: impl FnOnce(&str, i64) -> Result<Vec<String>, String>,
 ) -> Option<FileCount> {
@@ -99,7 +99,7 @@ pub(crate) fn poll_one_pr(
     settings: &crate::db::Settings,
     target_logins: &std::collections::HashSet<String>,
     current_teams: &std::collections::HashSet<String>,
-    pr: &github::GhPullRequest,
+    pr: &gitlab::GhPullRequest,
     allow_auto_start: bool,
 ) -> Result<PolledPr, String> {
     let matched_keyword = settings
@@ -169,7 +169,7 @@ pub(crate) fn poll_one_pr(
                     &AtomicBool::new(false),
                 )
         });
-    let github_updated_at = pr.updated_at.as_deref().and_then(github::iso8601_to_epoch_ms);
+    let github_updated_at = pr.updated_at.as_deref().and_then(gitlab::iso8601_to_epoch_ms);
     let (pr_id, effective_lane, decided) = with_db_raw(state, |db| {
         let prior = db.pr_poll_state(repo.id, pr.number)?;
         let pr_id = db.upsert_pull_request_with_github_updated_at(
@@ -182,7 +182,7 @@ pub(crate) fn poll_one_pr(
                     .author
                     .avatar_url
                     .clone()
-                    .or_else(|| Some(github::avatar_url(&pr.author.login))),
+                    .or_else(|| Some(gitlab::avatar_url(&pr.author.login))),
                 is_draft: pr.is_draft,
                 head_sha: pr.head_ref_oid.clone(),
                 base_sha: pr.base_ref_oid.clone(),

@@ -22,7 +22,7 @@ vi.mock("../../services/setupApi", () => ({
     deleteAccount: vi.fn(),
     setupStatus: vi.fn(),
     claudeAuthStatus: vi.fn(),
-    githubAuthLogout: vi.fn(),
+    gitlabAuthLogout: vi.fn(),
     saveSettingsBatch: vi.fn(),
   },
 }));
@@ -116,7 +116,7 @@ beforeEach(async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   client = new QueryClient({ defaultOptions: { queries: { enabled: false, retry: false, staleTime: Infinity } } });
   client.setQueryData(["setup", "status"], {
-    auth: { loggedIn: true, detail: "", login: "developer", host: "github.com" },
+    auth: { loggedIn: true, detail: "", login: "developer", host: "gitlab.example.com" },
     workspaces: [workspace],
     selectedWorkspaces: [workspace],
     selectedRepos: [repos[0]],
@@ -182,7 +182,7 @@ async function inputValue(input: HTMLInputElement, value: string) {
 }
 
 describe("settings workspace", () => {
-  it.each([["GitHub", "githubAuthLogout"]] as const)(
+  it.each([["GitLab", "gitlabAuthLogout"]] as const)(
     "signs out of %s only after confirmation and returns to onboarding",
     async (title, method) => {
       vi.mocked(setupApi.setupStatus).mockResolvedValue(
@@ -212,16 +212,21 @@ describe("settings workspace", () => {
     },
   );
 
-  it("offers no GitHub sign out when access comes from GH_TOKEN", async () => {
+  it("offers no GitHub sign out when access comes from GITLAB_TOKEN", async () => {
     client.setQueryData(["setup", "status"], {
       ...client.getQueryData<object>(["setup", "status"]),
-      auth: { loggedIn: true, detail: "gh authenticated via GH_TOKEN", login: "developer", host: "github.com" },
+      auth: {
+        loggedIn: true,
+        detail: "glab authenticated via GITLAB_TOKEN",
+        login: "developer",
+        host: "gitlab.example.com",
+      },
     });
     await navigate("Integrations");
     const row = Array.from(container.querySelectorAll("#settings-integrations .settings-row")).find(
-      (item) => item.querySelector("h3")?.textContent === "GitHub",
+      (item) => item.querySelector("h3")?.textContent === "GitLab",
     )!;
-    expect(row.textContent).toContain("GH_TOKEN from environment");
+    expect(row.textContent).toContain("GITLAB_TOKEN from environment");
     expect(Array.from(row.querySelectorAll("button")).some((item) => item.textContent === "Sign out")).toBe(false);
   });
 

@@ -82,7 +82,7 @@ export function UsageBreakdown({ report, query }: { report: UsageReport; query: 
   const [tab, setTab] = useState<TabId>("prs");
   const showAccounts = attributedRows(report.byAccount).length >= 2;
   const tabs = [
-    { id: "prs", label: "Pull requests" },
+    { id: "prs", label: "Merge requests" },
     { id: "repos", label: "Repositories" },
     { id: "models", label: "Models" },
     ...(showAccounts ? [{ id: "accounts", label: "Accounts" }] : []),

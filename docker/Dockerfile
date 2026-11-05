@@ -19,13 +19,24 @@ FROM debian:bookworm-slim
 RUN apt-get update \
   && apt-get upgrade -y --no-install-recommends \
   && apt-get install -y --no-install-recommends ca-certificates curl git bubblewrap \
-  && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
-  && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
-  && apt-get update \
-  && apt-get install -y --no-install-recommends gh \
   && rm -rf /var/lib/apt/lists/*
 ARG TARGETARCH
+ARG GLAB_VERSION=1.128.0
+ARG GLAB_SHA256_AMD64=bc024819e7598b19429a199cd87f640d98b2b67416d8ad796f19e4260b57a7c7
+ARG GLAB_SHA256_ARM64=60d0512085a8c1be7c5ef51aa7e4ee28213444cea0376b3260707d90489199ea
+RUN case "$TARGETARCH" in \
+      amd64) glab_arch=amd64; checksum="$GLAB_SHA256_AMD64" ;; \
+      arm64) glab_arch=arm64; checksum="$GLAB_SHA256_ARM64" ;; \
+      *) echo "Unsupported glab architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac \
+  && tarball="glab_${GLAB_VERSION}_linux_${glab_arch}.tar.gz" \
+  && curl -fsSL --retry 3 "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/${tarball}" -o "/tmp/${tarball}" \
+  && printf '%s  /tmp/%s\n' "$checksum" "$tarball" | sha256sum -c - \
+  && tar -xzf "/tmp/${tarball}" -C /tmp \
+  && install -m 0755 /tmp/bin/glab /usr/local/bin/glab \
+  && rm -rf "/tmp/${tarball}" /tmp/bin \
+  && glab version | grep -F "${GLAB_VERSION}"
+LABEL ai.glab.cli.version="${GLAB_VERSION}"
 ARG CLAUDE_CLI_VERSION=2.1.292
 ARG CLAUDE_CLI_SHA256_AMD64=a967e7b1d8b4e47ee421d5433027880347952b0c0857abf880e2c942a4ec93b3
 ARG CLAUDE_CLI_SHA256_ARM64=24caa9e6ff13bf227049a2626f1c816fc895023050f0ec3b12dbf14d897367e0

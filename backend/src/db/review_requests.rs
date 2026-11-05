@@ -4,7 +4,7 @@ pub(crate) struct ReviewRequestRestoration {
     pub run_id: i64,
     pub full_name: String,
     pub number: i64,
-    pub snapshot: crate::github::ReviewRequestSnapshot,
+    pub snapshot: crate::gitlab::ReviewRequestSnapshot,
     pub marker: String,
     pub review_id: Option<i64>,
     pub attempts: i64,
@@ -14,7 +14,7 @@ impl Database {
     pub(crate) fn prepare_review_request_restoration(
         &self,
         run_id: i64,
-        snapshot: &crate::github::ReviewRequestSnapshot,
+        snapshot: &crate::gitlab::ReviewRequestSnapshot,
         marker: &str,
     ) -> Result<(), String> {
         let json = serde_json::to_string(snapshot).map_err(|e| e.to_string())?;
@@ -127,7 +127,7 @@ impl Database {
 mod tests {
     use super::*;
 
-    fn fixture() -> (Database, i64, crate::github::ReviewRequestSnapshot) {
+    fn fixture() -> (Database, i64, crate::gitlab::ReviewRequestSnapshot) {
         let db = Db::for_test().open().unwrap();
         db.ensure_temp_repo_for_index(1, "acme/api").unwrap();
         db.conn.execute("INSERT INTO pull_requests (id,repo_id,number,title,author,head_sha,last_synced_at,created_at,updated_at) VALUES (1,1,1,'PR','author','abc',1,1,1)", []).unwrap();

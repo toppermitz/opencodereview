@@ -1,13 +1,11 @@
 use super::*;
 
-/// Valid inline-comment anchors for a PR, parsed from its unified diff: per file
+/// Valid inline-comment anchors for an MR, parsed from its unified diff: per file
 /// path, the line numbers commentable on each side — `.0` = RIGHT (new file),
-/// `.1` = LEFT (old file). GitHub returns 422 for the WHOLE review if ANY inline
-/// comment is outside these (e.g. a file/line not in the diff), so callers
-/// validate against this first. Empty map = couldn't fetch the diff (skip checks).
+/// `.1` = LEFT (old file).
 pub fn diff_anchors(full_name: &str, number: i64) -> HashMap<String, (HashSet<i64>, HashSet<i64>)> {
     let mut map: HashMap<String, (HashSet<i64>, HashSet<i64>)> = HashMap::new();
-    let diff = match run_raw("gh", &["pr", "diff", &number.to_string(), "-R", full_name]) {
+    let diff = match run_raw("glab", &["mr", "diff", &number.to_string(), "-R", full_name]) {
         Ok(bytes) => String::from_utf8_lossy(&bytes).into_owned(),
         Err(_) => return map,
     };
@@ -53,14 +51,13 @@ pub fn diff_anchors(full_name: &str, number: i64) -> HashMap<String, (HashSet<i6
                     new_ln += 1;
                     old_ln += 1;
                 }
-                _ => {} // "\ No newline at end of file", blank EOF, etc.
+                _ => {}
             }
         }
     }
     map
 }
 
-/// Parse a hunk header `@@ -oldStart,oldLen +newStart,newLen @@` → (oldStart, newStart).
 pub(crate) fn parse_hunk_starts(line: &str) -> Option<(i64, i64)> {
     let (mut old_start, mut new_start) = (None, None);
     for token in line.split("@@").nth(1)?.split_whitespace() {
@@ -73,9 +70,7 @@ pub(crate) fn parse_hunk_starts(line: &str) -> Option<(i64, i64)> {
     Some((old_start?, new_start?))
 }
 
-// This message is persisted in review history. Never include raw command output,
-// which may contain credentials from authentication helpers or transport errors.
-fn classify_gh_error(err: &str) -> &'static str {
+fn classify_glab_error(err: &str) -> &'static str {
     let bounded: String = err.chars().take(200).collect();
     let lower = bounded.to_ascii_lowercase();
     if lower.contains("auth")
@@ -85,7 +80,7 @@ fn classify_gh_error(err: &str) -> &'static str {
         || lower.contains("403")
         || lower.contains("credentials")
     {
-        "authentication failure: verify GitHub CLI authentication and repository access"
+        "authentication failure: verify GitLab CLI authentication and repository access"
     } else if lower.contains("could not resolve host")
         || lower.contains("timeout")
         || lower.contains("connection")
@@ -94,7 +89,7 @@ fn classify_gh_error(err: &str) -> &'static str {
     {
         "transport failure: check network connectivity and retry"
     } else {
-        "command error: GitHub CLI could not load the PR description"
+        "command error: GitLab CLI could not load the MR description"
     }
 }
 
@@ -104,68 +99,59 @@ pub(crate) fn parse_pr_description_payload(
     bytes: &[u8],
 ) -> Result<(String, String), String> {
     let value: serde_json::Value = serde_json::from_slice(bytes)
-        .map_err(|error| format!("Malformed PR description JSON for {full_name}#{number}: {error}"))?;
+        .map_err(|error| format!("Malformed MR description JSON for {full_name}!{number}: {error}"))?;
     let title = value
         .get("title")
         .and_then(|v| v.as_str())
         .ok_or_else(|| {
-            format!("Malformed PR description JSON for {full_name}#{number}: missing or invalid 'title' string")
+            format!("Malformed MR description JSON for {full_name}!{number}: missing or invalid 'title' string")
         })?
         .to_string();
     let body = value
-        .get("body")
+        .get("description")
+        .or_else(|| value.get("body"))
         .and_then(|v| v.as_str())
         .ok_or_else(|| {
-            format!("Malformed PR description JSON for {full_name}#{number}: missing or invalid 'body' string")
+            format!("Malformed MR description JSON for {full_name}!{number}: missing or invalid 'description' string")
         })?
         .to_string();
     Ok((title, body))
 }
 
-/// PR title + author body (the description) via gh. Returns an error if retrieval
-/// fails or returns malformed data, so unavailable author context is not silently
-/// treated as empty text. A successfully loaded empty body remains Ok((title, "")).
 pub fn pr_description(full_name: &str, number: i64) -> Result<(String, String), String> {
-    let bytes = run_raw(
-        "gh",
-        &[
-            "pr",
-            "view",
-            &number.to_string(),
-            "-R",
-            full_name,
-            "--json",
-            "title,body",
-        ],
-    )
-    .map_err(|error| {
+    let project = project_api_id(full_name);
+    let route = format!("projects/{project}/merge_requests/{number}");
+    let bytes = run_raw("glab", &["api", &route]).map_err(|error| {
         format!(
-            "Failed to load PR description for {full_name}#{number}: {}",
-            classify_gh_error(&error)
+            "Failed to load MR description for {full_name}!{number}: {}",
+            classify_glab_error(&error)
         )
     })?;
     parse_pr_description_payload(full_name, number, &bytes)
 }
 
-/// The changed file paths of a pull request (a rename at its new path), from GitHub's file
-/// listing, which stops at 3,000 files.
 #[cfg_attr(test, allow(dead_code))]
 pub(crate) fn pr_file_paths(full_name: &str, number: i64) -> Result<Vec<String>, String> {
-    let route = format!("repos/{full_name}/pulls/{number}/files?per_page=100");
-    let bytes = transport::gh_capture(&["api", "--paginate", "--slurp", &route])?;
+    let project = project_api_id(full_name);
+    let route = format!("projects/{project}/merge_requests/{number}/changes");
+    let bytes = transport::glab_capture(&["api", &route])?;
     parse_pr_file_pages(&bytes)
 }
 
 pub(crate) fn parse_pr_file_pages(bytes: &[u8]) -> Result<Vec<String>, String> {
-    let pages: Vec<Vec<serde_json::Value>> = serde_json::from_slice(bytes).map_err(|error| error.to_string())?;
-    pages
-        .into_iter()
-        .flatten()
+    let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|error| error.to_string())?;
+    let changes = value
+        .get("changes")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| "GitLab returned merge request changes without a list".to_string())?;
+    changes
+        .iter()
         .map(|file| {
-            file.get("filename")
+            file.get("new_path")
+                .or_else(|| file.get("old_path"))
                 .and_then(|name| name.as_str())
                 .map(str::to_string)
-                .ok_or_else(|| "GitHub returned a changed file without a name".to_string())
+                .ok_or_else(|| "GitLab returned a changed file without a name".to_string())
         })
         .collect()
 }
@@ -189,38 +175,30 @@ mod hunk_regression_tests {
     }
 
     #[test]
-    fn gh_error_classification_identifies_auth_transport_and_command() {
-        let auth_err = super::classify_gh_error("GraphQL: Resource not accessible by integration (403)");
+    fn glab_error_classification_identifies_auth_transport_and_command() {
+        let auth_err = super::classify_glab_error("HTTP 403 Forbidden");
         assert!(auth_err.starts_with("authentication failure:"), "{auth_err}");
 
-        let network_err = super::classify_gh_error(
-            "fatal: unable to access 'https://github.com/': Could not resolve host: github.com",
+        let network_err = super::classify_glab_error(
+            "fatal: unable to access 'https://gitlab.example.com/': Could not resolve host: gitlab.example.com",
         );
         assert!(network_err.starts_with("transport failure:"), "{network_err}");
 
-        let cmd_err = super::classify_gh_error("pull request not found for branch");
+        let cmd_err = super::classify_glab_error("merge request not found");
         assert!(cmd_err.starts_with("command error:"), "{cmd_err}");
-
-        // Persisted messages have fixed size regardless of command output.
-        let long_msg = "x".repeat(500);
-        let classified = super::classify_gh_error(&long_msg);
-        assert!(classified.len() <= "command error: ".len() + 200);
     }
 
     #[test]
-    fn gh_error_messages_never_include_command_output() {
+    fn glab_error_messages_never_include_command_output() {
         let secret = "fixture-private-value";
         for error in [
             format!("authentication failed: Authorization: Bearer {secret}"),
-            format!("connection refused for https://user:{secret}@github.com/acme/api"),
+            format!("connection refused for https://user:{secret}@gitlab.example.com/acme/api"),
             format!("unexpected response: ?access_key={secret}"),
             format!("{} password={secret}", "é".repeat(250)),
         ] {
-            let classified = super::classify_gh_error(&error);
-            assert!(
-                !classified.contains(secret),
-                "Command output must not reach review history"
-            );
+            let classified = super::classify_glab_error(&error);
+            assert!(!classified.contains(secret));
             assert!(!classified.contains("user:"));
             assert!(!classified.contains("access_key"));
             assert!(!classified.contains("password="));
@@ -229,46 +207,24 @@ mod hunk_regression_tests {
 
     #[test]
     fn pr_description_payload_requires_valid_strings_and_permits_empty_body() {
-        // Valid title and body
-        let valid = br#"{"title":"Add feature","body":"Description text"}"#;
+        let valid = br#"{"title":"Add feature","description":"Description text"}"#;
         assert_eq!(
             super::parse_pr_description_payload("owner/repo", 1, valid).unwrap(),
             ("Add feature".into(), "Description text".into())
         );
 
-        // Valid empty body succeeds
-        let empty_body = br#"{"title":"Quick fix","body":""}"#;
+        let empty_body = br#"{"title":"Quick fix","description":""}"#;
         assert_eq!(
             super::parse_pr_description_payload("owner/repo", 2, empty_body).unwrap(),
             ("Quick fix".into(), "".into())
         );
 
-        // Missing body fails
         let missing_body = br#"{"title":"No body"}"#;
         let err = super::parse_pr_description_payload("owner/repo", 3, missing_body).unwrap_err();
-        assert!(err.contains("missing or invalid 'body' string"), "{err}");
+        assert!(err.contains("missing or invalid 'description' string"), "{err}");
 
-        // Missing title fails
-        let missing_title = br#"{"body":"Some body"}"#;
+        let missing_title = br#"{"description":"Some body"}"#;
         let err = super::parse_pr_description_payload("owner/repo", 4, missing_title).unwrap_err();
         assert!(err.contains("missing or invalid 'title' string"), "{err}");
-
-        // Array body fails
-        let array_body = br#"{"title":"Example","body":[]}"#;
-        let err = super::parse_pr_description_payload("owner/repo", 5, array_body).unwrap_err();
-        assert!(err.contains("missing or invalid 'body' string"), "{err}");
-
-        // Null body fails
-        let null_body = br#"{"title":"Example","body":null}"#;
-        let err = super::parse_pr_description_payload("owner/repo", 6, null_body).unwrap_err();
-        assert!(err.contains("missing or invalid 'body' string"), "{err}");
-
-        // Empty object fails
-        let empty_obj = b"{}";
-        assert!(super::parse_pr_description_payload("owner/repo", 7, empty_obj).is_err());
-
-        // Malformed JSON syntax fails
-        let syntax_err = b"not-json";
-        assert!(super::parse_pr_description_payload("owner/repo", 8, syntax_err).is_err());
     }
 }

@@ -14,7 +14,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::db::{Database, Db, Repo, ReviewResult, ReviewResultInput};
 use crate::state::{IndexProgressEvent, ReviewJob};
-use crate::{github, indexer, local, review};
+use crate::{gitlab, indexer, local, review};
 
 mod comment_activation;
 mod http;
@@ -119,9 +119,9 @@ pub(crate) struct ServerState {
     /// Reviewable file counts of pull requests over the file limit, per repository and number,
     /// for the head and base they were counted at.
     reviewable_file_counts: Mutex<HashMap<(i64, i64), ((String, Option<String>), FileListing)>>,
-    github_auth_cancel: Arc<Mutex<Option<Arc<AtomicBool>>>>,
-    github_auth_events: Arc<Mutex<Vec<serde_json::Value>>>,
-    github_auth_flow_secret: Arc<Mutex<Option<String>>>,
+    gitlab_auth_cancel: Arc<Mutex<Option<Arc<AtomicBool>>>>,
+    gitlab_auth_events: Arc<Mutex<Vec<serde_json::Value>>>,
+    gitlab_auth_flow_secret: Arc<Mutex<Option<String>>>,
     poll_running: Arc<AtomicBool>,
     review_sse_connections: AtomicUsize,
     pub(crate) archive_leases: crate::review_archive::retention::ArchiveLeaseTracker,
@@ -139,9 +139,9 @@ impl ServerState {
             index_progress: Arc::new(Mutex::new(HashMap::new())),
             review_jobs: Arc::new(Mutex::new(HashMap::new())),
             reviewable_file_counts: Mutex::new(HashMap::new()),
-            github_auth_cancel: Arc::new(Mutex::new(None)),
-            github_auth_events: Arc::new(Mutex::new(Vec::new())),
-            github_auth_flow_secret: Arc::new(Mutex::new(None)),
+            gitlab_auth_cancel: Arc::new(Mutex::new(None)),
+            gitlab_auth_events: Arc::new(Mutex::new(Vec::new())),
+            gitlab_auth_flow_secret: Arc::new(Mutex::new(None)),
             poll_running: Arc::new(AtomicBool::new(false)),
             review_sse_connections: AtomicUsize::new(0),
             archive_leases: crate::review_archive::retention::ArchiveLeaseTracker::new(),
@@ -159,7 +159,7 @@ pub(crate) struct HealthResponse {
     ok: bool,
     message: String,
     repos_dir: String,
-    github: ToolStatus,
+    gitlab: ToolStatus,
     git: ToolStatus,
     claude: ToolStatus,
 }

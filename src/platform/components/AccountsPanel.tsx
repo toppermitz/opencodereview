@@ -436,7 +436,7 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
         ) : accounts.length === 0 && !signIn ? (
           <div className="flex flex-col items-start gap-3 px-4 py-5">
             <p className="text-small text-fg-muted">
-              Connect an AI account so OpenCodeReview can review pull requests. Add more later to keep reviewing when
+              Connect an AI account so OpenCodeReview can review merge requests. Add more later to keep reviewing when
               one hits its limit.
             </p>
             <div className="flex flex-wrap gap-2">

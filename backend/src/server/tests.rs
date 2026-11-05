@@ -25,7 +25,7 @@ fn claude_cli_version_reads_the_release_without_exposing_probe_errors() {
 #[test]
 fn transport_contract_preserves_public_routes_and_json_errors() {
     assert!(is_public_route("GET", "/health"));
-    assert!(is_public_route("POST", "/auth/github/start"));
+    assert!(is_public_route("POST", "/auth/gitlab/start"));
     assert!(!is_public_route("GET", "/analytics"));
 
     let mut request = Request {
@@ -408,18 +408,18 @@ fn manually_cancelled_auto_review_stays_paused_until_head_changes() {
 
 #[test]
 fn changed_review_target_is_not_a_review_failure() {
-    let current = github::LivePrState {
+    let current = gitlab::LivePrState {
         state: "OPEN".to_string(),
         head_sha: "head".to_string(),
         base_ref: "main".to_string(),
         base_sha: "base".to_string(),
         merged_at: None,
     };
-    let changed = github::LivePrState {
+    let changed = gitlab::LivePrState {
         head_sha: "new-head".to_string(),
         ..current.clone()
     };
-    let merged = github::LivePrState {
+    let merged = gitlab::LivePrState {
         state: "MERGED".to_string(),
         ..current.clone()
     };
@@ -634,7 +634,7 @@ fn result_comment_links_to_ocr_repository() {
         &[],
     );
     assert!(clean.contains(
-        "### ✅ OpenCodeReview found no issues\n\nReviewed [`abcdef12`](https://github.com/owner/repo/commit/abcdef123456). Nothing here needs action."
+        "### ✅ OpenCodeReview found no issues\n\nReviewed [`abcdef12`](https://gitlab.example.com/owner/repo/-/commit/abcdef123456). Nothing here needs action."
     ));
     assert!(clean.ends_with("<sub>Reviewed by [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>"));
     assert!(clean.contains("ocr-result-key:v1 repo=owner/repo pr=7"));
@@ -665,7 +665,7 @@ fn findings_review_payload_uses_result_summary_and_keeps_recovery_marker() {
     let value: serde_json::Value = serde_json::from_str(&payload).expect("json");
     let body = value.get("body").and_then(|body| body.as_str()).unwrap_or_default();
     assert!(body.starts_with(
-        "### ⚠️ OpenCodeReview posted findings\n\nReviewed [`abcdef`](https://github.com/owner/repo/commit/abcdef)."
+        "### ⚠️ OpenCodeReview posted findings\n\nReviewed [`abcdef`](https://gitlab.example.com/owner/repo/-/commit/abcdef)."
     ));
     assert!(body.contains("Reviewed by [OpenCodeReview](https://github.com/BridgLabs/opencodereview)"));
     assert!(body.ends_with("\n\n<!-- ocr-review-post:v1 run=7 -->"));
@@ -695,7 +695,7 @@ fn findings_review_payload_lists_each_inline_comment_in_a_table() {
     let value: serde_json::Value = serde_json::from_str(&payload).unwrap();
     assert_eq!(value["comments"].as_array().map(Vec::len), Some(4));
     assert_eq!(value["body"].as_str().unwrap(), "### ⚠️ OpenCodeReview found 3 issues and 1 question\n\n\
-Reviewed [`5c540aa1`](https://github.com/owner/repo/commit/5c540aa1234567). Each issue below has the details and a suggested fix.\n\n\
+Reviewed [`5c540aa1`](https://gitlab.example.com/owner/repo/-/commit/5c540aa1234567). Each issue below has the details and a suggested fix.\n\n\
 | | Issue | Where |\n|---|---|---|\n\
 | 🔴 | Rollback drops invoices written after deploy | `db/migrate/0042_billing_schema.sql:18` |\n\
 | 🟠 | Totals use `a \\| b` instead of `a \\|\\| b` | `src/billing/total.ts` |\n\
@@ -776,7 +776,7 @@ fn evidence_warning_publication_preserves_findings_and_recovery_markers() {
     .unwrap();
     let empty: serde_json::Value = serde_json::from_str(&empty).unwrap();
     let body = empty["body"].as_str().unwrap();
-    assert!(body.starts_with("### ⚠️ OpenCodeReview finished with warnings\n\nReviewed [`head`](https://github.com/owner/repo/commit/head).\n\n> [!WARNING]"));
+    assert!(body.starts_with("### ⚠️ OpenCodeReview finished with warnings\n\nReviewed [`head`](https://gitlab.example.com/owner/repo/-/commit/head).\n\n> [!WARNING]"));
     assert!(
         body.contains("[!WARNING]")
             && body.ends_with("Reviewed by [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>")
@@ -896,7 +896,7 @@ fn relocated_selected_findings_survive_comment_publication() {
             &run,
             "COMMENT",
             true,
-            github::DedupeResult {
+            gitlab::DedupeResult {
                 post_comments: serde_json::json!([]),
                 annotated_comments_json: "{\"comments\":[]}".into(),
                 suppressed_count: suppressed,
@@ -914,7 +914,7 @@ fn suggestions_post_with_the_review_but_never_on_their_own_after_duplicates() {
     let suggestions = crate::review::evidence::suggestions_section(&[serde_json::json!(
         {"path":"a.rs","line":3,"title":"Stale test name","detail":"Detail","action":"Rename it"}
     )]);
-    let dedupe = |comments: serde_json::Value, suppressed| github::DedupeResult {
+    let dedupe = |comments: serde_json::Value, suppressed| gitlab::DedupeResult {
         post_comments: comments,
         annotated_comments_json: "{\"comments\":[]}".into(),
         suppressed_count: suppressed,
@@ -1112,7 +1112,7 @@ fn review_publication_recovery_cases(snapshot_fails: bool, payload_fails: bool) 
                 } else {
                     root.clone()
                 };
-                github::PreparedReview::in_directory("{}", &directory)
+                gitlab::PreparedReview::in_directory("{}", &directory)
             },
             |_prepared| {
                 post_calls.set(post_calls.get() + 1);

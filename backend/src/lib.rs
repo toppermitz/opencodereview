@@ -1,7 +1,7 @@
 mod accounts;
 pub mod bench;
 pub mod db;
-pub mod github;
+pub mod gitlab;
 pub mod indexer;
 pub mod local;
 mod path_kinds;

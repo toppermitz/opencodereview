@@ -7,9 +7,10 @@ import {
   CodexSignIn,
   CopyCode,
   friendlyError,
-  useGithubFlow,
+  useGitlabFlow,
 } from "../components/AccessConnect";
 import { BrandLoadingIcon } from "../components/BrandLoading";
+import { GitLabMark } from "../components/GitLabMark";
 import { ProviderGlyph } from "../platform/components/AccountsPanel";
 import { setupApi } from "../services/setupApi";
 import type { AiProvider } from "../types";
@@ -27,15 +28,7 @@ import {
 
 export const PROVIDERS_QUERY_KEY = ["setup", "providers"] as const;
 
-function GithubMark() {
-  return (
-    <svg viewBox="0 0 16 16" className="size-5 fill-fg" aria-hidden="true">
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-    </svg>
-  );
-}
-
-export function GithubStep({
+export function GitlabStep({
   connected,
   login,
   onChanged,
@@ -46,21 +39,21 @@ export function GithubStep({
   onChanged: () => void;
   onContinue: () => void;
 }) {
-  const flow = useGithubFlow(connected, onChanged);
+  const flow = useGitlabFlow(connected, onChanged);
   const { prompt } = flow;
   const busy = flow.running || flow.start.isPending;
   return (
     <>
       <StepHeader
-        title="Connect GitHub"
-        subtitle="OpenCodeReview reads your pull requests and posts its reviews as you."
+        title="Connect GitLab"
+        subtitle="OpenCodeReview reads your merge requests and posts its reviews as you."
       />
       <ChoiceList label="Code host">
         <ChoiceRow
-          glyph={<GithubMark />}
-          name="GitHub"
+          glyph={<GitLabMark className="size-5" />}
+          name="GitLab"
           detail={
-            connected ? (login ?? "Connected") : "Uses the GitHub CLI sign-in, kept in OpenCodeReview's Docker volume."
+            connected ? (login ?? "Connected") : "Uses the GitLab CLI sign-in, kept in OpenCodeReview's Docker volume."
           }
           status={
             connected ? (
@@ -82,7 +75,7 @@ export function GithubStep({
               {busy &&
                 (prompt.code ? (
                   <>
-                    <p className="text-small font-medium text-fg">Enter this code on GitHub to approve access</p>
+                    <p className="text-small font-medium text-fg">Enter this code on GitLab to approve access</p>
                     <CopyCode code={prompt.code} />
                     <div className="flex flex-wrap items-center gap-3">
                       <p className="flex items-center gap-2 text-small text-fg-muted">
@@ -97,7 +90,7 @@ export function GithubStep({
                           rel="noreferrer"
                           onClick={() => void navigator.clipboard?.writeText(prompt.code ?? "")}
                         >
-                          Open GitHub
+                          Open GitLab
                         </a>
                       )}
                     </div>
@@ -105,7 +98,7 @@ export function GithubStep({
                 ) : (
                   <p className="flex items-center gap-2 text-small text-fg-muted">
                     <BrandLoadingIcon />
-                    <span>Starting GitHub sign-in…</span>
+                    <span>Starting GitLab sign-in…</span>
                   </p>
                 ))}
               {!busy && flow.failure && (
@@ -128,7 +121,7 @@ export function GithubStep({
             Continue
           </button>
         }
-        hint={connected ? undefined : "Connect GitHub to continue."}
+        hint={connected ? undefined : "Connect GitLab to continue."}
       />
     </>
   );

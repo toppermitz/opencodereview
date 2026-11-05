@@ -64,7 +64,7 @@ function ReviewControlNode({ data }: NodeProps<ReviewFlowNode>) {
         type="button"
         className="nodrag nopan"
         aria-label={control.label}
-        title={control.disabled && !control.busy ? `${control.label} unavailable for this PR` : control.label}
+        title={control.disabled && !control.busy ? `${control.label} unavailable for this MR` : control.label}
         disabled={control.disabled || control.busy}
         aria-busy={control.busy}
         onClick={(event) => {

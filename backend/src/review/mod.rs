@@ -64,7 +64,7 @@ use crate::db::{
     ContextFile, Database, ReviewChunkCacheInput, ReviewContextPlan, ReviewRisk, ReviewRiskDriver, ReviewRunStageInput,
     INDEX_SPEC_VERSION,
 };
-use crate::{github, indexer};
+use crate::{gitlab, indexer};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

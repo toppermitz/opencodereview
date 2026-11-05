@@ -207,7 +207,7 @@ describe("Usage page", () => {
     await render();
     const tabs = [...host.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent);
     // A single known account does not earn an Accounts tab.
-    expect(tabs).toEqual(["Pull requests", "Repositories", "Models"]);
+    expect(tabs).toEqual(["Merge requests", "Repositories", "Models"]);
     await click(button("Models"));
     expect(button("Models").getAttribute("aria-selected")).toBe("true");
     const panel = host.querySelector('[role="tabpanel"]')!;
@@ -233,7 +233,7 @@ describe("Usage page", () => {
     expect(host.querySelector('[role="tabpanel"]')?.textContent).toContain("home@example.com");
   });
 
-  it("loads a PR's runs only when it is expanded, once, and dims runs without usage", async () => {
+  it("loads an MR's runs only when it is expanded, once, and dims runs without usage", async () => {
     await render();
     expect(setupApi.usagePrRuns).not.toHaveBeenCalled();
     const row = host.querySelector<HTMLButtonElement>('[role="tabpanel"] button[aria-expanded]')!;
@@ -281,7 +281,7 @@ describe("Usage page", () => {
     await render();
     await click(button("Share"));
     const dialog = document.body.querySelector('[role="dialog"][aria-label="Share usage image"]');
-    expect(dialog?.textContent).toContain("no repository, pull request, account or model names");
+    expect(dialog?.textContent).toContain("no repository, merge request, account or model names");
     await click(button("Close", dialog ?? document.body));
     expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   });

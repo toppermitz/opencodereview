@@ -419,7 +419,7 @@ fn resolve_named_ref(
 // Monitoring subscriptions do not grant or deny supporting repository access.
 fn verify_repository_read_access(repository: &str, host: &str, cancel: &AtomicBool) -> Result<(), String> {
     verify_repository_read_access_using(repository, host, cancel, |args| {
-        crate::github::gh_capture_cancellable(args, cancel)
+        crate::gitlab::glab_capture_cancellable(args, cancel)
     })
 }
 
@@ -432,15 +432,28 @@ fn verify_repository_read_access_using(
     if cancel.load(Ordering::Relaxed) {
         return Err("cancelled".into());
     }
-    let route = format!("repos/{repository}/commits?per_page=1");
-    let bytes = request(&["api", "--hostname", host, &route, "--jq", ".[0].sha"])
-        .map_err(|error| dependency_git_error(&error, &format!("Could not verify authenticated gh read access for pinned dependency {repository}. Check GitHub access or retry"), cancel))?;
-    let commit = std::str::from_utf8(&bytes)
-        .map_err(|_| "Invalid GitHub dependency access response")?
+    let project = crate::gitlab::project_api_id(repository);
+    let route = format!("projects/{project}/repository/commits?per_page=1");
+    let bytes = request(&["api", &route]).map_err(|error| {
+        dependency_git_error(
+            &error,
+            &format!("Could not verify authenticated glab read access for pinned dependency {repository}. Check GitLab access or retry"),
+            cancel,
+        )
+    })?;
+    let _ = host; // host is applied via GITLAB_HOST on every glab invocation
+    let value: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| "Invalid GitLab dependency access response")?;
+    let commit = value
+        .as_array()
+        .and_then(|arr| arr.first())
+        .and_then(|c| c.get("id"))
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
         .trim();
     if !oid(commit, 40) && !oid(commit, 64) {
         return Err(format!(
-            "Could not verify authenticated gh read access for pinned dependency {repository}"
+            "Could not verify authenticated glab read access for pinned dependency {repository}"
         ));
     }
     Ok(())
@@ -455,18 +468,22 @@ fn repository_is_public_using(
     if cancel.load(Ordering::Relaxed) {
         return Err("cancelled".into());
     }
-    let route = format!("repos/{repository}");
-    let bytes = request(&["api", "--hostname", host, &route, "--jq", ".private"]).map_err(|error| {
+    let _ = host;
+    let project = crate::gitlab::project_api_id(repository);
+    let route = format!("projects/{project}");
+    let bytes = request(&["api", &route]).map_err(|error| {
         dependency_git_error(
             &error,
-            &format!("Could not verify the visibility of {repository}. Check GitHub access or retry"),
+            &format!("Could not verify the visibility of {repository}. Check GitLab access or retry"),
             cancel,
         )
     })?;
-    match std::str::from_utf8(&bytes).map(str::trim) {
-        Ok("false") => Ok(true),
-        Ok("true") => Ok(false),
-        _ => Err(format!("Could not verify the visibility of {repository}")),
+    let value: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| format!("Could not verify the visibility of {repository}"))?;
+    match value.get("visibility").and_then(|v| v.as_str()) {
+        Some("public") => Ok(true),
+        Some(_) => Ok(false),
+        None => Err(format!("Could not verify the visibility of {repository}")),
     }
 }
 
@@ -1024,7 +1041,7 @@ pub(crate) fn capture_with_recorded(
         &mut |repository, host, cancel| {
             verify_repository_read_access(repository, host, cancel)?;
             authorize_dependency_disclosure_using(&primary, &mut primary_public, repository, host, cancel, |args| {
-                crate::github::gh_capture_cancellable(args, cancel)
+                crate::gitlab::glab_capture_cancellable(args, cancel)
             })
         },
     )

@@ -67,7 +67,7 @@ pub(crate) fn run_pr_summary_job(job: PrSummaryJob) {
             }
         }
         let marker = pr_summary_marker(&job.full_name, job.number);
-        github::upsert_issue_comment_by_marker(&job.full_name, job.number, &marker, &body)
+        gitlab::upsert_issue_comment_by_marker(&job.full_name, job.number, &marker, &body)
             .map(|posted| (body, json, posted.id))
     });
     if let Ok(db) = job.db_handle.open() {
@@ -242,7 +242,7 @@ pub(crate) fn fetch_summary_refs(repo_path: &Path, number: i64, base_ref: &str) 
         if force {
             command.arg("--force");
         }
-        crate::github::apply_git_https_auth(&mut command);
+        crate::gitlab::apply_git_https_auth(&mut command);
         command
     };
     let _ = fetch(&format!("+refs/heads/{branch}:refs/remotes/origin/{branch}"), false).output();
@@ -260,7 +260,7 @@ pub(crate) fn git_lines(repo_path: &Path, args: &[&str]) -> Result<Vec<String>, 
     let mut command = Command::new("git");
     command.current_dir(repo_path).args(args);
     // A partial clone fetches missing objects on demand, which needs the token too.
-    crate::github::apply_git_https_auth(&mut command);
+    crate::gitlab::apply_git_https_auth(&mut command);
     let output = command.output().map_err(|error| error.to_string())?;
     if !output.status.success() {
         return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());

@@ -14,7 +14,7 @@ import {
 } from "react";
 import { BrandLoading } from "../../components/BrandLoading";
 import { cx, DSBadge, DSButton, DSEmptyState, DSError, DSInput } from "../../components/DesignSystem";
-import { GitHubMark } from "../../components/GitHubMark";
+import { GitLabMark } from "../../components/GitLabMark";
 import { setupApi } from "../../services/setupApi";
 import type { FindingAuditView, ReviewCard } from "../../types";
 import type { FindingSelection } from "../components/FindingSelection";
@@ -109,18 +109,18 @@ export function ReviewsPage() {
   const runQuery = useReviewRunStream(streamPrId, streamVersion);
   const usageQuery = useQuery({
     queryKey: ["reviews", viewing?.id, "usage"],
-    queryFn: () => setupApi.getPrUsage(required(viewing, "pull request").id),
+    queryFn: () => setupApi.getPrUsage(required(viewing, "merge request").id),
     enabled: Boolean(viewing),
   });
   const authQuery = useQuery({
-    queryKey: ["auth", "github", "status"],
-    queryFn: setupApi.githubAuthStatus,
+    queryKey: ["auth", "gitlab", "status"],
+    queryFn: setupApi.gitlabAuthStatus,
     refetchInterval: 30000,
   });
   const contextQuery = useQuery({
     queryKey: ["reviews", viewing?.id, "runContext", runQuery.data?.id, runQuery.data?.status],
     queryFn: () =>
-      setupApi.getReviewRunContext(required(viewing, "pull request").id, required(runQuery.data, "review run").id),
+      setupApi.getReviewRunContext(required(viewing, "merge request").id, required(runQuery.data, "review run").id),
     enabled: Boolean(viewing && runQuery.data),
     refetchInterval: viewing && ["running", "pending"].includes(runQuery.data?.status ?? "") ? 5000 : false,
   });
@@ -233,7 +233,7 @@ export function ReviewsPage() {
     queryKey: ["reviews", monitoringId, "stages", monitoredRun?.id, monitoredRun?.status],
     queryFn: () =>
       setupApi.getReviewStageBreakdown(
-        required(monitoringId, "pull request id"),
+        required(monitoringId, "merge request id"),
         required(monitoredRun, "review run").id,
       ),
     enabled: Boolean(monitoringId && monitoredRun),
@@ -248,7 +248,7 @@ export function ReviewsPage() {
     queryKey: ["reviews", monitoringId, "findingAudit", monitoredRun?.id, monitoredRun?.status],
     queryFn: () =>
       setupApi.getReviewFindingAudit(
-        required(monitoringId, "pull request id"),
+        required(monitoringId, "merge request id"),
         required(monitoredRun, "review run").id,
       ),
     enabled: Boolean(monitoringId && monitoredRun && workspace.view !== null),
@@ -563,7 +563,7 @@ export function ReviewsPage() {
               workspace.processesOpen && <BrandLoading size="compact" label="Loading reviews…" />
             ) : filteredItems.length === 0 ? (
               <DSEmptyState>
-                {query ? "No pull requests match your search." : "Poll GitHub to find pull requests."}
+                {query ? "No merge requests match your search." : "Poll GitLab to find merge requests."}
               </DSEmptyState>
             ) : (
               <ReviewSections
@@ -649,14 +649,14 @@ export function ReviewsPage() {
               </div>
               {monitoring?.url && (
                 <a
-                  className="review-workspace-github-link grid size-8 shrink-0 place-items-center rounded-lg text-fg-muted no-underline transition-colors hover:bg-surface-muted hover:text-fg"
+                  className="review-workspace-gitlab-link grid size-8 shrink-0 place-items-center rounded-lg text-fg-muted no-underline transition-colors hover:bg-surface-muted hover:text-fg"
                   href={monitoring.url}
                   target="_blank"
                   rel="noreferrer"
-                  aria-label="Open on GitHub"
-                  title="Open on GitHub"
+                  aria-label="Open on GitLab"
+                  title="Open on GitLab"
                 >
-                  <GitHubMark className="size-4" />
+                  <GitLabMark className="size-4" />
                 </a>
               )}
             </header>
@@ -772,7 +772,7 @@ export function ReviewsPage() {
             !workspace.processesOpen && <BrandLoading label="Loading reviews…" />
           ) : (
             <div className="review-workspace-empty m-6">
-              <DSEmptyState>Poll GitHub, then select a pull request to inspect its process.</DSEmptyState>
+              <DSEmptyState>Poll GitLab, then select a merge request to inspect its process.</DSEmptyState>
             </div>
           )}
         </div>

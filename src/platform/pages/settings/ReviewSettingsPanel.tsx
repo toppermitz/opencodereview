@@ -25,7 +25,7 @@ export function ReviewSettingsPanel({
       <SettingsGroup title="PR selection" description="Control which PRs enter the review queue.">
         <SettingChoice
           title="Review scope"
-          description="Use assignments and GitHub teams, or review all open PRs."
+          description="Use assignments and GitLab reviewers, or review all open MRs."
           options={["true", "false"]}
           labels={{ true: "Assigned", false: "All PRs" }}
           value={String(settings.reviewAssignedOnly)}
@@ -48,7 +48,7 @@ export function ReviewSettingsPanel({
         </SettingRow>
         <SettingRow
           title="Reviews at a time"
-          description="How many pull requests are reviewed at once. The default is 20; each review runs in its own isolated container."
+          description="How many merge requests are reviewed at once. The default is 20; each review runs in its own isolated container."
         >
           <input
             className="settings-number-input h-9 w-24 rounded-md border border-line bg-surface px-3 text-small text-fg shadow-card outline-none focus:border-brand focus:ring-3 focus:ring-brand/15"

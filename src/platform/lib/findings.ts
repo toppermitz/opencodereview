@@ -190,7 +190,7 @@ export function reviewBodyHasPostableFinding(body: string | null) {
 }
 
 /** Start of the review summary section that lists lower-priority suggestions (backend `SUGGESTIONS_HEADING`):
- * a collapsed `<details>` block on GitHub, or the heading reviews used before it was collapsed. */
+ * a collapsed `<details>` block on GitLab, or the heading reviews used before it was collapsed. */
 const SUGGESTIONS_STARTS = ["<details>\n<summary>💡 Suggestions", "### 💡 Suggestions"];
 
 /** The suggestions section of a review body as Markdown, or "" when it has none. A collapsed block is

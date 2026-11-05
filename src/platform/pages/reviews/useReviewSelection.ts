@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { ReviewCard } from "../../../types";
 
 /**
- * The pull request the Reviews workspace monitors. A `?pr=` link (from Usage) picks it once the board
+ * The merge request the Reviews workspace monitors. A `?pr=` link (from Usage) picks it once the board
  * lists it; otherwise the first PR under review, then the first PR, is picked whenever the selection is gone.
  */
 export function useReviewSelection(items: ReviewCard[]) {

@@ -9,7 +9,7 @@ export const setupApiWorkspace = {
     http<SkillVersion>("/skills/versions", { method: "POST", body: JSON.stringify({ content, note: null }) }),
   deleteSkillVersion: (id: number) => http<SkillVersion[]>(`/skills/versions/${id}`, { method: "DELETE" }),
   listWorkspaces: () => http<Workspace[]>("/workspaces"),
-  refreshWorkspaces: () => http<Workspace[]>("/github/workspaces"),
+  refreshWorkspaces: () => http<Workspace[]>("/gitlab/workspaces"),
   saveSelectedWorkspaces: (logins: string[]) =>
     http<Workspace[]>("/workspaces/select", { method: "POST", body: JSON.stringify({ logins }) }),
   listWorkspaceRepos: (login: string) => http<Repo[]>(`/workspaces/${encodeURIComponent(login)}/repos`),

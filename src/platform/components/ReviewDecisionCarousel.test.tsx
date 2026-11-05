@@ -3,11 +3,11 @@ import { describe, expect, it } from "vitest";
 import { ReviewDecisionCarousel, type ReviewDecisionCarouselOption } from "./ReviewDecisionCarousel";
 
 const options: ReviewDecisionCarouselOption[] = [
-  { value: "approve_post", label: "Approve", description: "Approve this pull request on GitHub.", tone: "primary" },
+  { value: "approve_post", label: "Approve", description: "Approve this merge request on GitLab.", tone: "primary" },
   {
     value: "mark_reviewed",
     label: "Mark reviewed",
-    description: "Close locally without posting to GitHub.",
+    description: "Close locally without posting to GitLab.",
     tone: "secondary",
   },
   { value: "skip", label: "Skip", description: "Leave this review unpublished.", tone: "secondary" },

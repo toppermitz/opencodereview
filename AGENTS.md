@@ -11,7 +11,7 @@ backend/src/accounts/                    AI account credentials, plan usage, sig
 backend/src/sandbox/                     ocr-sandbox: runner, egress proxy, read commands, tool guard
 backend/src/review/                      Review orchestration, scope, coverage, evidence, findings, validation
 backend/src/review_archive/              Frozen review archives, retention and purge
-backend/src/github/, indexer/            GitHub calls through `gh`; repository indexer
+backend/src/gitlab/, indexer/            GitLab calls through `glab`; repository indexer
 backend/src/server/                      HTTP API, background jobs, publication, sign-in flows
 backend/src/bench/                       ocr-bench: headless reviewer of the public benchmark image
 backend/src/db/                          Postgres access, migrations (pg/), queries, SQLite import
@@ -45,7 +45,7 @@ bench/                                   Public benchmark adapters (ReviewBench,
 - All AI CLIs are baked into the image at pinned, checksum-verified versions. Do not add runtime CLI installs or auto-updates.
 - Accounts are tried in priority order, the first usable account's provider before the other (`pick_ai_account`, mirrored by `nextAccountId` in the UI); a usage limit rests the account and the same stage reruns on the next one.
 - Usage is reported in tokens only. Do not add currency or cost estimates.
-- GitHub access goes through the authenticated `gh` CLI. Do not add OpenCodeReview-managed GitHub tokens.
+- GitLab access goes through the authenticated `glab` CLI. Do not add OpenCodeReview-managed GitLab tokens.
 - Configuration lives in Settings (Providers, Repository access, PR selection, Integrations) and the top-bar engine picker. Review execution and publishing are otherwise fixed defaults, except whether suggestions are posted (PR selection → Review comments → Post suggestions, off by default). `review_lens_pass` and `review_focus_files` are stored settings with no Settings screen; only `ocr-bench` turns them on.
 - The index is file metadata, a package and import graph and lightweight symbols. Symbol extraction is not an AST parser; do not describe it as one.
 - Never check out or switch a user's branch for PR context. Use fetch, diff and show against refs.
@@ -79,7 +79,7 @@ bench/                                   Public benchmark adapters (ReviewBench,
 docker compose up --build
 ```
 
-Open `http://localhost:1421`. Services: `web` (nginx on 1421, proxying `/api`), `server` (API on `127.0.0.1:8787`), `review-runner` (20 replicas by default, `OCR_REVIEW_RUNNERS`), `review-egress`, `postgres` and `database-secret`. State lives in the `ocr-data` and `postgres-data` volumes. `GH_TOKEN` is only a development fallback.
+Open `http://localhost:1421`. Services: `web` (nginx on 1421, proxying `/api`), `server` (API on `127.0.0.1:8787`), `review-runner` (20 replicas by default, `OCR_REVIEW_RUNNERS`), `review-egress`, `postgres` and `database-secret`. State lives in the `ocr-data` and `postgres-data` volumes. `GITLAB_TOKEN` is only a development fallback. `OCR_GITLAB_HOST` is required for the Self-Hosted instance.
 
 ## Development commands
 
@@ -110,7 +110,7 @@ Postgres. Migrations are the SQL files in `backend/src/db/pg/`, listed in `migra
 
 - Bind every value as a parameter; never format input into SQL.
 - A transaction that reads a pull request's state to decide a write calls `lock_pull_request` first.
-- Never hold a `Database` across Git, GitHub or model calls: open one per step.
+- Never hold a `Database` across Git, GitLab or model calls: open one per step.
 - Background work that must not run twice when several server instances share the database goes through `Db::run_exclusive`.
 
 ## UI rules

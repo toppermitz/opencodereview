@@ -30,14 +30,14 @@ export function CopyCode({ code }: { code: string }) {
   );
 }
 
-export function useGithubFlow(connected: boolean, onChanged: () => void) {
+export function useGitlabFlow(connected: boolean, onChanged: () => void) {
   const events = useQuery({
     queryKey: ["setup", "auth-events"],
-    queryFn: () => setupApi.githubAuthEvents(),
+    queryFn: () => setupApi.gitlabAuthEvents(),
     enabled: !connected,
     refetchInterval: (query) => (query.state.data?.running ? 1000 : false),
   });
-  const start = useMutation({ mutationFn: () => setupApi.githubAuthStart(), onSuccess: () => void events.refetch() });
+  const start = useMutation({ mutationFn: () => setupApi.gitlabAuthStart(), onSuccess: () => void events.refetch() });
   const list: FlowEvent[] = events.data?.events ?? [];
   const prompt: FlowEvent = Object.assign({}, ...list.filter((event) => event.kind === "prompt"));
   const done = list.find((event) => event.kind === "done");
@@ -54,7 +54,7 @@ export function useGithubFlow(connected: boolean, onChanged: () => void) {
     start,
     prompt,
     running,
-    failure: done && !done.success ? (done.message ?? "GitHub sign-in did not finish.") : null,
+    failure: done && !done.success ? (done.message ?? "GitLab sign-in did not finish.") : null,
     error: start.error ?? events.error,
   };
 }

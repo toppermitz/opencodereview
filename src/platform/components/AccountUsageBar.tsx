@@ -15,7 +15,7 @@ export function AccountUsageBar({ account }: { account: AiAccount }) {
     <div className="flex items-center gap-3 text-caption text-fg-subtle max-md:hidden">
       {usage.windows.map((window) => {
         const left = resting ? 0 : percentLeft(window);
-        const label = `${windowName(window.windowMins)} ${left}% left`;
+        const label = `${windowName(window.windowMins)} ${left}% restante`;
         return (
           <div
             key={window.windowMins ?? 0}
@@ -27,7 +27,7 @@ export function AccountUsageBar({ account }: { account: AiAccount }) {
             <span
               className="h-1.5 w-14 overflow-hidden rounded-full bg-surface-sunken"
               role="meter"
-              aria-label={`${windowName(window.windowMins)} usage left`}
+              aria-label={`${windowName(window.windowMins)} de uso restante`}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={left}

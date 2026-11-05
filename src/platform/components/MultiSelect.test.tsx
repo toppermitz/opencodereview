@@ -83,7 +83,7 @@ it("searches full repository names, keeps multiple selections and restores focus
     await act(async () => options()[0].click());
     expect(dialog.querySelector("footer span")?.textContent).toBe("1 selecionado");
     await searchFor("missing-repository");
-    expect(dialog.querySelector(".settings-empty-inline")?.textContent).toBe("No matches");
+    expect(dialog.querySelector(".settings-empty-inline")?.textContent).toBe("Nenhuma correspondência");
     await searchFor("");
     await act(async () => dialog.querySelector<HTMLButtonElement>("footer button")!.click());
     expect(container.querySelector("dialog")).toBeNull();

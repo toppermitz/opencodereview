@@ -147,19 +147,19 @@ describe("index graph view", () => {
   });
   it("shows the graph inline, not inside a modal", () => {
     const html = renderGraph("ready");
-    expect(html).toContain('aria-label="Interactive packages graph"');
+    expect(html).toContain('aria-label="Grafo interativo de pacotes"');
     expect(html).toContain("2 packages");
     expect(html).not.toContain('role="dialog"');
-    expect(html).not.toContain("Showing the last saved index");
+    expect(html).not.toContain("Mostrando o último índice salvo");
   });
   it("uses the point-and-line graph while keeping navigation and keyboard selection", () => {
     const html = renderGraph("ready");
     expect(html).toContain('data-testid="force-graph"');
     expect(html).not.toContain("react-flow");
-    expect(html).toContain('aria-label="Graph location"');
-    expect(html).toContain('aria-label="Search packages"');
-    expect(html).toContain('aria-label="Select graph node"');
-    expect(html).toContain("Fit graph");
+    expect(html).toContain('aria-label="Local do grafo"');
+    expect(html).toContain('aria-label="Buscar pacotes"');
+    expect(html).toContain('aria-label="Selecionar nó do grafo"');
+    expect(html).toContain("Ajustar grafo");
   });
   it("preserves dependency direction and dev styling without mutating cached data", () => {
     renderGraph("ready");
@@ -218,12 +218,12 @@ describe("index graph view", () => {
       try {
         await act(async () => root.render(<SelectableGraph client={client} />));
         await activate(pkg);
-        expect(element.querySelector('[aria-label="Interactive files graph"]')).not.toBeNull();
+        expect(element.querySelector('[aria-label="Grafo interativo de arquivos"]')).not.toBeNull();
         expect(networkProps().graphData?.nodes).toEqual([file]);
         expect(element.querySelector('[aria-label="Code details"]')).toBeNull();
         expect(element.querySelector(".index-breadcrumbs")?.textContent).toContain("Core");
         await activate(file);
-        expect(element.querySelector('[aria-label="Interactive symbols graph"]')).not.toBeNull();
+        expect(element.querySelector('[aria-label="Grafo interativo de símbolos"]')).not.toBeNull();
         expect(networkProps().graphData?.nodes).toEqual([symbol]);
         expect(element.querySelector('[aria-label="Code details"]')).toBeNull();
         expect(element.querySelector(".index-breadcrumbs")?.textContent).toContain("index.ts");
@@ -231,9 +231,9 @@ describe("index graph view", () => {
         expect(element.querySelector('[aria-label="Code details"]')).toBeNull();
         expect(element.textContent).toContain("Focused on direct relationships");
         await act(async () => element.querySelectorAll<HTMLButtonElement>(".index-breadcrumbs button")[1].click());
-        expect(element.querySelector('[aria-label="Interactive files graph"]')).not.toBeNull();
+        expect(element.querySelector('[aria-label="Grafo interativo de arquivos"]')).not.toBeNull();
         await act(async () => element.querySelector<HTMLButtonElement>(".index-breadcrumbs button")!.click());
-        expect(element.querySelector('[aria-label="Interactive packages graph"]')).not.toBeNull();
+        expect(element.querySelector('[aria-label="Grafo interativo de pacotes"]')).not.toBeNull();
       } finally {
         await act(async () => root.unmount());
         client.clear();
@@ -262,22 +262,22 @@ describe("index graph view", () => {
   });
   it.each(["indexing", "failed", "stale", "cancelled"] as const)("keeps saved graph available when %s", (state) => {
     const html = renderGraph(state);
-    expect(html).toContain("Showing the last saved index");
+    expect(html).toContain("Mostrando o último índice salvo");
     expect(html).toContain("2 packages");
   });
   it("does not claim an existing snapshot for a first index", () => {
     const html = renderGraph("indexing", { nodes: [], edges: [] });
     expect(html).toContain("The first index is being prepared");
     expect(html).toContain('class="brand-loading"');
-    expect(html).not.toContain("Showing the last saved index");
+    expect(html).not.toContain("Mostrando o último índice salvo");
   });
   it("renders actionable errors as text, not markup", () => {
     const html = renderToStaticMarkup(
       <GraphEmpty title="Graph unavailable" description="<script>failed</script>">
-        <button type="button">Retry graph</button>
+        <button type="button">Tentar grafo de novo</button>
       </GraphEmpty>,
     );
-    expect(html).toContain("Retry graph");
+    expect(html).toContain("Tentar grafo de novo");
     expect(html).toContain("&lt;script&gt;");
   });
 });

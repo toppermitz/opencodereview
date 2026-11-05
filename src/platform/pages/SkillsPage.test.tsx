@@ -139,10 +139,10 @@ function configureSave() {
 describe("Skills workspace", () => {
   it("exposes editor views as tabs with selection, panel labels and keyboard navigation", async () => {
     await render();
-    const tabs = host.querySelector('[role="tablist"][aria-label="Editor view"]');
+    const tabs = host.querySelector('[role="tablist"][aria-label="Visão do editor"]');
     expect(tabs).not.toBeNull();
     expect(tabs!.querySelectorAll('[role="tab"]')).toHaveLength(3);
-    for (const label of ["Markdown", "Diff vs default", "Visual"]) {
+    for (const label of ["Markdown", "Diff do padrão", "Visual"]) {
       await click(label);
       const selected = button(label);
       expect(selected.getAttribute("aria-selected")).toBe("true");
@@ -155,9 +155,9 @@ describe("Skills workspace", () => {
     button("Visual").focus();
     for (const [key, label] of [
       ["ArrowRight", "Markdown"],
-      ["End", "Diff vs default"],
+      ["End", "Diff do padrão"],
       ["ArrowRight", "Visual"],
-      ["ArrowLeft", "Diff vs default"],
+      ["ArrowLeft", "Diff do padrão"],
       ["Home", "Visual"],
     ]) {
       await act(async () =>
@@ -166,41 +166,41 @@ describe("Skills workspace", () => {
       expect(document.activeElement).toBe(button(label));
       expect(button(label).getAttribute("aria-selected")).toBe("true");
     }
-    expect(button("Save new version").disabled).toBe(true);
+    expect(button("Salvar nova versão").disabled).toBe(true);
   });
 
   it("opens the active version, selects Default id 0 and keeps untouched Markdown exact across views", async () => {
     await render();
-    expect(button("Open v1").getAttribute("aria-pressed")).toBe("true");
-    await click("Open Default");
-    expect(button("Open Default").getAttribute("aria-pressed")).toBe("true");
+    expect(button("Abrir v1").getAttribute("aria-pressed")).toBe("true");
+    await click("Abrir Padrão");
+    expect(button("Abrir Padrão").getAttribute("aria-pressed")).toBe("true");
     expect(host.querySelector('[aria-label="Skill visual editor"] h1')?.textContent).toBe("Default skill");
     await click("Markdown");
     expect(host.querySelector("textarea")?.value).toBe(original);
     await click("Visual");
     await click("Markdown");
     expect(host.querySelector("textarea")?.value).toBe(original);
-    expect(button("Save new version").disabled).toBe(true);
+    expect(button("Salvar nova versão").disabled).toBe(true);
     expect(host.querySelector("button button")).toBeNull();
   });
 
   it("saves a Markdown draft as a new active version without overwriting the original", async () => {
     configureSave();
     await render();
-    await click("Open Default");
+    await click("Abrir Padrão");
     await click("Markdown");
     const draft = "# My skill\n\n- **Check evidence**\n";
     await changeSource(draft);
     await click("Visual");
     expect(host.querySelector('[aria-label="Skill visual editor"] h1')?.textContent).toBe("My skill");
-    await click("Diff vs default");
+    await click("Diff do padrão");
     expect(host.textContent).toContain("# My skill");
-    await click("Save new version");
+    await click("Salvar nova versão");
     expect(vi.mocked(setupApi.createSkillVersion).mock.calls[0][0]).toBe(draft);
     expect(contents[0]).toBe(original);
-    expect(button("Open v2").getAttribute("aria-pressed")).toBe("true");
-    expect(host.textContent).toContain("v2 saved and activated.");
-    expect(button("Save new version").disabled).toBe(true);
+    expect(button("Abrir v2").getAttribute("aria-pressed")).toBe("true");
+    expect(host.textContent).toContain("v2 salva e ativada.");
+    expect(button("Salvar nova versão").disabled).toBe(true);
   });
 
   it("guards unsaved edits on version switches, navigation and reset", async () => {
@@ -208,7 +208,7 @@ describe("Skills workspace", () => {
     await render();
     await click("Markdown");
     await changeSource("# Unsaved");
-    await click("Open Default");
+    await click("Abrir Padrão");
     expect(confirm).toHaveBeenCalled();
     expect(host.querySelector("textarea")?.value).toBe("# Unsaved");
     const blocker = vi.mocked(useBlocker).mock.calls.at(-1)?.[0] as unknown as {
@@ -217,12 +217,12 @@ describe("Skills workspace", () => {
     };
     expect(blocker.enableBeforeUnload).toBe(true);
     expect(blocker.shouldBlockFn()).toBe(true);
-    await click("Discard changes");
+    await click("Descartar mudanças");
     expect(host.querySelector("textarea")?.value).toBe("# Unsaved");
     confirm.mockReturnValue(true);
-    await click("Discard changes");
+    await click("Descartar mudanças");
     expect(host.querySelector("textarea")?.value).toBe(contents[1]);
-    expect(button("Save new version").disabled).toBe(true);
+    expect(button("Salvar nova versão").disabled).toBe(true);
   });
 
   it("retains the draft on save failure and blocks empty versions", async () => {
@@ -230,12 +230,12 @@ describe("Skills workspace", () => {
     await render();
     await click("Markdown");
     await changeSource("  ");
-    expect(button("Save new version").disabled).toBe(true);
+    expect(button("Salvar nova versão").disabled).toBe(true);
     await changeSource("# Retry me");
-    await click("Save new version");
+    await click("Salvar nova versão");
     expect(host.textContent).toContain("Save unavailable");
     expect(host.querySelector("textarea")?.value).toBe("# Retry me");
-    expect(button("Save new version").disabled).toBe(false);
+    expect(button("Salvar nova versão").disabled).toBe(false);
   });
 
   it("freezes editing and selection while a save is pending", async () => {
@@ -248,32 +248,32 @@ describe("Skills workspace", () => {
     await render();
     await click("Markdown");
     await changeSource("# In flight");
-    await click("Save new version");
+    await click("Salvar nova versão");
     expect(host.querySelector("textarea")?.disabled).toBe(true);
-    expect(button("Open Default").disabled).toBe(true);
+    expect(button("Abrir Padrão").disabled).toBe(true);
     expect(button("Visual").disabled).toBe(true);
-    expect(button("Saving…").disabled).toBe(true);
+    expect(button("Salvando…").disabled).toBe(true);
     versions = [...versions.map((item) => ({ ...item, active: false })), version(2, true)];
     contents[2] = "# In flight";
     await act(async () => finish(version(2, true)));
     await settle();
-    expect(button("Open v2").getAttribute("aria-pressed")).toBe("true");
+    expect(button("Abrir v2").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("tracks real visual formatting and restores the exact original on undo", async () => {
     await render();
-    await click("Open Default");
+    await click("Abrir Padrão");
     const { editor } = host.querySelector<HTMLElement & { editor: Editor }>('[aria-label="Skill visual editor"]')!;
     await act(async () => {
       editor.commands.selectAll();
       editor.commands.toggleBold();
     });
     expect(button("Bold").getAttribute("aria-pressed")).toBe("true");
-    expect(button("Save new version").disabled).toBe(false);
+    expect(button("Salvar nova versão").disabled).toBe(false);
     await act(async () => {
       editor.commands.undo();
     });
-    expect(button("Save new version").disabled).toBe(true);
+    expect(button("Salvar nova versão").disabled).toBe(true);
     await click("Markdown");
     expect(host.querySelector("textarea")?.value).toBe(original);
   });
@@ -289,27 +289,27 @@ describe("Skills workspace", () => {
     });
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     await render();
-    await click("Open Default");
-    await click("Use saved version");
+    await click("Abrir Padrão");
+    await click("Usar versão salva");
     expect(vi.mocked(setupApi.setActiveSkillVersion).mock.calls[0][0]).toBe(0);
-    expect(host.textContent).toContain("Default is active");
-    expect(host.textContent).not.toContain("Delete version");
-    await click("Open v1");
-    await click("Delete version");
+    expect(host.textContent).toContain("Padrão está ativa");
+    expect(host.textContent).not.toContain("Excluir versão");
+    await click("Abrir v1");
+    await click("Excluir versão");
     expect(setupApi.deleteSkillVersion).not.toHaveBeenCalled();
     confirm.mockReturnValue(true);
-    await click("Delete version");
+    await click("Excluir versão");
     expect(vi.mocked(setupApi.deleteSkillVersion).mock.calls[0][0]).toBe(1);
-    expect(button("Open Default").getAttribute("aria-pressed")).toBe("true");
+    expect(button("Abrir Padrão").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("reports content errors instead of presenting an editable empty skill", async () => {
     client.removeQueries({ queryKey: ["skills", 0, "content"] });
     vi.mocked(setupApi.getSkillVersionContent).mockRejectedValue(new Error("Content unavailable"));
     await render();
-    await click("Open Default");
+    await click("Abrir Padrão");
     expect(host.textContent).toContain("Content unavailable");
-    expect(button("Save new version").disabled).toBe(true);
+    expect(button("Salvar nova versão").disabled).toBe(true);
     expect(host.querySelector('[aria-label="Skill visual editor"]')).toBeNull();
   });
 });

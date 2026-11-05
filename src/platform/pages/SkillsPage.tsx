@@ -47,7 +47,7 @@ export function SkillsPage() {
     onSuccess: (items) => {
       setError(null);
       queryClient.setQueryData(["skills", "versions"], items);
-      setNotice("Version activated for future reviews.");
+      setNotice("Versão ativada para as próximas revisões.");
       void queryClient.invalidateQueries({ queryKey: ["skills"] });
     },
     onError: (cause) => setError(formatError(cause)),
@@ -64,7 +64,7 @@ export function SkillsPage() {
       setDraft(null);
       setSelectedId(version.id);
       setMode("visual");
-      setNotice(`${skillLabel(version)} saved and activated.`);
+      setNotice(`${skillLabel(version)} salva e ativada.`);
       void queryClient.invalidateQueries({ queryKey: ["skills"] });
     },
     onError: (cause) => setError(formatError(cause)),
@@ -84,13 +84,12 @@ export function SkillsPage() {
   const busy = activate.isPending || create.isPending || remove.isPending;
   const ready = Boolean(selected) && contentQuery.data !== undefined && !contentQuery.isError;
   useBlocker({
-    shouldBlockFn: () => busy || (dirty && !window.confirm("Discard unsaved skill changes and leave this page?")),
+    shouldBlockFn: () => busy || (dirty && !window.confirm("Descartar mudanças da skill e sair desta página?")),
     enableBeforeUnload: dirty || busy,
   });
 
   function selectVersion(id: number) {
-    if (busy || id === selected?.id || (dirty && !window.confirm("Discard unsaved changes and open this version?")))
-      return;
+    if (busy || id === selected?.id || (dirty && !window.confirm("Descartar mudanças e abrir esta versão?"))) return;
     setSelectedId(id);
     setDraft(null);
     setError(null);
@@ -107,40 +106,40 @@ export function SkillsPage() {
       await navigator.clipboard.writeText(content);
       setNotice("Markdown copied.");
     } catch (cause) {
-      setError(`Could not copy Markdown: ${formatError(cause)}`);
+      setError(`Não foi possível copiar o Markdown: ${formatError(cause)}`);
     }
   }
 
   return (
     <PlatformPage
       title="Skills"
-      description="Shape how OpenCodeReview reviews code. Edit a skill and save a new version when it’s ready."
+      description="Defina como o OpenCodeReview revisa código. Edite uma skill e salve uma nova versão quando estiver pronta."
     >
       <div className="px-6 pb-3 empty:hidden">{error && <DSError>{error}</DSError>}</div>
       <div className="review-workspace skills-workspace overflow-hidden max-md:flex-col [&_button:disabled]:cursor-not-allowed [&_button:disabled]:opacity-45 [&_select:disabled]:cursor-not-allowed [&_select:disabled]:opacity-45 flex min-h-0 flex-1 border-t border-line bg-canvas">
         <aside
           className="review-workspace-list skills-version-list flex w-80 shrink-0 flex-col border-r border-line bg-surface [&[hidden]]:hidden"
-          aria-label="Skill versions"
+          aria-label="Versões da skill"
         >
           <div className="review-workspace-list-header flex flex-none flex-col gap-3 border-b border-line p-4 [&_h2]:flex [&_h2]:items-center [&_h2]:gap-2 [&_h2]:text-overline [&_h2]:text-fg-subtle [&_h2]:uppercase">
             <h2>
-              Versions <span>{versions.length}</span>
+              Versões <span>{versions.length}</span>
             </h2>
-            <p>Saved snapshots stay unchanged.</p>
+            <p>Snapshots salvos não mudam.</p>
           </div>
           <div className="review-workspace-list-scroll flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto p-3">
             {versionsQuery.isLoading ? (
-              <BrandLoading size="compact" label="Loading skill versions…" />
+              <BrandLoading size="compact" label="Carregando versões da skill…" />
             ) : versionsQuery.isError ? (
               <DSError>
                 {formatError(versionsQuery.error)}{" "}
-                <DSButton onClick={() => void versionsQuery.refetch()}>Retry</DSButton>
+                <DSButton onClick={() => void versionsQuery.refetch()}>Tentar de novo</DSButton>
               </DSError>
             ) : (
               [
-                { label: "Built-in", items: versions.filter((version) => version.id <= 0) },
+                { label: "Integrada", items: versions.filter((version) => version.id <= 0) },
                 {
-                  label: "Saved versions",
+                  label: "Versões salvas",
                   items: versions.filter((version) => version.id > 0).sort((a, b) => b.version - a.version),
                 },
               ].map((group) => (
@@ -169,12 +168,12 @@ export function SkillsPage() {
           </div>
           <div className="skill-sidebar-footer flex items-center gap-2 border-t border-line p-4 text-caption text-fg-muted max-md:hidden">
             <span className="skill-status-dot size-1.5 rounded-full bg-success" />
-            {active ? `${skillLabel(active)} is active` : "No active version"}
+            {active ? `${skillLabel(active)} está ativa` : "Nenhuma versão ativa"}
           </div>
         </aside>
         <section
           className="review-workspace-main skill-editor-panel bg-canvas flex min-w-0 flex-1 flex-col overflow-hidden"
-          aria-label="Skill editor"
+          aria-label="Editor da skill"
         >
           <header className="review-workspace-head skill-editor-head max-md:flex-wrap flex flex-none items-center justify-between gap-4 border-b border-line bg-surface px-6 py-3.5 [&_h2]:text-heading [&_h2]:text-fg [&_p]:text-small [&_p]:text-fg-muted">
             <div className="min-w-0">
@@ -183,18 +182,20 @@ export function SkillsPage() {
                 <h2>{selected ? skillLabel(selected) : "Skill"}</h2>
                 {selected?.active && (
                   <span className="skill-active-badge inline-flex h-5 items-center rounded-full bg-emerald-50 px-2 text-caption font-medium text-emerald-700 ring-1 ring-emerald-600/20 ring-inset">
-                    Active
+                    Ativa
                   </span>
                 )}
                 {dirty && (
                   <span className="skill-draft-badge inline-flex h-5 items-center rounded-full bg-amber-50 px-2 text-caption font-medium text-amber-800 ring-1 ring-amber-600/25 ring-inset">
-                    Unsaved changes
+                    Alterações não salvas
                   </span>
                 )}
               </div>
               <p>
-                {selected?.id !== undefined && selected.id <= 0 ? "Built-in review skill" : "Saved review skill"} ·
-                SKILL.md
+                {selected?.id !== undefined && selected.id <= 0
+                  ? "Skill de revisão integrada"
+                  : "Skill de revisão salva"}{" "}
+                · SKILL.md
               </p>
             </div>
             <div className="review-workspace-actions flex items-center gap-2">
@@ -202,18 +203,18 @@ export function SkillsPage() {
                 className="skill-actions relative [&_summary]:grid [&_summary]:size-8 [&_summary]:cursor-pointer [&_summary]:list-none [&_summary]:place-items-center [&_summary]:rounded-md [&_summary]:border [&_summary]:border-line [&_summary]:bg-surface [&_summary]:text-fg-muted [&_summary]:shadow-card [&_summary:hover]:bg-surface-muted [&_summary::-webkit-details-marker]:hidden"
                 key={selected?.id}
               >
-                <summary aria-label="Version actions" title="Version actions">
+                <summary aria-label="Ações da versão" title="Ações da versão">
                   <MoreHorizontal className="size-4" />
                 </summary>
                 <div className="skill-actions-menu absolute top-[calc(100%+6px)] right-0 z-20 flex min-w-48 flex-col gap-1 rounded-xl border border-line bg-surface p-1.5 shadow-pop [&_button]:justify-start">
                   <DSButton tone="ghost" disabled={!ready} onClick={() => void copy()}>
                     <Copy className="size-3.5" />
-                    Copy Markdown
+                    Copiar Markdown
                   </DSButton>
                   {selected && !selected.active && (
                     <DSButton tone="ghost" disabled={busy || dirty} onClick={() => activate.mutate(selected.id)}>
                       <Check className="size-3.5" />
-                      Use saved version
+                      Usar versão salva
                     </DSButton>
                   )}
                   {selected && selected.id > 0 && (
@@ -222,12 +223,12 @@ export function SkillsPage() {
                       disabled={busy}
                       onClick={() =>
                         window.confirm(
-                          `Delete ${skillLabel(selected)}?${dirty ? " Unsaved changes will also be discarded." : ""}`,
+                          `Excluir ${skillLabel(selected)}?${dirty ? " Alterações não salvas também serão descartadas." : ""}`,
                         ) && remove.mutate(selected.id)
                       }
                     >
                       <Trash2 className="size-3.5" />
-                      Delete version
+                      Excluir versão
                     </DSButton>
                   )}
                 </div>
@@ -238,7 +239,7 @@ export function SkillsPage() {
                 onClick={() => create.mutate(content)}
               >
                 <Save className="size-3.5" />
-                {create.isPending ? "Salvando…" : "Save new version"}
+                {create.isPending ? "Salvando…" : "Salvar nova versão"}
               </DSButton>
             </div>
           </header>
@@ -246,7 +247,7 @@ export function SkillsPage() {
             <div
               className="skill-view-switch flex max-w-full min-w-0 gap-1 overflow-x-auto rounded-lg bg-surface-muted p-1 [&_[role=tab]]:flex-none [&_[role=tab]]:cursor-pointer [&_[role=tab]]:rounded-md [&_[role=tab]]:px-3 [&_[role=tab]]:py-1.5 [&_[role=tab]]:text-small [&_[role=tab]]:font-medium [&_[role=tab]]:whitespace-nowrap [&_[role=tab]]:text-fg-muted [&_[role=tab]:hover]:text-fg [&_[role=tab][aria-selected=true]]:bg-surface [&_[role=tab][aria-selected=true]]:text-brand [&_[role=tab][aria-selected=true]]:shadow-raised"
               role="tablist"
-              aria-label="Editor view"
+              aria-label="Visão do editor"
               onKeyDown={(event) => {
                 if (busy || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
                 const tabs = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
@@ -267,7 +268,7 @@ export function SkillsPage() {
                 [
                   { id: "visual", label: "Visual" },
                   { id: "markdown", label: "Markdown" },
-                  { id: "diff", label: "Diff vs default" },
+                  { id: "diff", label: "Diff do padrão" },
                 ] as const
               ).map((view) => (
                 <button
@@ -296,15 +297,16 @@ export function SkillsPage() {
             tabIndex={0}
           >
             {versionsQuery.isLoading ? null : !selected ? (
-              <DSEmptyState>No skill versions available. Retry loading versions to begin.</DSEmptyState>
+              <DSEmptyState>Nenhuma versão de skill disponível. Tente carregar de novo para começar.</DSEmptyState>
             ) : contentQuery.isError ? (
               <DSError>
-                {formatError(contentQuery.error)} <DSButton onClick={() => void contentQuery.refetch()}>Retry</DSButton>
+                {formatError(contentQuery.error)}{" "}
+                <DSButton onClick={() => void contentQuery.refetch()}>Tentar de novo</DSButton>
               </DSError>
             ) : !ready ? (
-              <BrandLoading label="Loading skill content…" />
+              <BrandLoading label="Carregando conteúdo da skill…" />
             ) : mode === "visual" ? (
-              <Suspense fallback={<BrandLoading label="Loading editor…" />}>
+              <Suspense fallback={<BrandLoading label="Carregando editor…" />}>
                 <SkillEditor
                   key={`${selected?.id}:${revision}`}
                   content={content}
@@ -315,22 +317,22 @@ export function SkillsPage() {
             ) : mode === "markdown" ? (
               <textarea
                 className="skill-markdown-source min-h-0 w-full flex-1 resize-none bg-canvas px-10 py-7 font-mono text-small leading-7 text-fg outline-none [tab-size:2] max-md:p-5"
-                aria-label="Skill Markdown source"
+                aria-label="Fonte Markdown da skill"
                 spellCheck={false}
                 value={content}
                 disabled={busy}
                 onChange={(event) => updateDraft(event.target.value)}
-                placeholder="Write or paste a Markdown skill…"
+                placeholder="Escreva ou cole uma skill em Markdown…"
               />
             ) : (
               <div className="skill-diff-scroll min-h-0 flex-1 overflow-auto overscroll-contain px-6 py-5 [scrollbar-gutter:stable] max-md:p-3">
                 {baselineQuery.isError ? (
                   <DSError>
                     {formatError(baselineQuery.error)}{" "}
-                    <DSButton onClick={() => void baselineQuery.refetch()}>Retry comparison</DSButton>
+                    <DSButton onClick={() => void baselineQuery.refetch()}>Tentar comparação de novo</DSButton>
                   </DSError>
                 ) : baselineQuery.data === undefined ? (
-                  <BrandLoading label="Loading default skill…" />
+                  <BrandLoading label="Carregando skill padrão…" />
                 ) : (
                   <SkillDiff rows={diffRows} />
                 )}
@@ -346,7 +348,7 @@ export function SkillsPage() {
                 tone="ghost"
                 disabled={busy}
                 onClick={() => {
-                  if (window.confirm("Discard unsaved skill changes?")) {
+                  if (window.confirm("Descartar mudanças da skill?")) {
                     setDraft(null);
                     setRevision((value) => value + 1);
                     setNotice("");
@@ -354,7 +356,7 @@ export function SkillsPage() {
                 }}
               >
                 <RotateCcw className="size-3.5" />
-                Discard changes
+                Descartar mudanças
               </DSButton>
             )}
           </footer>
@@ -368,7 +370,7 @@ type DiffRow = { kind: "same" | "add" | "remove"; oldLine: number | null; newLin
 
 function SkillDiff({ rows }: { rows: DiffRow[] }) {
   const changed = rows.some((row) => row.kind !== "same");
-  if (!changed) return <DSEmptyState>No changes compared with Default.</DSEmptyState>;
+  if (!changed) return <DSEmptyState>Nenhuma mudança em relação ao padrão.</DSEmptyState>;
   return (
     <div className="text-xs font-mono leading-relaxed">
       {rows.map((row) => (
@@ -418,7 +420,7 @@ function formatSkillDate(value: number) {
 }
 
 function skillLabel(version: SkillVersion): string {
-  if (version.id === 0) return "Default";
+  if (version.id === 0) return "Padrão";
   return `v${version.version}`;
 }
 
@@ -437,7 +439,7 @@ function SkillVersionRow({
     <button
       type="button"
       className={`review-process-item skill-version-row flex w-full cursor-pointer items-start gap-3 rounded-lg border p-3 text-left transition-colors ${selected ? "review-process-item-selected border-brand/40 bg-brand-soft/60 ring-1 ring-brand/20" : "border-transparent hover:border-line hover:bg-surface-muted"}`}
-      aria-label={`Open ${skillLabel(version)}`}
+      aria-label={`Abrir ${skillLabel(version)}`}
       aria-pressed={selected}
       disabled={busy}
       onClick={onSelect}
@@ -448,7 +450,7 @@ function SkillVersionRow({
           {skillLabel(version)}
           {version.active && (
             <span className="skill-active-badge inline-flex h-5 items-center rounded-full bg-emerald-50 px-2 text-caption font-medium text-emerald-700 ring-1 ring-emerald-600/20 ring-inset">
-              Active
+              Ativa
             </span>
           )}
         </span>
@@ -456,11 +458,11 @@ function SkillVersionRow({
           className="skill-version-note mt-1 block truncate text-caption text-fg-muted"
           title={version.note ?? undefined}
         >
-          {version.note ?? (version.id <= 0 ? "Built-in review skill" : "Review skill snapshot")}
+          {version.note ?? (version.id <= 0 ? "Skill de revisão integrada" : "Snapshot da skill de revisão")}
         </span>
         <span className="skill-version-meta mt-1.5 block text-caption text-fg-subtle">
-          {version.charCount.toLocaleString()} chars ·{" "}
-          {version.id <= 0 ? "Built-in" : formatSkillDate(version.createdAt)}
+          {version.charCount.toLocaleString()} caracteres ·{" "}
+          {version.id <= 0 ? "Integrada" : formatSkillDate(version.createdAt)}
         </span>
       </span>
     </button>

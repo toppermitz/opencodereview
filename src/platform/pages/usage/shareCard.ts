@@ -32,7 +32,7 @@ export function shareCardData(report: UsageReport): ShareCardData {
     stats: [
       { label: plural(totals.runs, "Revisão", "Revisões"), value: totals.runs.toLocaleString("pt-BR") },
       {
-        label: plural(totals.prs, "Merge request", "Merge requests"),
+        label: plural(totals.prs, "MR", "MRs"),
         value: totals.prs.toLocaleString("pt-BR"),
       },
       {
@@ -118,7 +118,7 @@ export async function renderShareCard(canvas: HTMLCanvasElement, data: ShareCard
   ctx.textAlign = "right";
   ctx.fillStyle = subtle;
   ctx.font = `400 22px ${sans}`;
-  ctx.fillText(`Last ${data.days} days`, SHARE_WIDTH - PAD, PAD + 14);
+  ctx.fillText(`Últimos ${data.days} dias`, SHARE_WIDTH - PAD, PAD + 14);
   ctx.textAlign = "left";
 
   // Hero number.
@@ -128,11 +128,11 @@ export async function renderShareCard(canvas: HTMLCanvasElement, data: ShareCard
   ctx.fillText(data.tokens, PAD - 4, 262);
   ctx.fillStyle = muted;
   ctx.font = `400 26px ${sans}`;
-  ctx.fillText("tokens of AI code review", PAD, 308);
+  ctx.fillText("tokens de revisão de código por IA", PAD, 308);
   if (data.cacheRead) {
     ctx.fillStyle = subtle;
     ctx.font = `400 20px ${sans}`;
-    ctx.fillText(`+ ${data.cacheRead} read from cache`, PAD, 342);
+    ctx.fillText(`+ ${data.cacheRead} lidos do cache`, PAD, 342);
   }
 
   // Daily bars on the right.

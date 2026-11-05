@@ -68,14 +68,14 @@ function ShareDialog({ report, onClose }: { report: UsageReport; onClose: () => 
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Share usage image"
+        aria-label="Compartilhar imagem de uso"
         className="relative flex w-[min(40rem,100%)] flex-col gap-4 rounded-2xl border border-line-strong bg-surface p-5 shadow-pop"
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-heading text-fg">Share your usage</h2>
+            <h2 className="text-heading text-fg">Compartilhe seu uso</h2>
             <p className="text-small text-fg-subtle">
-              Totals only: no repository, merge request, account or model names.
+              Só totais: sem nome de repositório, merge request, conta ou modelo.
             </p>
           </div>
           <DSButton tone="ghost" size="iconSm" aria-label="Fechar" onClick={onClose}>
@@ -87,9 +87,9 @@ function ShareDialog({ report, onClose }: { report: UsageReport; onClose: () => 
           style={{ aspectRatio: `${SHARE_WIDTH} / ${SHARE_HEIGHT}` }}
         >
           {image ? (
-            <img src={image.url} alt="Usage summary to share" className="h-full w-full" />
+            <img src={image.url} alt="Resumo de uso para compartilhar" className="h-full w-full" />
           ) : error ? null : (
-            <BrandLoading size="compact" label="Drawing image…" />
+            <BrandLoading size="compact" label="Desenhando imagem…" />
           )}
         </div>
         {error && <DSError>{error}</DSError>}
@@ -105,7 +105,7 @@ function ShareDialog({ report, onClose }: { report: UsageReport; onClose: () => 
               ) : (
                 <Copy className="size-4" aria-hidden="true" />
               )}
-              {copied ? "Copied" : "Copy image"}
+              {copied ? "Copiado" : "Copiar imagem"}
             </DSButton>
           )}
         </div>

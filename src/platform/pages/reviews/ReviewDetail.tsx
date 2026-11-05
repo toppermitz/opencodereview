@@ -80,37 +80,37 @@ export function ReviewDetail({
     {
       value: "request_changes",
       label: "Solicitar mudanças",
-      description: "Ask the author to fix selected findings.",
+      description: "Peça ao autor para corrigir os achados selecionados.",
       tone: "danger",
       enabled: hasActionableFindings && !allFindingsDuplicated && !ownPr,
     },
     {
       value: "comment",
-      label: allFindingsDuplicated ? "Mark covered" : "Post comments",
+      label: allFindingsDuplicated ? "Marcar como coberto" : "Publicar comentários",
       description: allFindingsDuplicated
-        ? "Record that another run already posted them."
-        : "Share findings without a GitLab verdict.",
+        ? "Registre que outra execução já os publicou."
+        : "Compartilhe os achados sem um veredito no GitLab.",
       tone: "secondary",
       enabled: hasFindings || Boolean(suggestions),
     },
     {
       value: "approve_post",
       label: "Aprovar",
-      description: "Approve this merge request on GitLab.",
+      description: "Aprove este merge request no GitLab.",
       tone: "primary",
       enabled: !hasFindings && !ownPr,
     },
     {
       value: "mark_reviewed",
       label: "Marcar como revisado",
-      description: "Close locally without posting to GitLab.",
+      description: "Feche localmente sem publicar no GitLab.",
       tone: "secondary",
       enabled: ownPr || !hasActionableFindings || allFindingsDuplicated,
     },
     {
       value: "skip",
       label: "Ignorar",
-      description: "Leave this review unpublished.",
+      description: "Deixe esta revisão sem publicar.",
       tone: "secondary",
       enabled: true,
     },
@@ -153,16 +153,16 @@ export function ReviewDetail({
               <details className="review-rerun-menu group relative">
                 <summary className="inline-flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-md border border-line bg-surface px-3 text-small font-medium text-fg shadow-card hover:bg-surface-muted [&::-webkit-details-marker]:hidden">
                   <RotateCcw className="size-3.5" />
-                  {run ? "Re-run" : "Run review"}
+                  {run ? "Reexecutar" : "Executar revisão"}
                   <ChevronDown className="size-3.5 text-fg-subtle transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="absolute top-full right-0 z-30 mt-1 flex w-44 flex-col gap-1 rounded-lg border border-line bg-surface p-1.5 shadow-pop">
                   <DSButton
                     disabled={busy}
-                    title="Runs fresh analysis of new changes; if unchanged, repeats the previous analysis scope. Consumes model usage."
+                    title="Analisa de novo as mudanças novas; se nada mudou, repete o escopo anterior. Consome uso do modelo."
                     onClick={() => onReprocess(false)}
                   >
-                    {run ? "Re-run review" : "Run review"}
+                    {run ? "Reexecutar revisão" : "Executar revisão"}
                   </DSButton>
                   {run && (
                     <DSButton disabled={busy} onClick={() => onReprocess(true)}>
@@ -184,8 +184,8 @@ export function ReviewDetail({
           activeId={resultSection}
           panelId={resultPanelId}
           label="Seções do resultado"
-          previousLabel="Previous result section"
-          nextLabel="Next result section"
+          previousLabel="Seção anterior do resultado"
+          nextLabel="Próxima seção do resultado"
           showArrows={false}
           onChange={setResultSection}
         />
@@ -213,29 +213,29 @@ export function ReviewDetail({
         >
           {contextError && <DSError>{contextError}</DSError>}
           {chunkProgress && <PlatformChunkProgress progress={chunkProgress} />}
-          <section className="review-run-details flex flex-col gap-3" aria-label="Run details">
+          <section className="review-run-details flex flex-col gap-3" aria-label="Detalhes da execução">
             <header className="review-run-details-heading flex items-center justify-between">
-              <h3 className="text-heading text-fg">Run details</h3>
+              <h3 className="text-heading text-fg">Detalhes da execução</h3>
               <span className="text-caption text-fg-subtle">
-                {risk ? `Risk ${risk.score}/100 · ${risk.level}` : "Usage, context & result"}
+                {risk ? `Risco ${risk.score}/100 · ${risk.level}` : "Uso, contexto e resultado"}
               </span>
             </header>
             <div className="review-run-details-body flex flex-col gap-3">
               {card.resultState && (
                 <div className="review-run-result-summary rounded-xl border border-line bg-surface p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="m-0 text-sm font-semibold text-fg">Run outcome</h2>
+                    <h2 className="m-0 text-sm font-semibold text-fg">Resultado da execução</h2>
                     <DSBadge tone={card.resultPublicationStatus === "failed" ? "danger" : "success"} dot>
                       {card.resultState.replaceAll("_", " ")}
                     </DSBadge>
                     <span className="text-xs font-semibold text-fg-subtle">
-                      {card.resultPublicationStatus ?? "local only"}
+                      {card.resultPublicationStatus ?? "só local"}
                     </span>
                   </div>
                   <p className="m-0 mt-2 text-sm text-fg-muted">
-                    Observed {shortSha(card.resultObservedHeadSha)} · reviewed {shortSha(card.resultReviewedHeadSha)}
+                    Observado {shortSha(card.resultObservedHeadSha)} · revisado {shortSha(card.resultReviewedHeadSha)}
                     {card.resultInherited && card.resultPriorHeadSha
-                      ? ` · inherited from ${shortSha(card.resultPriorHeadSha)}`
+                      ? ` · herdado de ${shortSha(card.resultPriorHeadSha)}`
                       : ""}
                   </p>
                   {card.resultError && <p className="m-0 mt-2 text-sm font-semibold text-danger">{card.resultError}</p>}
@@ -244,7 +244,7 @@ export function ReviewDetail({
               {card.isStacked && (
                 <div className="review-run-stacked-summary rounded-xl border border-line bg-surface p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="m-0 text-sm font-semibold text-fg">Stacked PR</h2>
+                    <h2 className="m-0 text-sm font-semibold text-fg">MR empilhado</h2>
                     <span className="rounded-full border border-line bg-surface-muted px-2.5 py-1 text-xs font-bold text-fg-muted">
                       {card.baseRef ?? "base"} → {card.headRef ?? "head"}
                     </span>
@@ -253,7 +253,7 @@ export function ReviewDetail({
                     )}
                   </div>
                   <p className="m-0 mt-2 text-sm text-fg-muted">
-                    Review uses the immediate base branch, so comments target only this MR's delta.
+                    A revisão usa a branch base imediata, então os comentários miram só o delta deste MR.
                   </p>
                 </div>
               )}
@@ -271,12 +271,12 @@ export function ReviewDetail({
         >
           {hasQuestions && !hasActionableFindings && (
             <p className="review-stage-note rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-small text-sky-900">
-              Questions only: confirmation requested, no proven defect selected.
+              Só perguntas: confirmação pedida, nenhum defeito comprovado selecionado.
             </p>
           )}
           <FindingSelection {...findingSelection}>
             {loading ? (
-              <BrandLoading label="Loading review…" />
+              <BrandLoading label="Carregando revisão…" />
             ) : comments.length > 0 || displayRun?.reviewBody ? (
               <details
                 className="finding-group min-w-0 rounded-xl border border-line bg-surface shadow-card"
@@ -284,10 +284,10 @@ export function ReviewDetail({
                 open
               >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-line px-4 py-3 text-heading text-fg">
-                  <span>Final findings</span>
+                  <span>Achados finais</span>
                   <span className="text-caption font-normal text-fg-subtle">
-                    {comments.length} inline{hasBodyFindings ? " · general review" : ""}
-                    {suggestions ? " · suggestions" : ""}
+                    {comments.length} inline{hasBodyFindings ? " · revisão geral" : ""}
+                    {suggestions ? " · sugestões" : ""}
                   </span>
                 </summary>
                 <div className="finding-group-list grid min-w-0 gap-3 flex flex-col gap-3 p-4">
@@ -303,7 +303,7 @@ export function ReviewDetail({
                         </span>
                         {comment.status === "duplicate_suppressed" && (
                           <div className="mb-3 rounded-lg border border-warning bg-amber-50 px-3 py-2 text-xs font-bold text-warning">
-                            Already posted by another OpenCodeReview run
+                            Já publicado por outra execução do OpenCodeReview
                             {comment.duplicateAuthor ? ` (${comment.duplicateAuthor})` : ""}
                             {comment.duplicateUrl && (
                               <>
@@ -334,15 +334,15 @@ export function ReviewDetail({
                 </div>
               </details>
             ) : (
-              <DSEmptyState>{live ? "Waiting for Claude output…" : "No generated review yet."}</DSEmptyState>
+              <DSEmptyState>{live ? "Aguardando saída do Claude…" : "Nenhuma revisão gerada ainda."}</DSEmptyState>
             )}
           </FindingSelection>
         </div>
         {resultSection === "details" && live && (
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <h2 className="m-0 mb-3 text-sm font-semibold">Live log</h2>
+            <h2 className="m-0 mb-3 text-sm font-semibold">Log ao vivo</h2>
             <pre className="min-h-0 min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface-muted p-4 text-xs leading-relaxed text-fg-muted">
-              {run?.tail || "Waiting for output…"}
+              {run?.tail || "Aguardando saída…"}
             </pre>
           </div>
         )}
@@ -354,18 +354,18 @@ export function ReviewDetail({
         >
           <p className="m-0 text-small text-fg-muted">
             {ownPr
-              ? "This is your MR. GitLab blocks self-approval and request-changes; mark reviewed locally or skip."
+              ? "Este MR é seu. O GitLab bloqueia autoaprovação e solicitar mudanças; marque como revisado localmente ou ignore."
               : allFindingsDuplicated
-                ? `All ${duplicateCount} finding${duplicateCount === 1 ? "" : "s"} already posted by another OpenCodeReview run. Mark covered locally.`
+                ? `All ${duplicateCount} finding${duplicateCount === 1 ? "" : "s"} already posted by another OpenCodeReview run. Marcar como coberto locally.`
                 : hasQuestions && !hasActionableFindings
-                  ? "Only questions selected. Publish as comments, mark reviewed locally, or skip; no Request changes."
+                  ? "Só perguntas selecionadas. Publique como comentários, marque como revisado localmente ou ignore; sem solicitar mudanças."
                   : hasFindings
                     ? duplicateCount > 0
-                      ? `Post new findings; ${duplicateCount} duplicate${duplicateCount === 1 ? "" : "s"} will be suppressed.`
+                      ? `Publique os achados novos; ${duplicateCount} duplicado${duplicateCount === 1 ? "" : "s"} será${duplicateCount === 1 ? "" : "ão"} omitido${duplicateCount === 1 ? "" : "s"}.`
                       : hasBodyFindings && comments.length === 0
-                        ? "Post findings to GitLab as a review comment, or skip without posting."
-                        : "Post inline findings to GitLab, or skip without posting."
-                    : "No findings. Approve on GitLab, mark reviewed locally, or skip."}
+                        ? "Publique os achados no GitLab como comentário da revisão, ou ignore sem publicar."
+                        : "Publique os achados inline no GitLab, ou ignore sem publicar."
+                    : "Nenhum achado. Aprove no GitLab, marque como revisado localmente ou ignore."}
           </p>
           <div className="review-decision-controls flex items-center gap-3">
             <ReviewDecisionCarousel
@@ -382,7 +382,7 @@ export function ReviewDetail({
                 if (selectedDecision && findingSelectionReady) onDecide(selectedDecision.value);
               }}
             >
-              {selectedDecision?.label ?? "Apply decision"}
+              {selectedDecision?.label ?? "Aplicar decisão"}
             </DSButton>
           </div>
         </div>

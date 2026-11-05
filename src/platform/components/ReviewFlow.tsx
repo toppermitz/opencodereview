@@ -160,7 +160,11 @@ export function ReviewFlow({
   const phase = selected?.data.phase;
   const failed = selected && ["failed", "cancelled", "superseded"].includes(selected.data.state);
   const errorMessage = selected?.data.chunk?.error || run?.errorMessage;
-  const canForceFullReview = Boolean(onFullReview && errorMessage?.includes("Choose Re-run full"));
+  const canForceFullReview = Boolean(
+    onFullReview &&
+      errorMessage &&
+      (errorMessage.includes("Choose Re-run full") || errorMessage.includes("Escolha Reexecutar completa")),
+  );
   const log = selected?.data.chunk
     ? selected.data.chunk.log
     : typeof phase?.log === "string"
@@ -174,10 +178,10 @@ export function ReviewFlow({
     : [];
   const executions = selectedId ? phaseStages(selectedId, stages) : [];
   const stageNote = selected?.data.chunk?.cached
-    ? "Validated cache hit. No new model inference was charged for this chunk."
+    ? "Cache validado reutilizado. Nenhuma inferência nova foi cobrada neste chunk."
     : selected?.data.metrics.tokens === 0
-      ? "Local processing. No Claude tokens are used by this stage."
-      : "Tokens are recorded when each Claude execution finishes. Partial totals exclude executions still running; missing usage is not treated as zero.";
+      ? "Processamento local. Esta etapa não usa tokens do Claude."
+      : "Os tokens entram quando cada execução do Claude termina. Totais parciais excluem execuções ainda em andamento; uso ausente não conta como zero.";
   const contextQuery = useQuery({
     queryKey: ["reviews", run?.prId, "runContext", run?.id, phase?.status],
     queryFn: () => {
@@ -189,7 +193,7 @@ export function ReviewFlow({
   });
   return (
     <div className={`review-flow ${selectedView !== null ? "review-flow-inspecting" : ""}`}>
-      <section ref={canvasRef} className="review-flow-canvas" aria-label="Interactive review process">
+      <section ref={canvasRef} className="review-flow-canvas" aria-label="Processo de revisão interativo">
         <ReactFlow<ReviewFlowNode>
           nodes={nodes}
           edges={flow.edges}
@@ -216,14 +220,14 @@ export function ReviewFlow({
           <Background variant={BackgroundVariant.Dots} gap={22} size={1} />
           <Controls showInteractive={false} />
         </ReactFlow>
-        <div className="review-flow-hint">Select a stage to inspect its output</div>
+        <div className="review-flow-hint">Selecione uma etapa para inspecionar a saída</div>
       </section>
       {selectedView !== null && (
         <aside
           ref={inspectorRef}
           tabIndex={-1}
           className="review-stage-inspector z-5 flex min-h-0 w-[clamp(480px,48vw,800px)] min-w-0 flex-none flex-col border-l border-line bg-surface outline-none max-lg:absolute max-lg:inset-y-0 max-lg:right-0 max-lg:w-[min(620px,100%)] max-lg:shadow-pop"
-          aria-label="Review details"
+          aria-label="Detalhes da revisão"
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.stopPropagation();
@@ -299,7 +303,7 @@ export function ReviewFlow({
                       className="review-stage-error w-full rounded-lg border border-rose-200 bg-rose-50 p-3 text-caption text-rose-800 [overflow-wrap:anywhere]"
                       role="alert"
                     >
-                      {selected.data.chunk?.error ? "Chunk error: " : selected.data.chunk ? "Run error: " : ""}
+                      {selected.data.chunk?.error ? "Erro do chunk: " : selected.data.chunk ? "Erro da execução: " : ""}
                       {errorMessage}
                     </div>
                     {canForceFullReview && (
@@ -308,21 +312,23 @@ export function ReviewFlow({
                         disabled={control?.busy || control?.disabled}
                         onClick={() => onFullReview?.()}
                       >
-                        Re-run full
+                        Reexecutar completa
                       </DSButton>
                     )}
                   </>
                 )}
                 {phase?.id === "context" && (
                   <>
-                    {contextQuery.isLoading && <BrandLoading size="compact" label="Loading context snapshot…" />}
+                    {contextQuery.isLoading && <BrandLoading size="compact" label="Carregando snapshot de contexto…" />}
                     {contextQuery.error && <DSError>{contextQuery.error.message}</DSError>}
                     {contextQuery.data ? (
                       <ContextPhaseDetails context={contextQuery.data} />
                     ) : (
                       !contextQuery.isLoading &&
                       !contextQuery.error && (
-                        <p className="review-stage-note">No context snapshot recorded for this run yet.</p>
+                        <p className="review-stage-note">
+                          Nenhum snapshot de contexto registrado nesta execução ainda.
+                        </p>
                       )
                     )}
                   </>
@@ -330,7 +336,7 @@ export function ReviewFlow({
                 {executions.length > 0 && (
                   <details className={`review-stage-executions w-full ${contextGroupClass}`} open>
                     <summary>
-                      Model runs<span>{executions.length}</span>
+                      Execuções do modelo<span>{executions.length}</span>
                     </summary>
                     <div className="mt-2 grid">
                       {executions.map((execution) => (
@@ -345,7 +351,7 @@ export function ReviewFlow({
                                 : phaseLabel(selected.data.phase)}
                             </h4>
                             <p>
-                              {execution.fileCount} files · {execution.model ?? "Model unavailable"}
+                              {execution.fileCount} arquivos · {execution.model ?? "Modelo indisponível"}
                             </p>
                             <p>
                               {execution.status} ·{" "}
@@ -368,10 +374,10 @@ export function ReviewFlow({
                   log={log ?? ""}
                   empty={
                     selected.data.chunk
-                      ? "No retained output for this chunk. The live feed only includes the chunk currently reported by the worker."
+                      ? "Nenhuma saída retida neste chunk. O feed ao vivo só inclui o chunk que o worker está reportando."
                       : selected.data.state === "pending"
-                        ? "This stage has not started yet."
-                        : "No stage output recorded for this run."
+                        ? "Esta etapa ainda não começou."
+                        : "Nenhuma saída registrada nesta execução."
                   }
                 />
               </div>
@@ -402,7 +408,7 @@ function StageOutput({ log, empty }: { log: string; empty: string }) {
     );
   return (
     <section className="review-stage-output grid w-full gap-1.5">
-      <h3 className="text-caption font-semibold tracking-wide text-fg-subtle uppercase">Output</h3>
+      <h3 className="text-caption font-semibold tracking-wide text-fg-subtle uppercase">Saída</h3>
       {pre}
     </section>
   );
@@ -429,9 +435,9 @@ function StageTimeline({
   return (
     <details className={`review-stage-history w-full ${contextGroupClass}`} open={open}>
       <summary>
-        What happened
+        O que aconteceu
         <span>
-          {events.length} {events.length === 1 ? "event" : "events"} ·{" "}
+          {events.length} {events.length === 1 ? "evento" : "eventos"} ·{" "}
           {formatFlowDuration(events[last].at - events[0].at)}
         </span>
       </summary>

@@ -33,7 +33,7 @@ function RepoFilter({
     repoId === null ? "All repositories" : (repos.find((repo) => repo.id === repoId)?.fullName ?? "1 repository");
   return (
     <DSMenu
-      label="Filter by repository"
+      label="Filtrar por repositório"
       text={current}
       chevron
       items={[
@@ -62,16 +62,16 @@ function EmptyUsage({
   return (
     <DSEmptyState>
       <p>
-        Usage appears after a review runs. Start one from{" "}
+        O uso aparece depois que uma revisão roda. Comece uma em{" "}
         <Link to="/platform/reviews" className="font-medium text-fg underline underline-offset-2">
-          Reviews
+          Revisões
         </Link>
         .
       </p>
       {(filtered || days < 90) && (
         <div className="mt-4 flex justify-center gap-2">
-          {filtered && <DSButton onClick={onClear}>Clear filter</DSButton>}
-          {days < 90 && <DSButton onClick={onShow90}>Show 90 days</DSButton>}
+          {filtered && <DSButton onClick={onClear}>Limpar filtro</DSButton>}
+          {days < 90 && <DSButton onClick={onShow90}>Mostrar 90 dias</DSButton>}
         </div>
       )}
     </DSEmptyState>
@@ -113,7 +113,7 @@ export function UsagePage() {
         {report.isError && !data ? (
           <DSError>{usageError(report.error)}</DSError>
         ) : !data ? (
-          <BrandLoading label="Loading usage…" />
+          <BrandLoading label="Carregando uso…" />
         ) : data.totals.runs === 0 ? (
           <EmptyUsage
             days={days}

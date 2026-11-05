@@ -56,7 +56,7 @@ export function UsageChart({ days, byDay, action }: { days: UsageRange; byDay: U
       }
     >
       <figcaption className="flex items-center justify-between gap-3 text-caption text-fg-subtle">
-        <span>tokens/day</span>
+        <span>tokens/dia</span>
         {action}
       </figcaption>
       <div className="h-64 w-full min-w-0">

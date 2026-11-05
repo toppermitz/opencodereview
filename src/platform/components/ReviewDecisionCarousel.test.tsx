@@ -3,14 +3,14 @@ import { describe, expect, it } from "vitest";
 import { ReviewDecisionCarousel, type ReviewDecisionCarouselOption } from "./ReviewDecisionCarousel";
 
 const options: ReviewDecisionCarouselOption[] = [
-  { value: "approve_post", label: "Aprovar", description: "Approve this merge request on GitLab.", tone: "primary" },
+  { value: "approve_post", label: "Aprovar", description: "Aprove este merge request no GitLab.", tone: "primary" },
   {
     value: "mark_reviewed",
     label: "Marcar como revisado",
-    description: "Close locally without posting to GitLab.",
+    description: "Feche localmente sem publicar no GitLab.",
     tone: "secondary",
   },
-  { value: "skip", label: "Ignorar", description: "Leave this review unpublished.", tone: "secondary" },
+  { value: "skip", label: "Ignorar", description: "Deixe esta revisão sem publicar.", tone: "secondary" },
 ];
 
 describe("review decision carousel", () => {

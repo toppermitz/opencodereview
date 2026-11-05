@@ -138,7 +138,7 @@ describe("review result decisions", () => {
         (button) => button.textContent === "Reexecutar revisão",
       )!;
       expect(rerun.disabled).toBe(false);
-      expect(rerun.title).toContain("Consumes model usage");
+      expect(rerun.title).toContain("Consome uso do modelo");
       await act(async () => {
         rerun.click();
         await vi.waitFor(() => expect(setupApi.startReview).toHaveBeenCalledExactlyOnceWith(1, false));
@@ -380,7 +380,7 @@ describe("review result decisions", () => {
         const choice = findings.querySelector<HTMLInputElement>('[aria-label="Include finding kept"]')!;
         if (editable) await act(async () => choice.click());
         const summary = findings.querySelector<HTMLDetailsElement>(".finding-original-review")!;
-        expect(summary.querySelector("summary")?.textContent).toBe("Original AI summary");
+        expect(summary.querySelector("summary")?.textContent).toBe("Resumo original da IA");
         await act(async () => summary.querySelector("summary")!.click());
         body.scrollTop = 200;
         await act(async () => tabs[1].click());
@@ -392,7 +392,7 @@ describe("review result decisions", () => {
         const runDetails = details.querySelector(".review-run-details")!;
         expect(runDetails.tagName).toBe("SECTION");
         expect(runDetails.querySelector(":scope > summary")).toBeNull();
-        expect(runDetails.textContent).toContain("Run outcome");
+        expect(runDetails.textContent).toContain("Resultado da execução");
         expect(runDetails.textContent).toContain("1.6k tokens");
         if (editable)
           expect(getComputedStyle(container.querySelector(".review-decision-footer")!).display).toBe("none");
@@ -510,7 +510,9 @@ describe("review result decisions", () => {
           await act(async () => toggle("outposts").click());
           expect(toggle("outposts").getAttribute("aria-expanded")).toBe("true");
           expect(panel.querySelector(".review-process-filters")).toBeNull();
-          await act(async () => panel.querySelector<HTMLButtonElement>('button[aria-label="Filter reviews"]')!.click());
+          await act(async () =>
+            panel.querySelector<HTMLButtonElement>('button[aria-label="Filtrar revisões"]')!.click(),
+          );
           const filters = panel.querySelectorAll<HTMLButtonElement>(
             ".review-process-filters .settings-multiselect-trigger",
           );
@@ -539,7 +541,7 @@ describe("review result decisions", () => {
           await act(async () => filters[1].click());
           const repositoryDialog = panel.querySelector<HTMLDialogElement>("dialog[open]");
           expect(repositoryDialog).not.toBeNull();
-          expect(repositoryDialog!.querySelector("h2")?.textContent).toBe("Repositories");
+          expect(repositoryDialog!.querySelector("h2")?.textContent).toBe("Repositórios");
           const repositoryOption = [
             ...repositoryDialog!.querySelectorAll<HTMLButtonElement>(".settings-multiselect-option"),
           ].find((option) => option.textContent?.includes("other/repo"));
@@ -548,25 +550,25 @@ describe("review result decisions", () => {
           expect(repositoryDialog!.open).toBe(true);
           expect(repositoryOption!.getAttribute("aria-pressed")).toBe("true");
           await act(async () =>
-            repositoryDialog!.querySelector<HTMLButtonElement>('[aria-label="Close repositories"]')!.click(),
+            repositoryDialog!.querySelector<HTMLButtonElement>('[aria-label="Fechar repositórios"]')!.click(),
           );
           expect(panel.querySelector("dialog")).toBeNull();
           expect(panel.querySelector(".review-process-filters-clear")).not.toBeNull();
           await act(async () => panel.querySelector<HTMLButtonElement>(".review-process-filters-clear")!.click());
           expect(panel.querySelector(".review-process-filters-clear")).toBeNull();
         }
-        if (!wide) await act(async () => toggle("Show processes").click());
-        const close = toggle("Hide processes");
+        if (!wide) await act(async () => toggle("Mostrar processos").click());
+        const close = toggle("Ocultar processos");
         expect(panel.contains(close)).toBe(true);
         expect(close.getAttribute("aria-expanded")).toBe("true");
         await act(async () => close.click());
         expect(panel.hidden).toBe(true);
-        const open = toggle("Show processes");
+        const open = toggle("Mostrar processos");
         expect(open.getAttribute("aria-expanded")).toBe("false");
         expect(open.closest(".review-workspace-main")).not.toBeNull();
         await act(async () => open.click());
         expect(panel.hidden).toBe(false);
-        expect(container.querySelector('[aria-label="Show processes"]')).toBeNull();
+        expect(container.querySelector('[aria-label="Mostrar processos"]')).toBeNull();
       } finally {
         await act(async () => root.unmount());
         client.clear();

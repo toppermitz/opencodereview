@@ -81,10 +81,10 @@ describe("indexing workspace", () => {
     expect(container.querySelectorAll(".brand-loading")).toHaveLength(1);
     expect(container.querySelector('#index-repositories .brand-loading svg[data-motion="loading"]')).not.toBeNull();
     expect(container.querySelector(".review-workspace-main .brand-loading")).toBeNull();
-    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Hide repositories"]')!.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Ocultar repositórios"]')!.click());
     expect(container.querySelectorAll(".brand-loading")).toHaveLength(1);
     expect(container.querySelector(".review-workspace-main .brand-loading")).not.toBeNull();
-    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Show repositories"]')!.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('[aria-label="Mostrar repositórios"]')!.click());
     expect(container.querySelectorAll(".brand-loading")).toHaveLength(1);
     expect(container.querySelector(".review-workspace-main .brand-loading")).toBeNull();
     await act(async () => finish({ jobs: [job(1, "ready")], active: 0 }));
@@ -122,13 +122,13 @@ describe("indexing workspace", () => {
       };
       expect(container.querySelector('.index-workspace-summary [aria-controls="index-repositories"]')).toBeNull();
       expect(panel.hidden).toBe(!wide);
-      if (!wide) await act(async () => toggle("Show repositories").click());
-      const close = toggle("Hide repositories");
+      if (!wide) await act(async () => toggle("Mostrar repositórios").click());
+      const close = toggle("Ocultar repositórios");
       expect(panel.contains(close)).toBe(true);
       expect(close.getAttribute("aria-expanded")).toBe("true");
       await act(async () => close.click());
       expect(panel.hidden).toBe(true);
-      const open = toggle("Show repositories");
+      const open = toggle("Mostrar repositórios");
       expect(open.getAttribute("aria-expanded")).toBe("false");
       expect(open.closest(".review-workspace-main")).not.toBeNull();
       expect(document.activeElement).toBe(open);
@@ -139,7 +139,7 @@ describe("indexing workspace", () => {
         panel.querySelector("input")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })),
       );
       expect(panel.hidden).toBe(true);
-      expect(document.activeElement).toBe(toggle("Show repositories"));
+      expect(document.activeElement).toBe(toggle("Mostrar repositórios"));
     },
   );
 
@@ -151,13 +151,13 @@ describe("indexing workspace", () => {
 
   it("reindexes all eligible repositories even when search filters the list", async () => {
     await render([job(1, "ready"), job(2, "failed"), job(3, "ready"), job(4, "queued"), job(5, "indexing")]);
-    const input = container.querySelector<HTMLInputElement>("input[aria-label='Search repositories']")!;
+    const input = container.querySelector<HTMLInputElement>("input[aria-label='Buscar repositórios']")!;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "repo-1");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(container.querySelectorAll(".index-repo-item")).toHaveLength(1);
-    await act(async () => button("Re-index all").click());
+    await act(async () => button("Reindexar todos").click());
     await flush();
     expect(vi.mocked(setupApi.reindexRepo).mock.calls.map(([id]) => id)).toEqual([1, 2, 3]);
     expect(
@@ -166,7 +166,7 @@ describe("indexing workspace", () => {
         ?.jobs.slice(0, 3)
         .map((item) => item.status.status),
     ).toEqual(["queued", "queued", "queued"]);
-    expect(button("Re-index all").disabled).toBe(true);
+    expect(button("Reindexar todos").disabled).toBe(true);
   });
 
   it("shows progress and blocks duplicate requests while submitting the batch", async () => {
@@ -178,24 +178,23 @@ describe("indexing workspace", () => {
         }),
     );
     await render([job(1, "ready"), job(2, "ready")]);
-    await act(async () => button("Re-index all").click());
+    await act(async () => button("Reindexar todos").click());
     await flush();
-    expect(button("Starting 0/2…").disabled).toBe(true);
-    expect(button("Starting…").disabled).toBe(true);
+    expect(button("Iniciando 0/2…").disabled).toBe(true);
     expect(setupApi.reindexRepo).toHaveBeenCalledTimes(1);
     await act(async () => finish(status(1, "indexing")));
     await flush();
     expect(setupApi.reindexRepo).toHaveBeenCalledTimes(2);
-    expect(container.textContent).toContain("Re-index requested for 2 repositories");
+    expect(container.textContent).toContain("Reindexação pedida para 2 repositórios");
   });
 
   it("continues after a failure and keeps the error available for individual retry", async () => {
     vi.mocked(setupApi.reindexRepo).mockRejectedValueOnce(new Error("Cannot start indexing"));
     await render([job(1, "ready"), job(2, "ready")]);
-    await act(async () => button("Re-index all").click());
+    await act(async () => button("Reindexar todos").click());
     await flush();
     expect(setupApi.reindexRepo).toHaveBeenCalledTimes(2);
-    expect(container.textContent).toContain("1 failed to start");
+    expect(container.textContent).toContain("1 não começou");
     expect(container.textContent).toContain("Cannot start indexing");
     await act(async () =>
       (container.querySelector(".index-repo-item[title='team/repo-2']") as HTMLButtonElement).click(),
@@ -204,7 +203,7 @@ describe("indexing workspace", () => {
       (container.querySelector(".index-repo-item[title='team/repo-1']") as HTMLButtonElement).click(),
     );
     expect(container.textContent).toContain("Cannot start indexing");
-    await act(async () => button("Re-index").click());
+    await act(async () => button("Reindexar").click());
     await flush();
     expect(setupApi.reindexRepo).toHaveBeenLastCalledWith(1, expect.anything());
     expect(container.textContent).not.toContain("Cannot start indexing");
@@ -212,10 +211,10 @@ describe("indexing workspace", () => {
 
   it("disables the bulk action when there is nothing eligible", async () => {
     await render([job(1, "queued"), job(2, "indexing")]);
-    expect(button("Re-index all").disabled).toBe(true);
+    expect(button("Reindexar todos").disabled).toBe(true);
     await act(async () => client.setQueryData(["indexing", "jobs"], { jobs: [], active: 0 }));
     await flush();
-    expect(button("Re-index all").disabled).toBe(true);
+    expect(button("Reindexar todos").disabled).toBe(true);
     expect(setupApi.reindexRepo).not.toHaveBeenCalled();
   });
 });

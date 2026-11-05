@@ -66,7 +66,7 @@ function ReviewControlNode({ data }: NodeProps<ReviewFlowNode>) {
         type="button"
         className="nodrag nopan"
         aria-label={control.label}
-        title={control.disabled && !control.busy ? `${control.label} unavailable for this MR` : control.label}
+        title={control.disabled && !control.busy ? `${control.label} indisponível para este MR` : control.label}
         disabled={control.disabled || control.busy}
         aria-busy={control.busy}
         onClick={(event) => {
@@ -143,18 +143,16 @@ function ReviewPhaseNode({ id, data, selected }: NodeProps<ReviewFlowNode>) {
           {result && <ChevronRight className="size-3.5" aria-hidden="true" />}
         </div>
         <div className="review-flow-node-status">{nodeStatus(data)}</div>
-        {result && (
-          <div className="review-flow-result-detail">{data.result?.detail ?? "View findings and details"}</div>
-        )}
+        {result && <div className="review-flow-result-detail">{data.result?.detail ?? "Ver achados e detalhes"}</div>}
         {!result && data.metrics && (
           <div className="review-flow-node-metrics">
             <span
               title={
                 data.chunk
                   ? data.chunk.reportedTime
-                    ? "Last duration reported by the worker"
-                    : "Recorded Claude execution time"
-                  : "Total stage time"
+                    ? "Última duração reportada pelo worker"
+                    : "Tempo de execução do Claude registrado"
+                  : "Tempo total da etapa"
               }
             >
               <Clock className="size-3" />
@@ -163,8 +161,8 @@ function ReviewPhaseNode({ id, data, selected }: NodeProps<ReviewFlowNode>) {
             <span
               title={
                 data.metrics.partial
-                  ? "Partial tokens: only completed Claude executions are included"
-                  : "Recorded stage tokens"
+                  ? "Tokens parciais: só entram execuções do Claude concluídas"
+                  : "Tokens registrados da etapa"
               }
             >
               {data.metrics.tokens === null ? "— tokens" : formatFlowTokens(data.metrics.tokens)}
@@ -174,7 +172,7 @@ function ReviewPhaseNode({ id, data, selected }: NodeProps<ReviewFlowNode>) {
         )}
         {data.chunkGroup && (
           // biome-ignore lint/a11y/useAriaPropsSupportedByRole: names the visible chunk tally for screen readers that announce labels on generic elements
-          <div className="review-flow-chunk-counts" aria-label="Chunk progress">
+          <div className="review-flow-chunk-counts" aria-label="Progresso dos chunks">
             {chunkCountsLabel(data.chunkGroup, Boolean(data.phase.inferenceSkipped))}
           </div>
         )}
@@ -190,7 +188,7 @@ function ReviewPhaseNode({ id, data, selected }: NodeProps<ReviewFlowNode>) {
       tabIndex={group ? undefined : 0}
       data-phase-id={group ? undefined : data.phase.id}
       aria-pressed={group ? undefined : selected}
-      aria-label={group ? "Individual review chunks" : label}
+      aria-label={group ? "Chunks individuais da revisão" : label}
       onKeyDown={(event) => {
         if (!group && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
@@ -242,56 +240,59 @@ export function ContextPhaseDetails({ context }: { context: ReviewContextPlan })
   const mode =
     selection?.mode === "reprocess"
       ? [
-          "Explicit re-run",
-          "Explicit re-run: fresh analysis of the previous scope against the current base, without cached model results.",
+          "Reexecução explícita",
+          "Reexecução explícita: análise nova do escopo anterior contra a base atual, sem resultados em cache.",
         ]
       : contentReuse
         ? [
-            "Content-verified reuse",
-            "Content-verified reuse: reviews changed or unproven files against the current base, independent of commit order.",
+            "Reuso verificado por conteúdo",
+            "Reuso verificado por conteúdo: revisa arquivos alterados ou não comprovados contra a base atual, independente da ordem dos commits.",
           ]
         : baseSync
           ? [
-              "Base synchronization",
-              "Base synchronization: reviews only affected files against the current PR base; unchanged files reuse verified coverage.",
+              "Sincronização da base",
+              "Sincronização da base: revisa só os arquivos afetados contra a base atual do MR; arquivos inalterados reutilizam cobertura verificada.",
             ]
           : context.incremental
-            ? ["Incremental review", "Incremental review: selects the PR-owned changes since the previous review."]
-            : ["Full review", "Full review: selects the PR diff against its immediate base."];
-  const short = (sha?: string | null) => sha?.slice(0, 12) ?? "Unavailable";
+            ? ["Revisão incremental", "Revisão incremental: seleciona as mudanças do MR desde a revisão anterior."]
+            : ["Revisão completa", "Revisão completa: seleciona o diff do MR contra a base imediata."];
+  const short = (sha?: string | null) => sha?.slice(0, 12) ?? "Indisponível";
+  const fileWord = (count: number) => (count === 1 ? "arquivo" : "arquivos");
   const groups: ContextFileGroup[] = [
-    ...(excluded.length ? [{ id: "excluded", title: "Excluded", files: excluded }] : []),
-    { id: "changed", title: "Changed", files: context.changedFiles.map((path) => ({ path })) },
+    ...(excluded.length ? [{ id: "excluded", title: "Excluídos", files: excluded }] : []),
+    { id: "changed", title: "Alterados", files: context.changedFiles.map((path) => ({ path })) },
     ...(selection && selection.reusedFiles.length > 0
       ? [
           {
             id: "reused",
-            title: "Reused",
+            title: "Reutilizados",
             files: selection.reusedFiles.map((path) => ({
               path,
               reason:
                 selection.sourceRunId == null
-                  ? "Verified persisted review coverage"
-                  : `Verified coverage from run ${selection.sourceRunId}`,
+                  ? "Cobertura de revisão persistida e verificada"
+                  : `Cobertura verificada da execução ${selection.sourceRunId}`,
             })),
           },
         ]
       : []),
     {
       id: "related",
-      title: "Related",
-      note: context.omittedCount > 0 ? `${context.omittedCount} more left out` : undefined,
+      title: "Relacionados",
+      note: context.omittedCount > 0 ? `${context.omittedCount} a mais deixados de fora` : undefined,
       files: context.relatedFiles.map((file) => ({ path: file.path, reason: file.reason, source: file.source })),
     },
-    { id: "tests", title: "Tests", files: context.testFiles.map((path) => ({ path })) },
-    { id: "conventions", title: "Conventions", files: context.conventionFiles.map((path) => ({ path })) },
+    { id: "tests", title: "Testes", files: context.testFiles.map((path) => ({ path })) },
+    { id: "conventions", title: "Convenções", files: context.conventionFiles.map((path) => ({ path })) },
     {
       id: "packages",
-      title: "Packages",
-      note: context.dependentPackages.length ? `${context.dependentPackages.length} dependent` : undefined,
+      title: "Pacotes",
+      note: context.dependentPackages.length
+        ? `${context.dependentPackages.length} dependente${context.dependentPackages.length === 1 ? "" : "s"}`
+        : undefined,
       files: [
-        ...context.packages.map((item) => ({ path: item.name, reason: item.packagePath || "Repository root" })),
-        ...context.dependentPackages.map((path) => ({ path, source: "Dependent package" })),
+        ...context.packages.map((item) => ({ path: item.name, reason: item.packagePath || "Raiz do repositório" })),
+        ...context.dependentPackages.map((path) => ({ path, source: "Pacote dependente" })),
       ],
     },
   ];
@@ -302,30 +303,32 @@ export function ContextPhaseDetails({ context }: { context: ReviewContextPlan })
           {mode[0]}
         </DSBadge>
         {selection && (
-          <span className="text-caption text-fg-muted tabular-nums">{`${context.changedFiles.length} file${context.changedFiles.length === 1 ? "" : "s"} to review · ${selection.reusedFiles.length} with reused coverage${excluded.length ? ` · ${excluded.length} excluded, not reviewed` : ""} · ${selection.fullPrFiles.length} in the PR`}</span>
+          <span className="text-caption text-fg-muted tabular-nums">{`${context.changedFiles.length} ${fileWord(context.changedFiles.length)} para revisar · ${selection.reusedFiles.length} com cobertura reutilizada${excluded.length ? ` · ${excluded.length} excluídos, não revisados` : ""} · ${selection.fullPrFiles.length} no MR`}</span>
         )}
       </div>
       <ContextFileGroups groups={groups} />
       <div>
         <details className={`review-context-scope ${contextGroupClass}`}>
           <summary>
-            Git scope
+            Escopo Git
             <span>
               {context.mergeBaseSha?.slice(0, 7) ?? "?"}…{context.headSha?.slice(0, 7) ?? "?"}
             </span>
           </summary>
           <div className="mt-3 grid gap-3 font-normal">
             <p className="text-caption text-fg-muted">
-              {mode[1]} Related files come from the repository index and import graph.
+              {mode[1]} Arquivos relacionados vêm do índice do repositório e do grafo de importações.
               {context.scopeReason && ` ${context.scopeReason.replace(/\.$/, "")}.`}
             </p>
             <dl className="grid grid-cols-3 gap-x-4 gap-y-2.5 text-caption [&_dt]:text-fg-subtle [&_dd]:mt-0.5 [&_dd]:truncate [&_dd]:font-mono [&_dd]:text-fg">
               <div className="col-span-3">
-                <dt>Immediate base</dt>
-                <dd title={context.baseRef ?? undefined}>{context.baseRef ?? "Unavailable for this historical run"}</dd>
+                <dt>Base imediata</dt>
+                <dd title={context.baseRef ?? undefined}>
+                  {context.baseRef ?? "Indisponível nesta execução histórica"}
+                </dd>
               </div>
               <div>
-                <dt>Base SHA</dt>
+                <dt>SHA da base</dt>
                 <dd>{short(context.reviewedBaseSha)}</dd>
               </div>
               <div>
@@ -337,12 +340,12 @@ export function ContextPhaseDetails({ context }: { context: ReviewContextPlan })
                 <dd>{short(context.headSha)}</dd>
               </div>
               <div>
-                <dt>Index SHA</dt>
+                <dt>SHA do índice</dt>
                 <dd>{short(context.baseSha)}</dd>
               </div>
               {context.priorSha && (
                 <div>
-                  <dt>Previous review</dt>
+                  <dt>Revisão anterior</dt>
                   <dd>{short(context.priorSha)}</dd>
                 </div>
               )}
@@ -389,7 +392,7 @@ function ContextFileGroups({ groups }: { groups: ContextFileGroup[] }) {
     <div className="review-context-files grid min-w-0 gap-2">
       <fieldset
         className="m-0 grid min-w-0 grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-1.5 border-0 p-0"
-        aria-label="Context files"
+        aria-label="Arquivos do contexto"
       >
         {groups.map((group) => (
           <button
@@ -423,7 +426,7 @@ function ContextFileGroups({ groups }: { groups: ContextFileGroup[] }) {
           ))}
         </ul>
       ) : (
-        <p className="review-stage-note">None selected for this run.</p>
+        <p className="review-stage-note">Nenhum selecionado nesta execução.</p>
       )}
     </div>
   );

@@ -193,7 +193,7 @@ export function ReviewSections({
                           {card.repoFullName.split("/").pop()} <span className="tabular-nums">#{card.number}</span>
                         </span>
                         {attentionPrIds.has(card.id) && (
-                          <AlertTriangle className="size-3.5 flex-none text-warning" aria-label="Needs attention" />
+                          <AlertTriangle className="size-3.5 flex-none text-warning" aria-label="Precisa de atenção" />
                         )}
                         <span
                           className={cx(

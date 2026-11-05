@@ -65,7 +65,7 @@ it("describes each account by what reviews will do with it", () => {
     "Claude rejected this sign-in · sign in again",
   );
   expect(accountHealth(account(5, { signedIn: false }), now)).toBe("signed-out");
-  expect(accountStatusText(account(6, { enabled: false }), now)).toBe("Paused · reviews skip this account");
+  expect(accountStatusText(account(6, { enabled: false }), now)).toBe("Pausada · revisões pulam esta conta");
   expect(accountStatusText(account(8, { enabled: false, status: "limited", limitedUntil: now + 3_600_000 }), now)).toBe(
     "Usage limit reached · resets in 1 h",
   );
@@ -104,7 +104,7 @@ it("reorders accounts and removes one only after confirmation", async () => {
     expect(rows().map((row) => row.dataset.account)).toEqual(["1", "2"]);
     expect(await menuItem(container, "Claude 2", "Move up")).toBeUndefined();
     await act(async () => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
-    await menuItem(container, "Claude 2", "Use for new reviews");
+    await menuItem(container, "Claude 2", "Usar nas próximas revisões");
     expect(setupApi.reorderAccounts).toHaveBeenCalledWith([2, 1]);
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -114,7 +114,7 @@ it("reorders accounts and removes one only after confirmation", async () => {
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Claude 2 actions"]')!.click());
     await act(async () =>
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-        .find((item) => item.textContent?.startsWith("Remove account"))!
+        .find((item) => item.textContent?.startsWith("Remover conta"))!
         .click(),
     );
     expect(setupApi.deleteAccount).not.toHaveBeenCalled();
@@ -196,10 +196,10 @@ it("adds a ChatGPT account with a one-time code from the add menu", async () => 
   });
   const { container, unmount } = await renderPanel();
   try {
-    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Add account"]')!.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Adicionar conta"]')!.click());
     await act(async () =>
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-        .find((item) => item.textContent?.startsWith("ChatGPT with a code"))!
+        .find((item) => item.textContent?.startsWith("ChatGPT com um código"))!
         .click(),
     );
     await act(async () => {
@@ -207,7 +207,7 @@ it("adds a ChatGPT account with a one-time code from the add menu", async () => 
     });
     expect(setupApi.codexAuthStart).toHaveBeenCalledWith(undefined, "device");
     await vi.waitFor(() =>
-      expect(container.querySelector('[aria-label="Codex sign-in code"]')?.textContent).toBe("7KQ2-9XWPL"),
+      expect(container.querySelector('[aria-label="Código de login do Codex"]')?.textContent).toBe("7KQ2-9XWPL"),
     );
   } finally {
     await unmount();
@@ -219,19 +219,19 @@ it("saves a pasted Claude token", async () => {
   vi.mocked(setupApi.claudeTokenSave).mockResolvedValue({ ok: true });
   const { container, unmount } = await renderPanel();
   try {
-    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Add account"]')!.click());
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Adicionar conta"]')!.click());
     await act(async () =>
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
-        .find((item) => item.textContent?.startsWith("Claude with a token"))!
+        .find((item) => item.textContent?.startsWith("Claude com um token"))!
         .click(),
     );
-    const input = container.querySelector<HTMLInputElement>('input[aria-label="Claude token"]')!;
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Token do Claude"]')!;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, " sk-ant-oat01-fixture ");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await act(async () =>
-      [...container.querySelectorAll("button")].find((button) => button.textContent === "Save token")!.click(),
+      [...container.querySelectorAll("button")].find((button) => button.textContent === "Salvar token")!.click(),
     );
     expect(setupApi.claudeTokenSave).toHaveBeenCalledWith("sk-ant-oat01-fixture", undefined);
   } finally {
@@ -266,10 +266,10 @@ it("marks the account the next review starts on and summarizes what is left", ()
     ),
   ).toBe(3);
   expect([windowName(300), windowName(10_080), windowName(1440), windowName(null)]).toEqual([
-    "5-hour",
-    "Weekly",
-    "1-day",
-    "Usage",
+    "5 horas",
+    "Semanal",
+    "1 dia",
+    "Uso",
   ]);
   expect(
     usageSummary({
@@ -279,7 +279,7 @@ it("marks the account the next review starts on and summarizes what is left", ()
         { windowMins: 10_080, usedPercent: 104, resetsAt: null },
       ],
     }),
-  ).toBe("5-hour 72% left · Weekly 0% left");
+  ).toBe("5 horas 72% restante · Semanal 0% restante");
 });
 
 it("shows the next-review badge and usage meters on account rows", async () => {
@@ -294,11 +294,11 @@ it("shows the next-review badge and usage meters on account rows", async () => {
   const { container, unmount } = await renderPanel();
   try {
     const [paused, chatgpt] = [...container.querySelectorAll<HTMLElement>(".account-row")];
-    expect(chatgpt.textContent).toContain("Next review");
-    expect(paused.textContent).not.toContain("Next review");
+    expect(chatgpt.textContent).toContain("Próxima revisão");
+    expect(paused.textContent).not.toContain("Próxima revisão");
     expect(chatgpt.querySelector('[role="meter"]')?.getAttribute("aria-valuenow")).toBe("75");
-    expect(chatgpt.textContent).toContain("75% left");
-    expect(paused.textContent).toContain("Paused");
+    expect(chatgpt.textContent).toContain("75% restante");
+    expect(paused.textContent).toContain("Pausada");
     expect(paused.textContent).not.toContain("usage after its next review");
   } finally {
     await unmount();
@@ -321,9 +321,9 @@ it("starts new reviews on the account picked, resuming it if it was paused", asy
   const { container, unmount } = await renderPanel();
   try {
     expect(container.querySelector('[role="radiogroup"]')).toBeNull();
-    expect(await menuItem(container, "Claude 1", "Use for new reviews")).toBeUndefined();
+    expect(await menuItem(container, "Claude 1", "Usar nas próximas revisões")).toBeUndefined();
     await act(async () => document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
-    await menuItem(container, "ChatGPT", "Use for new reviews");
+    await menuItem(container, "ChatGPT", "Usar nas próximas revisões");
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
@@ -331,7 +331,7 @@ it("starts new reviews on the account picked, resuming it if it was paused", asy
     expect(setupApi.reorderAccounts).toHaveBeenCalledWith([2, 1, 3]);
     const first = container.querySelector<HTMLElement>(".account-row")!;
     expect(first.dataset.account).toBe("2");
-    expect(first.textContent).toContain("Next review");
+    expect(first.textContent).toContain("Próxima revisão");
   } finally {
     await unmount();
   }

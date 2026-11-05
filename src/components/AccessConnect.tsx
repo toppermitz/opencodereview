@@ -170,7 +170,7 @@ function Retry({ busy, onRetry, onCancel }: { busy: boolean; onRetry?: () => voi
     <div className="flex flex-wrap items-center gap-2">
       {onRetry && (
         <button type="button" className={brandButton} disabled={busy} onClick={onRetry}>
-          Try again
+          Tentar de novo
         </button>
       )}
       <button type="button" className={quietButton} onClick={onCancel}>
@@ -226,7 +226,7 @@ function PasteCodeSignIn({
             <ArrowUpRight className="size-3.5" aria-hidden="true" />
           </a>
         ) : (
-          <Waiting>Preparing sign-in…</Waiting>
+          <Waiting>Preparando login…</Waiting>
         )}
       </div>
       <form
@@ -244,7 +244,7 @@ function PasteCodeSignIn({
           spellCheck={false}
           disabled={locked}
           onChange={(event) => flow.setCode(event.target.value)}
-          placeholder="Paste the code"
+          placeholder="Cole o código"
         />
         <button type="submit" className={brandButton} disabled={locked || !flow.code.trim()}>
           {flow.submitted || flow.submit.isPending ? "Verificando…" : "Conectar"}
@@ -301,7 +301,7 @@ export function ClaudeTokenSignIn({
         }}
       >
         <input
-          aria-label="Claude token"
+          aria-label="Token do Claude"
           type="password"
           className={codeInput}
           value={token}
@@ -311,7 +311,7 @@ export function ClaudeTokenSignIn({
           onChange={(event) => setToken(event.target.value)}
         />
         <button type="submit" className={brandButton} disabled={!token.trim() || save.isPending}>
-          {save.isPending ? "Salvando…" : "Save token"}
+          {save.isPending ? "Salvando…" : "Salvar token"}
         </button>
         <button type="button" className={quietButton} onClick={onCancel}>
           Cancelar
@@ -381,7 +381,7 @@ export function CodexSignIn({
   };
   if (failure || error)
     return (
-      <SignInFrame hint="Uses your ChatGPT plan's Codex usage." problems={problems}>
+      <SignInFrame hint="Usa o uso do Codex do seu plano ChatGPT." problems={problems}>
         <Retry busy={start.isPending} onRetry={() => start.mutate()} onCancel={onCancel} />
       </SignInFrame>
     );
@@ -392,7 +392,7 @@ export function CodexSignIn({
   );
   if (mode === "browser")
     return (
-      <SignInFrame hint="Sign in to ChatGPT in the browser. This page updates by itself when you're done.">
+      <SignInFrame hint="Entre no ChatGPT no navegador. Esta página atualiza sozinha quando terminar.">
         <div className="flex flex-wrap items-center gap-2">
           {prompt?.url ? (
             <a className={brandButton} href={prompt.url} target="_blank" rel="noreferrer">
@@ -400,34 +400,34 @@ export function CodexSignIn({
               <ArrowUpRight className="size-3.5" aria-hidden="true" />
             </a>
           ) : (
-            <Waiting>Preparing sign-in…</Waiting>
+            <Waiting>Preparando login…</Waiting>
           )}
           {cancelButton}
           {prompt && (
             <span className="ml-1">
-              <Waiting>Waiting for the browser…</Waiting>
+              <Waiting>Aguardando o navegador…</Waiting>
             </span>
           )}
         </div>
       </SignInFrame>
     );
   return (
-    <SignInFrame hint="Open the ChatGPT sign-in page on any device and enter this one-time code.">
+    <SignInFrame hint="Abra a página de login do ChatGPT em qualquer dispositivo e digite este código de uso único.">
       {prompt?.code ? (
         <div className="flex flex-wrap items-center gap-2">
           {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: the label names the one-time code for tests and screen readers that honour it; the code text stays visible */}
           <code
-            aria-label="Codex sign-in code"
+            aria-label="Código de login do Codex"
             className="rounded-lg bg-surface-sunken px-3.5 py-1.5 font-mono text-body font-semibold tracking-[0.14em] text-fg"
           >
             {prompt.code}
           </code>
           <button type="button" className={quietButton} onClick={() => void copy()}>
-            {copied ? "Copied" : "Copy"}
+            {copied ? "Copiado" : "Copiar"}
           </button>
         </div>
       ) : (
-        <Waiting>Preparing a code…</Waiting>
+        <Waiting>Preparando um código…</Waiting>
       )}
       <div className="flex flex-wrap items-center gap-2">
         {prompt?.url && (
@@ -439,7 +439,7 @@ export function CodexSignIn({
         {cancelButton}
         {prompt?.code && (
           <span className="ml-1">
-            <Waiting>Waiting for approval…</Waiting>
+            <Waiting>Aguardando aprovação…</Waiting>
           </span>
         )}
       </div>

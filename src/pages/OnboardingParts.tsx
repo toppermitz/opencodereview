@@ -121,7 +121,7 @@ export function ChoiceRow({
         <div className="flex flex-none items-center gap-2 max-sm:w-full max-sm:justify-end">
           {status}
           {action}
-          {menu && menu.length > 0 && <DSMenu label={`More ${name} options`} size="iconSm" items={menu} />}
+          {menu && menu.length > 0 && <DSMenu label={`Mais opções de ${name}`} size="iconSm" items={menu} />}
         </div>
       </div>
       {children && <div className="border-t border-line bg-surface/60 px-4 py-4 sm:pl-[4.25rem]">{children}</div>}

@@ -100,7 +100,7 @@ export function DoneStep({ login, repoCount }: { login?: string; repoCount: numb
               glyph={<GitPullRequest className="size-4.5 text-success" />}
               name={pr.title}
               detail={`${pr.repoFullName} #${pr.number}`}
-              status={running.has(pr.lane) ? <StatusPill tone="neutral">Reviewing…</StatusPill> : undefined}
+              status={running.has(pr.lane) ? <StatusPill tone="neutral">Revisando…</StatusPill> : undefined}
               action={
                 running.has(pr.lane) ? (
                   <Link to="/platform/reviews" className={rowActionQuiet}>

@@ -25,25 +25,25 @@ export function ErrorScreen({ error, reset }: ErrorComponentProps) {
       <div className="flex w-full max-w-xl flex-col items-center gap-5 text-center">
         <BrandMark size="md" />
         <div className="flex flex-col gap-1.5">
-          <p className="text-overline text-danger">Something broke on this page</p>
-          <h1 className="text-title text-fg">This page couldn’t be shown</h1>
+          <p className="text-overline text-danger">Algo quebrou nesta página</p>
+          <h1 className="text-title text-fg">Esta página não pôde ser mostrada</h1>
           <p className="text-small text-fg-muted">
-            Your data is safe: nothing was changed or lost. Try again, or open another page. If it keeps happening after
-            reloading, the web app and the API may be on different versions; restarting OpenCodeReview usually fixes
-            that.
+            Seus dados estão seguros: nada foi alterado nem perdido. Tente de novo ou abra outra página. Se continuar
+            depois de recarregar, o app e a API podem estar em versões diferentes; reiniciar o OpenCodeReview costuma
+            resolver.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <DSLinkButton to="/platform/reviews">Go to Reviews</DSLinkButton>
+          <DSLinkButton to="/platform/reviews">Ir para Revisões</DSLinkButton>
           <DSButton tone="primary" onClick={retry}>
             <RotateCcw className="size-3.5" />
-            Try again
+            Tentar de novo
           </DSButton>
         </div>
         <details className="group w-full rounded-xl border border-line bg-surface text-left shadow-card">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-small font-medium text-fg-muted select-none hover:text-fg [&::-webkit-details-marker]:hidden">
-            Technical details<span className="text-caption text-fg-subtle group-open:hidden">Show</span>
-            <span className="hidden text-caption text-fg-subtle group-open:inline">Hide</span>
+            Detalhes técnicos<span className="text-caption text-fg-subtle group-open:hidden">Mostrar</span>
+            <span className="hidden text-caption text-fg-subtle group-open:inline">Ocultar</span>
           </summary>
           <div className="relative border-t border-line">
             <pre className="max-h-60 overflow-auto p-4 pr-24 font-mono text-caption leading-relaxed whitespace-pre-wrap text-rose-700 [overflow-wrap:anywhere]">
@@ -51,7 +51,7 @@ export function ErrorScreen({ error, reset }: ErrorComponentProps) {
             </pre>
             <DSButton size="sm" className="absolute top-2.5 right-2.5" onClick={copy}>
               {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-              {copied ? "Copied" : "Copy"}
+              {copied ? "Copiado" : "Copiar"}
             </DSButton>
           </div>
         </details>

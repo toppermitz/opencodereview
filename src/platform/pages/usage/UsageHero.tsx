@@ -3,7 +3,8 @@ import type { UsageReport } from "../../../types";
 import { ProviderGlyph } from "../../components/AccountsPanel";
 import { attributedRows, compactTokens, isProvider, pct } from "./format";
 
-const plural = (count: number, word: string) => `${count.toLocaleString()} ${word}${count === 1 ? "" : "s"}`;
+const plural = (count: number, one: string, many = `${one}s`) =>
+  `${count.toLocaleString()} ${count === 1 ? one : many}`;
 
 /** One part of the token total: label, amount, share and a bar of that share. */
 function MixRow({
@@ -47,38 +48,38 @@ export function UsageHero({ report }: { report: UsageReport }) {
         </Tip>
         <p className="flex flex-wrap items-center gap-x-1.5 text-small text-fg-muted">
           <span>
-            tokens · {plural(totals.runs, "run")} on {plural(totals.prs, "PR")}
+            tokens · {plural(totals.runs, "execução", "execuções")} em {plural(totals.prs, "MR")}
           </span>
           {totals.runsWithoutUsage > 0 && (
             <span className="inline-flex items-center gap-1 text-fg-subtle">
-              · {plural(totals.runsWithoutUsage, "run")} without reported usage
-              <Hint text="These runs finished without the AI CLI reporting token usage, so they add nothing to the totals." />
+              · {plural(totals.runsWithoutUsage, "execução", "execuções")} sem uso reportado
+              <Hint text="Essas execuções terminaram sem o CLI de IA reportar tokens, então não entram nos totais." />
             </span>
           )}
         </p>
       </div>
       {totals.tokens > 0 && (
-        <ul className="flex flex-col gap-2.5" aria-label="What the tokens are">
+        <ul className="flex flex-col gap-2.5" aria-label="O que os tokens são">
           <MixRow
-            label="Input"
+            label="Entrada"
             tokens={totals.inputTokens}
             total={totals.tokens}
             bar="bg-brand"
-            hint="Prompt tokens the model processed: the diff, context and instructions."
+            hint="Tokens de prompt que o modelo processou: o diff, o contexto e as instruções."
           />
           <MixRow
-            label="Output"
+            label="Saída"
             tokens={totals.outputTokens}
             total={totals.tokens}
             bar="bg-brand/70"
-            hint="Tokens the model wrote: findings, questions and its reasoning."
+            hint="Tokens que o modelo escreveu: achados, perguntas e o raciocínio."
           />
           <MixRow
-            label="Cache writes"
+            label="Escritas de cache"
             tokens={totals.cacheCreationTokens}
             total={totals.tokens}
             bar="bg-brand/40"
-            hint="Prompt tokens written to the provider's cache so later calls can reuse them."
+            hint="Tokens de prompt gravados no cache do provedor para chamadas seguintes reutilizarem."
           />
         </ul>
       )}
@@ -86,14 +87,14 @@ export function UsageHero({ report }: { report: UsageReport }) {
         {totals.cacheReadTokens > 0 && (
           <p className="flex items-center justify-between gap-3 text-small">
             <span className="inline-flex items-center gap-1.5 text-fg-muted">
-              Read from cache
-              <Hint text="Context the provider re-read from its prompt cache instead of processing it again. Not counted in tokens." />
+              Lido do cache
+              <Hint text="Contexto que o provedor releu do cache de prompt em vez de processar de novo. Não entra nos tokens." />
             </span>
             <span className="font-mono text-fg-muted tabular-nums">+ {compactTokens(totals.cacheReadTokens)}</span>
           </p>
         )}
         {providers.length >= 2 && (
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-fg-muted" aria-label="Tokens by provider">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-caption text-fg-muted" aria-label="Tokens por provedor">
             {providers.map((row) => (
               <li key={row.key} className="inline-flex items-center gap-1.5 tabular-nums">
                 {isProvider(row.provider) && <ProviderGlyph provider={row.provider} />}

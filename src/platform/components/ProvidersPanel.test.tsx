@@ -79,7 +79,7 @@ it("lists connected providers in review order and opens one to set its model, ef
     expect(rows.findIndex((text) => text?.includes("ChatGPT"))).toBeLessThan(
       rows.findIndex((text) => text?.includes("Claude")),
     );
-    expect(button("ChatGPT").textContent).toContain("Next review");
+    expect(button("ChatGPT").textContent).toContain("Próxima revisão");
     expect(button("ChatGPT").textContent).toContain("2 accounts · Model 1 · medium");
 
     await act(async () => button("Claude").click());

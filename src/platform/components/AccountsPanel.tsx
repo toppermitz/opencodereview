@@ -71,27 +71,32 @@ export function nextAccountId(accounts: AiAccount[], now = Date.now()) {
 }
 
 export function windowName(minutes: number | null) {
-  if (minutes === 300) return "5-hour";
-  if (minutes === 10_080) return "Weekly";
-  if (!minutes) return "Usage";
-  return minutes % 1440 === 0
-    ? `${minutes / 1440}-day`
-    : minutes % 60 === 0
-      ? `${minutes / 60}-hour`
-      : `${minutes}-min`;
+  if (minutes === 300) return "5 horas";
+  if (minutes === 10_080) return "Semanal";
+  if (!minutes) return "Uso";
+  if (minutes % 1440 === 0) {
+    const days = minutes / 1440;
+    return `${days} ${days === 1 ? "dia" : "dias"}`;
+  }
+  if (minutes % 60 === 0) {
+    const hours = minutes / 60;
+    return `${hours} ${hours === 1 ? "hora" : "horas"}`;
+  }
+  return `${minutes} min`;
 }
 
 export const percentLeft = (window: UsageWindow) => Math.max(0, Math.min(100, Math.round(100 - window.usedPercent)));
 
 export function usageSummary(usage?: AccountUsage) {
   return (
-    usage?.windows.map((window) => `${windowName(window.windowMins)} ${percentLeft(window)}% left`).join(" · ") ?? ""
+    usage?.windows.map((window) => `${windowName(window.windowMins)} ${percentLeft(window)}% restante`).join(" · ") ??
+    ""
   );
 }
 
 export function resetText(resetsAt: UsageWindow["resetsAt"], now = Date.now()) {
   const at = resetsAt === null ? NaN : new Date(resetsAt).getTime();
-  return Number.isFinite(at) && at > now ? `resets in ${relative(at - now)}` : "";
+  return Number.isFinite(at) && at > now ? `reinicia em ${relative(at - now)}` : "";
 }
 
 function UsageMeters({ usage }: { usage?: AccountUsage }) {
@@ -112,7 +117,7 @@ function UsageMeters({ usage }: { usage?: AccountUsage }) {
             <span
               className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-sunken"
               role="meter"
-              aria-label={`${windowName(window.windowMins)} usage left`}
+              aria-label={`${windowName(window.windowMins)} de uso restante`}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={left}
@@ -125,7 +130,7 @@ function UsageMeters({ usage }: { usage?: AccountUsage }) {
                 style={{ width: `${left}%` }}
               />
             </span>
-            <span className="tabular-nums text-fg-muted">{left}% left</span>
+            <span className="tabular-nums text-fg-muted">{left}% restante</span>
           </div>
         );
       })}
@@ -138,9 +143,9 @@ export function accountStatusText(account: AiAccount, now = Date.now()) {
     case "signed-out":
       return account.status === "auth_failed"
         ? `${providerName[account.provider]} rejected this sign-in · sign in again`
-        : "Signed out · sign in again";
+        : "Saiu · entre de novo";
     case "paused":
-      return "Paused · reviews skip this account";
+      return "Pausada · revisões pulam esta conta";
     case "resting":
       return `Usage limit reached · resets in ${relative((account.limitedUntil ?? now) - now)}`;
     default:
@@ -222,9 +227,9 @@ function AccountRow({
               {next && (
                 <span
                   className="flex-none self-center rounded-full bg-brand-soft px-2 py-0.5 text-caption font-semibold text-brand-hover"
-                  title="The next review starts on this account"
+                  title="A próxima revisão começa nesta conta"
                 >
-                  Next review
+                  Próxima revisão
                 </span>
               )}
             </div>
@@ -269,20 +274,20 @@ function AccountRow({
                 ? []
                 : [
                     {
-                      label: "Use for new reviews",
-                      hint: "New reviews start on this account",
+                      label: "Usar nas próximas revisões",
+                      hint: "Novas revisões começam nesta conta",
                       icon: <Play />,
                       disabled: busy || health === "signed-out" || health === "resting",
                       onSelect: onPick,
                     },
                   ]),
               { label: "Rename", icon: <Pencil />, onSelect: () => setEditing(true) },
-              { label: "Sign in again", icon: <LogIn />, onSelect: onSignIn },
+              { label: "Entrar de novo", icon: <LogIn />, onSelect: onSignIn },
               {
-                label: "Remove account",
+                label: "Remover conta",
                 icon: <Trash2 />,
                 tone: "danger",
-                hint: "Deletes its sign-in from this machine",
+                hint: "Apaga o login desta máquina",
                 onSelect: onRemove,
               },
             ]}
@@ -371,44 +376,44 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
     <section className="settings-group flex flex-col gap-2.5">
       <header className="flex items-end justify-between gap-4 px-1">
         <div>
-          <h2 className="text-small font-semibold text-fg">Accounts</h2>
+          <h2 className="text-small font-semibold text-fg">Contas</h2>
           <p className="mt-0.5 max-w-2xl text-caption text-fg-subtle">
-            New reviews start on the account marked Next review. When it hits its usage limit, they continue on the next
-            account of the same provider, and only then on another provider's.
+            Novas revisões começam na conta marcada Próxima revisão. Quando ela atinge o limite de uso, continuam na
+            próxima conta do mesmo provedor e só então em outro provedor.
           </p>
         </div>
         {!signIn && provider && accounts.length > 0 && (
           <DSMenu
-            label="Add account"
-            text="Add account"
+            label="Adicionar conta"
+            text="Adicionar conta"
             items={addOptions(provider, (code) => setSignIn({ provider, code }))}
           />
         )}
         {!signIn && !provider && accounts.length > 0 && (
           <DSMenu
-            label="Add account"
-            text="Add account"
+            label="Adicionar conta"
+            text="Adicionar conta"
             items={[
               {
                 label: "Claude",
-                hint: "Claude Pro, Max, Team or Enterprise subscription",
+                hint: "Assinatura Claude Pro, Max, Team ou Enterprise",
                 icon: <ProviderGlyph provider="claude" />,
                 onSelect: () => setSignIn({ provider: "claude" }),
               },
               {
                 label: "ChatGPT",
-                hint: "ChatGPT plan with Codex",
+                hint: "Plano ChatGPT com Codex",
                 icon: <ProviderGlyph provider="codex" />,
                 onSelect: () => setSignIn({ provider: "codex" }),
               },
               {
-                label: "Claude with a token",
+                label: "Claude com um token",
                 hint: "De claude setup-token em outro computador",
                 icon: <KeyRound />,
                 onSelect: () => setSignIn({ provider: "claude", code: true }),
               },
               {
-                label: "ChatGPT with a code",
+                label: "ChatGPT com um código",
                 hint: "Digite um código de uso único em qualquer dispositivo",
                 icon: <Smartphone />,
                 onSelect: () => setSignIn({ provider: "codex", code: true }),
@@ -420,7 +425,7 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
       {error && <DSError>{formatError(error)}</DSError>}
       <div className="settings-group-body flex flex-col rounded-xl border border-line/70 bg-surface">
         {accountsQuery.isLoading ? (
-          <BrandLoading size="compact" label="Loading accounts…" />
+          <BrandLoading size="compact" label="Carregando contas…" />
         ) : provider && accounts.length === 0 && !signIn ? (
           <div className="flex flex-col items-start gap-3 px-4 py-5">
             <p className="text-small text-fg-muted">No {providerName[provider]} account yet.</p>
@@ -469,7 +474,7 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
         {confirmRemove && (
           <div
             role="alertdialog"
-            aria-label="Remove account"
+            aria-label="Remover conta"
             className="flex flex-wrap items-center gap-3 border-t border-line bg-rose-50 px-4 py-3"
           >
             <p className="min-w-0 flex-1 text-small text-rose-900">

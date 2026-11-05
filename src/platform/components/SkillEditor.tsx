@@ -220,7 +220,7 @@ function SkillToolbar({ editor, disabled }: { editor: Editor; disabled: boolean 
           else editor.chain().focus().setHeading({ level }).run();
         }}
       >
-        <option value={0}>Paragraph</option>
+        <option value={0}>Parágrafo</option>
         {[1, 2, 3, 4, 5, 6].map((level) => (
           <option key={level} value={level}>
             Heading {level}

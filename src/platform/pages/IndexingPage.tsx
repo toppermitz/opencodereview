@@ -136,7 +136,7 @@ export function IndexingPage() {
   return (
     <PlatformPage
       title="Indexação"
-      description="Explore the code context behind your reviews. Selected repositories stay indexed automatically."
+      description="Explore o contexto de código por trás das revisões. Os repositórios selecionados ficam indexados automaticamente."
     >
       <div className="review-workspace-summary index-workspace-summary [&>span]:inline-flex [&>span]:items-center [&>span]:gap-1.5 mx-6 mb-3 flex flex-none flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-line bg-surface px-4 py-2.5 text-small text-fg-muted shadow-card">
         <span>
@@ -152,23 +152,26 @@ export function IndexingPage() {
         </span>
         <DSButton
           disabled={reindexAll.isPending || eligibleIds.length === 0}
-          title="Re-index all repositories, skipping those already queued or indexing"
+          title="Reindexar todos os repositórios, pulando os que já estão na fila ou indexando"
           onClick={() => reindexAll.mutate(eligibleIds)}
         >
           {reindexAll.isPending ? <BrandLoadingIcon size={16} /> : <RefreshCw className="size-3.5" />}
-          {reindexAll.isPending ? `Starting ${batchCompleted}/${reindexAll.variables?.length ?? 0}…` : "Re-index all"}
+          {reindexAll.isPending
+            ? `Iniciando ${batchCompleted}/${reindexAll.variables?.length ?? 0}…`
+            : "Reindexar todos"}
         </DSButton>
       </div>
       {!reindexAll.isPending && reindexAll.data && (
         <div className="index-batch-status flex-none px-6 pb-2.5 text-caption text-fg-subtle" role="status">
-          Re-index requested for {reindexAll.data.started} repositories.
-          {batchFailures > 0 && ` ${batchFailures} failed to start. Select a repository marked Retry to try again.`}
+          Reindexação pedida para {reindexAll.data.started} repositórios.
+          {batchFailures > 0 &&
+            ` ${batchFailures} não começ${batchFailures === 1 ? "ou" : "aram"}. Selecione um repositório marcado para tentar de novo.`}
         </div>
       )}
       {jobsQuery.error && (
         <div className="index-page-error flex-none px-6 pb-3">
           <DSError>
-            {formatError(jobsQuery.error)} <DSButton onClick={() => void jobsQuery.refetch()}>Retry</DSButton>
+            {formatError(jobsQuery.error)} <DSButton onClick={() => void jobsQuery.refetch()}>Tentar de novo</DSButton>
           </DSError>
         </div>
       )}
@@ -179,7 +182,7 @@ export function IndexingPage() {
           id="index-repositories"
           hidden={!workspace.listOpen}
           className="review-workspace-list flex w-80 shrink-0 flex-col border-r border-line bg-surface [&[hidden]]:hidden"
-          aria-label="Indexed repositories"
+          aria-label="Repositórios indexados"
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
@@ -198,8 +201,8 @@ export function IndexingPage() {
                 tone="ghost"
                 size="icon"
                 className="review-processes-toggle"
-                aria-label="Hide repositories"
-                title="Hide repositories"
+                aria-label="Ocultar repositórios"
+                title="Ocultar repositórios"
                 aria-controls="index-repositories"
                 aria-expanded={workspace.listOpen}
                 onClick={toggleList}
@@ -211,7 +214,7 @@ export function IndexingPage() {
               aria-label="Buscar repositórios"
               icon={<Search className="size-4" />}
               value={search}
-              placeholder="Search repositories…"
+              placeholder="Buscar repositórios…"
               onChange={(event) => setSearch(event.target.value)}
             />
           </div>
@@ -221,10 +224,10 @@ export function IndexingPage() {
             ) : filtered.length === 0 ? (
               <DSEmptyState>
                 {search
-                  ? "No repositories match this search."
+                  ? "Nenhum repositório corresponde à busca."
                   : jobsQuery.isError
                     ? "Repositories could not be loaded. Retry above."
-                    : "Select repositories during setup to build your index."}
+                    : "Selecione repositórios no setup para montar o índice."}
               </DSEmptyState>
             ) : (
               indexGroups.map((group) => {
@@ -272,8 +275,8 @@ export function IndexingPage() {
                     tone="ghost"
                     size="icon"
                     className="review-processes-toggle"
-                    aria-label="Show repositories"
-                    title="Show repositories"
+                    aria-label="Mostrar repositórios"
+                    title="Mostrar repositórios"
                     aria-controls="index-repositories"
                     aria-expanded={false}
                     onClick={toggleList}
@@ -318,7 +321,11 @@ export function IndexingPage() {
                   onClick={() => reindex.mutate(selectedJob.repo.id)}
                 >
                   {requesting ? <BrandLoadingIcon size={16} /> : <RefreshCw className="size-3.5" />}
-                  {requesting ? "Iniciando…" : selectedJob.status.status === "failed" ? "Retry indexing" : "Re-index"}
+                  {requesting
+                    ? "Iniciando…"
+                    : selectedJob.status.status === "failed"
+                      ? "Tentar indexar de novo"
+                      : "Reindexar"}
                 </DSButton>
               )}
             </header>
@@ -338,7 +345,7 @@ export function IndexingPage() {
                   <DSError>{requests[selectedJob.repo.id].error}</DSError>
                 </div>
               )}
-              <Suspense fallback={<BrandLoading label="Loading code explorer…" />}>
+              <Suspense fallback={<BrandLoading label="Carregando explorador de código…" />}>
                 <IndexGraphView
                   key={`${selectedId}:${version ?? "initial"}`}
                   repoId={selectedJob.repo.id}
@@ -350,15 +357,15 @@ export function IndexingPage() {
               </Suspense>
             </>
           ) : jobsQuery.isLoading ? (
-            !workspace.listOpen && <BrandLoading label="Fetching indexing status…" />
+            !workspace.listOpen && <BrandLoading label="Buscando status da indexação…" />
           ) : (
             <div className="index-empty flex h-full min-h-0 flex-1 flex-col items-center justify-center gap-3.5 overflow-auto p-7 text-center [&_h2]:text-heading [&_h2]:text-fg [&_h3]:text-heading [&_h3]:text-fg [&_p]:max-w-sm [&_p]:text-small [&_p]:text-fg-muted">
               <BrandMark size="lg" />
               <h2>{jobsQuery.isError ? "Unable to load repositories" : "Your code context starts here"}</h2>
               <p>
                 {jobsQuery.isError
-                  ? "Retry loading repositories using the action above."
-                  : "Select repositories during setup to explore their packages, files, and symbols."}
+                  ? "Tente carregar os repositórios de novo pela ação acima."
+                  : "Selecione repositórios no setup para explorar pacotes, arquivos e símbolos."}
               </p>
             </div>
           )}

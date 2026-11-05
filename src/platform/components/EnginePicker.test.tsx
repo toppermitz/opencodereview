@@ -165,10 +165,10 @@ it("switches to another account of the provider, resuming a paused one and skipp
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(radio("Bruno").getAttribute("aria-checked")).toBe("true");
-    expect(radio("Bruno").textContent).toContain("3% left");
-    expect(radio("Brito").textContent).toContain("Paused · 100% left");
+    expect(radio("Bruno").textContent).toContain("3% restante");
+    expect(radio("Brito").textContent).toContain("Pausada · 100% restante");
     expect(radio("Bruna").disabled).toBe(true);
-    expect(radio("Bruna").textContent).toContain("Limit reached · resets in 1 h");
+    expect(radio("Bruna").textContent).toContain("Limite atingido · reinicia em 1 h");
     expect(radio("Bruna").title).toContain("Usage limit reached");
     await act(async () => radio("Brito").click());
     expect(setupApi.updateAccount).toHaveBeenCalledWith(2, { enabled: true });
@@ -221,9 +221,9 @@ it("says when a used-up account resets, before any review has hit its limit", as
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     // Without a reset time there is nothing better to say than how much is left.
-    expect(radio("Bruno").textContent).toContain("0% left");
+    expect(radio("Bruno").textContent).toContain("0% restante");
     // Both windows used up: the account is back only when the later one resets.
-    expect(radio("Brisa").textContent).toContain("Resets in 2 h");
+    expect(radio("Brisa").textContent).toContain("Reinicia em 2 h");
   } finally {
     await act(async () => root.unmount());
     container.remove();

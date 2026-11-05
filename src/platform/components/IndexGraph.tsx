@@ -95,7 +95,7 @@ export function IndexGraphView({
         <div className="index-graph-navigation flex flex-wrap items-center justify-between gap-2.5">
           <nav
             className="index-breadcrumbs flex min-w-0 flex-1 items-center gap-1.5 text-caption text-fg-muted [&>svg]:flex-none [&>button]:truncate [&>span]:truncate [&_button]:cursor-pointer [&_button]:py-0.5 [&_button:hover]:text-fg"
-            aria-label="Graph location"
+            aria-label="Local do grafo"
           >
             <button type="button" title={repoName} onClick={() => changeScope(rootScope)}>
               {repoName.split("/").pop()}
@@ -150,8 +150,8 @@ export function IndexGraphView({
               <Search className="size-3.5" />
               <input
                 id="index-graph-search"
-                aria-label={`Search ${scope.mode}`}
-                placeholder={`Find ${scope.mode} by name or path…`}
+                aria-label={`Buscar ${scope.mode === "packages" ? "pacotes" : scope.mode === "files" ? "arquivos" : "símbolos"}`}
+                placeholder={`Buscar ${scope.mode === "packages" ? "pacotes" : scope.mode === "files" ? "arquivos" : "símbolos"} por nome ou caminho…`}
                 value={search}
                 onChange={(event) => {
                   setSearch(event.target.value);
@@ -162,7 +162,7 @@ export function IndexGraphView({
                 }}
               />
               {search && (
-                <button type="button" onClick={() => setSearch("")} aria-label="Clear graph search">
+                <button type="button" onClick={() => setSearch("")} aria-label="Limpar busca do grafo">
                   ×
                 </button>
               )}
@@ -224,7 +224,7 @@ export function IndexGraphView({
           className="index-snapshot-notice flex-none border-b border-amber-200 bg-amber-50 px-5 py-2 text-small text-amber-900"
           role="status"
         >
-          Showing the last saved index.{" "}
+          Mostrando o último índice salvo.{" "}
           {status.status === "indexing" || status.status === "queued"
             ? "A fresh index is being prepared."
             : "Re-index to refresh this context."}
@@ -232,37 +232,37 @@ export function IndexGraphView({
       )}
       {graphQuery.isError && graphQuery.data && (
         <div className="index-job-error" role="alert">
-          Could not refresh the graph: {graphQuery.error.message}{" "}
-          <DSButton onClick={() => void graphQuery.refetch()}>Retry</DSButton>
+          Não foi possível atualizar o grafo: {graphQuery.error.message}{" "}
+          <DSButton onClick={() => void graphQuery.refetch()}>Tentar de novo</DSButton>
         </div>
       )}
       <div className="index-graph-body relative flex min-h-0 min-w-0 flex-1">
         <div className="index-graph-center flex min-h-0 min-w-0 flex-1 flex-col">
           <section
             className="index-flow-canvas relative min-h-0 min-w-0 flex-1 overflow-hidden bg-canvas [&>.brand-loading]:absolute [&>.brand-loading]:inset-0"
-            aria-label={`Interactive ${scope.mode} graph`}
+            aria-label={`Grafo interativo de ${scope.mode === "packages" ? "pacotes" : scope.mode === "files" ? "arquivos" : "símbolos"}`}
           >
             {graphQuery.isPending ? (
               <BrandLoading label="Reading the saved repository index…" />
             ) : graphQuery.isError && !graphQuery.data ? (
               <GraphEmpty title="Graph unavailable" description={graphQuery.error.message}>
-                <DSButton onClick={() => void graphQuery.refetch()}>Retry graph</DSButton>
+                <DSButton onClick={() => void graphQuery.refetch()}>Tentar grafo de novo</DSButton>
               </GraphEmpty>
             ) : nodes.length === 0 && (status.status === "indexing" || status.status === "queued") ? (
               <BrandLoading label="The first index is being prepared. The graph will appear when it completes." />
             ) : nodes.length === 0 && status.status === "empty" ? (
               <GraphEmpty
-                title="No commits yet"
+                title="Ainda sem commits"
                 description={`Push to ${repoName} and it will be indexed automatically.`}
               />
             ) : nodes.length === 0 ? (
               <GraphEmpty
                 title={
                   scope.mode === "symbols"
-                    ? "No symbols in this scope"
+                    ? "Nenhum símbolo neste escopo"
                     : scope.mode === "files"
-                      ? "No files in this package"
-                      : "No packages indexed"
+                      ? "Nenhum arquivo neste pacote"
+                      : "Nenhum pacote indexado"
                 }
                 description={
                   status.status === "failed"
@@ -284,10 +284,10 @@ export function IndexGraphView({
                 {focusId
                   ? "Focused on direct relationships"
                   : scope.mode === "packages"
-                    ? "Select a package to explore its files"
+                    ? "Selecione um pacote para explorar os arquivos"
                     : scope.mode === "files"
-                      ? "Select a file to explore its symbols"
-                      : "Select a symbol to explore its connections"}
+                      ? "Selecione um arquivo para explorar os símbolos"
+                      : "Selecione um símbolo para explorar as conexões"}
               </div>
             )}
           </section>
@@ -480,11 +480,11 @@ function IndexNetwork({
       )}
       <div className="index-network-controls absolute bottom-4 left-5 flex max-w-[calc(100%-40px)] items-center gap-2 [&_select]:h-8 [&_select]:max-w-56 [&_select]:min-w-0 [&_select]:rounded-md [&_select]:border [&_select]:border-line [&_select]:bg-surface [&_select]:px-2.5 [&_select]:text-caption [&_select]:text-fg-muted [&_select]:shadow-card [&_button]:flex-none">
         <select
-          aria-label="Select graph node"
+          aria-label="Selecionar nó do grafo"
           value={selectedId && graph.nodes.some((node) => node.id === selectedId) ? selectedId : ""}
           onChange={(event) => onSelect(event.target.value || null)}
         >
-          <option value="">Select a node…</option>
+          <option value="">Selecione um nó…</option>
           {graph.nodes.map((node) => (
             <option key={node.id} value={node.id}>
               {node.name} · {node.path || "Repository root"}
@@ -493,7 +493,7 @@ function IndexNetwork({
         </select>
         <DSButton onClick={fitToView}>
           <Maximize className="size-3.5" />
-          Fit graph
+          Ajustar grafo
         </DSButton>
       </div>
       <div className="index-network-legend pointer-events-none absolute top-10 right-5 left-5 flex flex-wrap gap-x-3 gap-y-1.5 text-caption text-fg-muted">

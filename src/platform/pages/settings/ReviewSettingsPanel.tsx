@@ -17,7 +17,8 @@ export function ReviewSettingsPanel({
   keywordDraft: string;
   onKeywordDraft: (value: string) => void;
 }) {
-  if (!settings) return activeSection === "selection" ? <BrandLoading label="Loading review settings…" /> : null;
+  if (!settings)
+    return activeSection === "selection" ? <BrandLoading label="Carregando configurações de revisão…" /> : null;
   const setArray = (key: string, items: string[]) =>
     onSave(key, JSON.stringify(items.map((item) => item.trim()).filter(Boolean)));
   return (
@@ -25,21 +26,21 @@ export function ReviewSettingsPanel({
       <SettingsGroup title="Seleção de MRs" description="Controla quais MRs entram na fila de revisão.">
         <SettingChoice
           title="Escopo da revisão"
-          description="Use assignments and GitLab reviewers, or review all open MRs."
+          description="Use assignments e revisores do GitLab, ou revise todos os MRs abertos."
           options={["true", "false"]}
-          labels={{ true: "Assigned", false: "All PRs" }}
+          labels={{ true: "Atribuídos", false: "Todos os MRs" }}
           value={String(settings.reviewAssignedOnly)}
           disabled={loading}
           onChange={(value) => onSave("review_assigned_only", value)}
         />
         <SettingRow
-          title="Maximum PR files"
-          description="Skip PRs that change more files than this limit. The default is 100; deletions count, build output, vendored and generated files do not."
+          title="Máximo de arquivos do MR"
+          description="Pula MRs que alteram mais arquivos que este limite. O padrão é 100; exclusões contam; saída de build, vendored e gerados não."
         >
           <input
             className="settings-number-input h-9 w-24 rounded-md border border-line bg-surface px-3 text-small text-fg shadow-card outline-none focus:border-brand focus:ring-3 focus:ring-brand/15"
             type="number"
-            aria-label="Maximum PR files"
+            aria-label="Máximo de arquivos do MR"
             min={1}
             value={settings.reviewMaxFiles}
             disabled={loading}
@@ -48,7 +49,7 @@ export function ReviewSettingsPanel({
         </SettingRow>
         <SettingRow
           title="Revisões ao mesmo tempo"
-          description="How many merge requests are reviewed at once. The default is 20; each review runs in its own isolated container."
+          description="Quantos merge requests são revisados de uma vez. O padrão é 20; cada revisão roda em seu próprio container isolado."
         >
           <input
             className="settings-number-input h-9 w-24 rounded-md border border-line bg-surface px-3 text-small text-fg shadow-card outline-none focus:border-brand focus:ring-3 focus:ring-brand/15"
@@ -62,8 +63,8 @@ export function ReviewSettingsPanel({
           />
         </SettingRow>
         <SettingChoice
-          title="Poll interval"
-          description="How often OpenCodeReview checks selected repos."
+          title="Intervalo de poll"
+          description="Com que frequência o OpenCodeReview verifica os repositórios selecionados."
           options={["30", "60", "300", "1800", "3600"]}
           labels={{ "30": "30s", "60": "1m", "300": "5m", "1800": "30m", "3600": "1h" }}
           value={String(settings.pollIntervalSeconds)}
@@ -71,20 +72,20 @@ export function ReviewSettingsPanel({
           onChange={(value) => onSave("poll_interval_seconds", value)}
         />
       </SettingsGroup>
-      <SettingsGroup title="Comentários da revisão" description="Choose what a review posts besides its findings.">
+      <SettingsGroup title="Comentários da revisão" description="Escolha o que a revisão publica além dos achados.">
         <SettingChoice
           title="Publicar sugestões"
-          description="Lower-priority notes, such as tests, docs and naming, listed in a collapsed section of the review summary. Off posts only findings and questions."
+          description="Notas de menor prioridade, como testes, docs e nomes, listadas numa seção recolhida do resumo. Desligado publica só achados e perguntas."
           options={["true", "false"]}
-          labels={{ true: "On", false: "Off" }}
+          labels={{ true: "Ligado", false: "Desligado" }}
           value={String(settings.reviewSuggestionsEnabled)}
           disabled={loading}
           onChange={(value) => onSave("review_suggestions_enabled", value)}
         />
       </SettingsGroup>
-      <SettingsGroup title="Title filters" description="Skip low-value PRs by keyword.">
+      <SettingsGroup title="Filtros de título" description="Pula MRs de baixo valor por palavra-chave.">
         <TokenEditor
-          label="Ignored keywords"
+          label="Palavras-chave ignoradas"
           placeholder="renovate, chore(deps)"
           values={settings.autoSkipKeywords}
           draft={keywordDraft}

@@ -165,7 +165,9 @@ describe("review processes toggle", () => {
       );
       expectLoader(wide);
       await act(async () =>
-        container.querySelector<HTMLButtonElement>(`button[aria-label="${wide ? "Hide" : "Show"} processes"]`)!.click(),
+        container
+          .querySelector<HTMLButtonElement>(`button[aria-label="${wide ? "Ocultar" : "Mostrar"} processos"]`)!
+          .click(),
       );
       expectLoader(!wide);
       await act(async () => {
@@ -175,7 +177,7 @@ describe("review processes toggle", () => {
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
       expect(container.querySelector(".brand-loading")).toBeNull();
-      expect(container.textContent).toContain("Poll GitLab, then select a merge request");
+      expect(container.textContent).toContain("Consulte o GitLab");
     } finally {
       await act(async () => root.unmount());
       client.clear();

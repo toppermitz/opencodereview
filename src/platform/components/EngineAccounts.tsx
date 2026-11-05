@@ -30,10 +30,10 @@ function usedUpUntil(windows: UsageWindow[], now = Date.now()) {
 function accountNote(account: AiAccount, windows: UsageWindow[], left: number | null, now = Date.now()) {
   const health = accountHealth(account, now);
   if (health === "signed-out") return "Desconectado";
-  if (health === "resting") return `Limit reached · resets in ${relative((account.limitedUntil ?? now) - now)}`;
+  if (health === "resting") return `Limite atingido · reinicia em ${relative((account.limitedUntil ?? now) - now)}`;
   const until = usedUpUntil(windows, now);
-  const amount = until === null ? (left === null ? null : `${left}% left`) : `Resets in ${relative(until - now)}`;
-  if (health === "paused") return amount === null ? "Paused" : `Paused · ${amount}`;
+  const amount = until === null ? (left === null ? null : `${left}% restante`) : `Reinicia em ${relative(until - now)}`;
+  if (health === "paused") return amount === null ? "Pausada" : `Pausada · ${amount}`;
   return amount ?? "";
 }
 

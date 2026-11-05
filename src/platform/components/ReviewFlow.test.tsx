@@ -61,7 +61,7 @@ function renderView(selectedView: string | null, props: Partial<ComponentProps<t
         onSelectView={() => undefined}
         reviewDetails={
           <>
-            <p>Final findings</p>
+            <p>Achados finais</p>
             <p>Candidate audit</p>
           </>
         }
@@ -111,15 +111,15 @@ describe("review scope selection", () => {
         />,
       ),
     );
-    expect(container.textContent).toContain("1 file to review · 19 with reused coverage · 20 in the PR");
-    expect(container.textContent).toContain("Base synchronization");
+    expect(container.textContent).toContain("1 arquivo para revisar · 19 com cobertura reutilizada · 20 no MR");
+    expect(container.textContent).toContain("Sincronização da base");
     const reusedGroup = [...container.querySelectorAll<HTMLButtonElement>(".review-context-file-group")].find(
-      (group) => group.textContent === "19Reused",
+      (group) => group.textContent === "19Reutilizados",
     )!;
     await act(async () => reusedGroup.click());
     expect(reusedGroup.getAttribute("aria-pressed")).toBe("true");
-    expect(container.textContent).toContain("Verified coverage from run 1487");
-    expect(container.textContent).not.toContain("Full review:");
+    expect(container.textContent).toContain("Cobertura verificada da execução 1487");
+    expect(container.textContent).not.toContain("Revisão completa:");
     expect(container.querySelector(".review-context-range")?.textContent).toBe(
       "git diff 'base...head' -- 'docs/business-rules/programs.md'",
     );
@@ -178,7 +178,7 @@ describe("review scope selection", () => {
     );
     const container = document.createElement("div");
     container.innerHTML = html;
-    expect(container.textContent).toContain("0 files to review · 1 with reused coverage");
+    expect(container.textContent).toContain("0 arquivos para revisar · 1 com cobertura reutilizada");
     expect(container.querySelector(".review-context-range")).toBeNull();
   });
 
@@ -199,9 +199,9 @@ describe("review scope selection", () => {
     );
     const container = document.createElement("div");
     container.innerHTML = html;
-    expect(container.textContent).toContain("Explicit re-run: fresh analysis");
-    expect(container.textContent).toContain("without cached model results");
-    expect(container.textContent).not.toContain("Full review:");
+    expect(container.textContent).toContain("Reexecução explícita: análise nova");
+    expect(container.textContent).toContain("sem resultados em cache");
+    expect(container.textContent).not.toContain("Revisão completa:");
     expect(container.querySelector(".review-context-range")?.textContent).toBe(
       "git diff 'base...head' -- 'docs/business-rules/programs.md'",
     );
@@ -226,23 +226,23 @@ describe("review scope selection", () => {
     );
     const container = document.createElement("div");
     container.innerHTML = html;
-    expect(container.textContent).toContain("Content-verified reuse");
-    expect(container.textContent).toContain("1 excluded, not reviewed");
+    expect(container.textContent).toContain("Reuso verificado por conteúdo");
+    expect(container.textContent).toContain("1 excluídos, não revisados");
     const excludedGroup = [...container.querySelectorAll(".review-context-file-group")].find((group) =>
-      group.textContent?.endsWith("Excluded"),
+      group.textContent?.endsWith("Excluídos"),
     );
-    expect(excludedGroup?.textContent).toBe("1Excluded");
-    expect(container.textContent).not.toContain("Full review:");
+    expect(excludedGroup?.textContent).toBe("1Excluídos");
+    expect(container.textContent).not.toContain("Revisão completa:");
     expect(container.querySelector(".review-context-range")).toBeNull();
   });
 
   it("preserves historical labels without inventing coverage metrics", () => {
     const full = renderToStaticMarkup(<ContextPhaseDetails context={context} />);
-    expect(full).toContain("Full review:");
-    expect(full).not.toContain("with reused coverage");
+    expect(full).toContain("Revisão completa:");
+    expect(full).not.toContain("com cobertura reutilizada");
     const incremental = renderToStaticMarkup(<ContextPhaseDetails context={{ ...context, incremental: true }} />);
-    expect(incremental).toContain("Incremental review:");
-    expect(incremental).not.toContain("Base synchronization:");
+    expect(incremental).toContain("Revisão incremental:");
+    expect(incremental).not.toContain("Sincronização da base:");
   });
 });
 
@@ -288,7 +288,7 @@ describe("review inspector navigation", () => {
       .map((match) => match[0])
       .join("\n");
     const container = document.createElement("div");
-    container.innerHTML = '<details class="disclosure"><summary>Model runs<span>1</span></summary></details>';
+    container.innerHTML = '<details class="disclosure"><summary>Execuções do modelo<span>1</span></summary></details>';
     document.head.append(style);
     document.body.append(container);
     try {
@@ -364,10 +364,10 @@ describe("review inspector navigation", () => {
         prId: 1,
         status: "failed",
         errorMessage:
-          "Cannot safely reuse the previous review: Persisted review coverage does not match its Git snapshot. Choose Re-run full to review the entire PR. No inference started.",
+          "Não é seguro reutilizar a revisão anterior: Persisted review coverage does not match its Git snapshot. Escolha Reexecutar completa para revisar o MR inteiro. Nenhuma inferência iniciada.",
       } as ReviewRun,
     });
-    expect(html).toContain(">Re-run full</button>");
+    expect(html).toContain(">Reexecutar completa</button>");
   });
   it("uses the skip icon for every skipped stage and keeps pending and failed icons distinct", () => {
     const icon = (selectedView: string, props: Partial<ComponentProps<typeof ReviewFlow>>) => {
@@ -428,7 +428,7 @@ describe("review inspector navigation", () => {
     });
     expect(html).toContain("Em cache");
     expect(html).toContain("0 tokens");
-    expect(html).toContain("Validated cache hit");
+    expect(html).toContain("Cache validado reutilizado");
     expect(html).not.toContain("Tokens unavailable");
   });
 
@@ -437,7 +437,7 @@ describe("review inspector navigation", () => {
       id: 10,
       prId: 1,
       status: "running",
-      tail: "chunks progress: 0/2 done, 1 running\nchunk status:\n1 running\n2 queued",
+      tail: "progresso dos chunks: 0/2 concluídos, 1 em execução\nstatus dos chunks:\n1 em execução\n2 na fila",
     } as ReviewRun;
     const html = renderView(null, {
       run,
@@ -494,7 +494,7 @@ describe("review inspector navigation", () => {
         />
       </QueryClientProvider>,
     );
-    expect(html).toContain("Immediate base");
+    expect(html).toContain("Base imediata");
     expect(html).toContain("feature/parent");
     expect(html).toContain("parent012345");
     expect(html).toContain("Merge-base");
@@ -596,7 +596,7 @@ describe("review inspector navigation", () => {
   });
   it.each(["overview", "ready"])("renders %s findings directly without the View dropdown", (view) => {
     const html = renderView(view);
-    expect(html).toContain("Final findings");
+    expect(html).toContain("Achados finais");
     expect(html).toContain('aria-label="Fechar detalhes"');
     expect(html).not.toContain('aria-label="Detail view"');
     expect(html).not.toContain("<select");
@@ -604,6 +604,6 @@ describe("review inspector navigation", () => {
   it.each(["overview", "ready"])("keeps candidate inspection in the %s result panel", (view) => {
     const html = renderView(view);
     expect(html).toContain("Candidate audit");
-    expect(html).toContain("Final findings");
+    expect(html).toContain("Achados finais");
   });
 });

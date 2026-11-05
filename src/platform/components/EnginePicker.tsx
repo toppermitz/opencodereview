@@ -171,18 +171,18 @@ export function EnginePicker() {
                 onChoose={(account) => choose.mutate(account)}
               />
               <div className="flex flex-col gap-2.5 border-t border-line px-4 pt-3 pb-2">
-                <span className="text-caption text-fg-subtle">Model</span>
+                <span className="text-caption text-fg-subtle">Modelo</span>
                 {shown.models.length > 1 && (
                   <input
-                    aria-label="Search models"
-                    placeholder="Search models"
+                    aria-label="Buscar modelos"
+                    placeholder="Buscar modelos"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     className="h-9 w-full rounded-lg bg-surface-muted px-3 text-small text-fg outline-none placeholder:text-fg-subtle focus:ring-2 focus:ring-brand/20"
                   />
                 )}
               </div>
-              <div className="flex flex-col px-2 pb-2" role="radiogroup" aria-label="Model">
+              <div className="flex flex-col px-2 pb-2" role="radiogroup" aria-label="Modelo">
                 {models.map((item) => {
                   const selected = item.id === shown.model;
                   return (
@@ -213,11 +213,13 @@ export function EnginePicker() {
                     </button>
                   );
                 })}
-                {models.length === 0 && <p className="px-2 py-3 text-caption text-fg-subtle">No model matches.</p>}
+                {models.length === 0 && (
+                  <p className="px-2 py-3 text-caption text-fg-subtle">Nenhum modelo corresponde.</p>
+                )}
               </div>
               {shownModel && shownModel.efforts.length > 0 && (
                 <div className="flex flex-col gap-2 border-t border-line px-4 py-3">
-                  <span className="text-caption text-fg-subtle">Effort</span>
+                  <span className="text-caption text-fg-subtle">Esforço</span>
                   <div className="flex rounded-lg bg-surface-muted p-0.5">
                     {shownModel.efforts.map((effort) => (
                       <button

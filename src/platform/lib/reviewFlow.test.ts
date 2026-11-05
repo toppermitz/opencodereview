@@ -146,7 +146,7 @@ describe("individual review chunks", () => {
     status: id === "chunks" ? "running" : "pending",
   }));
   const tail =
-    "chunks progress: 2/4 done, 1 running\nchunk status:\n1 done 10m51s\n2 running 11m11s\n3 done 4m38s\n4 queued\ncurrent chunk: 2\n\nchunk 2/4: reviewing 5 files\nActive chunk output";
+    "progresso dos chunks: 2/4 concluídos, 1 em execução\nstatus dos chunks:\n1 concluído 10m51s\n2 em execução 11m11s\n3 concluído 4m38s\n4 na fila\nchunk atual: 2\n\nchunk 2/4: revisando 5 arquivo(s)\nActive chunk output";
   const run = { id: 10, status: "running", tail } as ReviewRun;
 
   it("uses structured worker states over log text and separates queue from execution time", () => {
@@ -166,7 +166,7 @@ describe("individual review chunks", () => {
     const phase = [{ id: "chunks", label: "Chunks", status: "running", chunks: [progress] }];
     const queued = buildReviewChunks(
       phase,
-      { ...run, tail: "chunks progress: 0/1 done, 1 running\nchunk status:\n1 running" },
+      { ...run, tail: "progresso dos chunks: 0/1 concluídos, 1 em execução\nstatus dos chunks:\n1 em execução" },
       [],
       null,
       4000,
@@ -293,7 +293,7 @@ describe("individual review chunks", () => {
   it("retains observed chunk output while other workers report, but not across runs", () => {
     const first = buildReviewChunks(phases, run, []);
     const nextTail = tail
-      .replace("current chunk: 2", "current chunk: 4")
+      .replace("chunk atual: 2", "chunk atual: 4")
       .replace("chunk 2/4", "chunk 4/4")
       .replace("Active chunk output", "Fourth chunk output");
     const next = buildReviewChunks(phases, { ...run, tail: nextTail }, [], first);
@@ -364,9 +364,18 @@ describe("individual review chunks", () => {
   });
 
   it("handles missing status rows and rejects unsafe or unrelated progress text", () => {
-    expect(parseChunkProgress("chunks progress: 0/999999999 done, 1 running\nchunk status:\n1 running")).toBeNull();
-    expect(parseChunkProgress("Agent quoted: chunks progress: 1/2 done, 1 running")).toBeNull();
-    const chunks = buildReviewChunks(phases, { ...run, tail: "chunks progress: 0/2 done, 2 running" }, []);
+    expect(
+      parseChunkProgress(
+        "progresso dos chunks: 0/999999999 concluídos, 1 em execução\nstatus dos chunks:\n1 em execução",
+      ),
+    ).toBeNull();
+    expect(parseChunkProgress("Agent quoted: progresso dos chunks: 1/2 concluídos, 1 em execução")).toBeNull();
+    expect(parseChunkProgress("chunks progress: 1/2 done, 1 running\nchunk status:\n1 running")).not.toBeNull();
+    const chunks = buildReviewChunks(
+      phases,
+      { ...run, tail: "progresso dos chunks: 0/2 concluídos, 2 em execução" },
+      [],
+    );
     expect(chunks.items.map((chunk) => chunk.state)).toEqual(["unknown", "unknown"]);
     expect(chunks.counts.unknown).toBe(2);
   });

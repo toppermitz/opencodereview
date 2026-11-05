@@ -20,9 +20,10 @@ export function GitLabAuthRecovery({
     <div className="grid gap-3 rounded-lg border border-line bg-[color-mix(in_srgb,var(--surface-2)_70%,transparent)] p-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-sm font-semibold">GitLab authorization</div>
+          <div className="text-sm font-semibold">Autorização do GitLab</div>
           <div className="mt-1 text-sm text-fg-muted">
-            Enter the device code on GitLab to refresh access. Prefer the verification link when shown.
+            Digite o código de dispositivo no GitLab para renovar o acesso. Prefira o link de verificação quando
+            aparecer.
           </div>
         </div>
         <DSButton onClick={onRefresh} disabled={loading}>
@@ -37,7 +38,7 @@ export function GitLabAuthRecovery({
           target="_blank"
           rel="noreferrer"
         >
-          Open GitLab verification page
+          Abrir página de verificação do GitLab
         </a>
       )}
       {prompt.code && (
@@ -48,7 +49,7 @@ export function GitLabAuthRecovery({
       )}
       <div className="flex justify-end gap-3">
         <DSButton onClick={onConnect} disabled={loading} tone="primary">
-          {loading ? "Starting" : "Start authorization"}
+          {loading ? "Iniciando" : "Iniciar autorização"}
         </DSButton>
       </div>
     </div>

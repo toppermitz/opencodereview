@@ -48,7 +48,9 @@ const render = (selected: AiAccount) => {
 
 it("shows each window of the selected account only", () => {
   const html = render(account);
-  expect(html).toContain('aria-label="5-hour usage left" aria-valuemin="0" aria-valuemax="100" aria-valuenow="8"');
+  expect(html).toContain(
+    'aria-label="5 horas de uso restante" aria-valuemin="0" aria-valuemax="100" aria-valuenow="8"',
+  );
   expect(html).toContain('aria-valuenow="60"');
   expect(html).toContain("bg-danger");
   expect(html).not.toContain('aria-valuenow="90"');

@@ -193,8 +193,8 @@ export function SettingsPage() {
       setKeywordDraft("");
       setDraftRevision((value) => value + 1);
       setInitialized(true);
-      setNotice("All changes saved.");
-      toast("Changes saved");
+      setNotice("Todas as alterações salvas.");
+      toast("Alterações salvas");
       for (const queryKey of [
         ["setup", "status"],
         ["indexing", "jobs"],
@@ -203,7 +203,7 @@ export function SettingsPage() {
         void queryClient.invalidateQueries({ queryKey });
     },
     onError: (cause) => {
-      setError(`Could not save changes. Your edits are still pending. ${formatError(cause)}`);
+      setError(`Não foi possível salvar. Suas alterações continuam pendentes. ${formatError(cause)}`);
       setNotice("");
     },
     onSettled: () => {
@@ -275,7 +275,7 @@ export function SettingsPage() {
   if (keywordDraft) dirtySections.add("selection");
   const dirty = dirtySections.size > 0;
   useBlocker({
-    shouldBlockFn: () => save.isPending || (dirty && !window.confirm("Discard unsaved settings and leave this page?")),
+    shouldBlockFn: () => save.isPending || (dirty && !window.confirm("Descartar configurações e sair desta página?")),
     enableBeforeUnload: dirty || save.isPending,
   });
   const loading =
@@ -288,7 +288,7 @@ export function SettingsPage() {
   const workspaceOptions = workspaces.map((workspace) => ({
     value: workspace.login,
     label: workspace.login,
-    detail: `${workspace.kind === "user" ? "Personal account" : "Organization"} · ${workspace.repoCount} repos`,
+    detail: `${workspace.kind === "user" ? "Conta pessoal" : "Organização"} · ${workspace.repoCount} repositórios`,
   }));
   const resetRepositorySelection = () => {
     if (!status) return;
@@ -347,10 +347,10 @@ export function SettingsPage() {
   return (
     <PlatformPage
       title="Configurações"
-      description="Configure repositories, review behavior, and external integrations."
+      description="Configure repositórios, o comportamento da revisão e as integrações."
       action={
         <div className="settings-global-actions flex flex-wrap items-center gap-2 [&>span]:mr-2 [&>span]:text-caption [&>span]:text-fg-subtle [&>span:empty]:hidden">
-          <span role="status">{dirty ? "Unsaved changes" : notice}</span>
+          <span role="status">{dirty ? "Alterações não salvas" : notice}</span>
           <DSButton onClick={cancelChanges} disabled={!dirty || save.isPending}>
             Cancelar
           </DSButton>
@@ -362,8 +362,8 @@ export function SettingsPage() {
     >
       <div className="review-workspace settings-workspace flex min-h-0 flex-1 border-t border-line bg-canvas max-md:flex-col">
         <aside className="settings-sidebar w-60 shrink-0 overflow-y-auto border-r border-line bg-surface px-3 py-5 max-md:w-auto max-md:border-r-0 max-md:border-b [&>h2]:mx-3 [&>h2]:mb-3 [&>h2]:text-overline [&>h2]:text-fg-subtle [&>h2]:uppercase [&>nav]:flex [&>nav]:flex-col [&>nav]:gap-1 max-md:[&>nav]:flex-row max-md:[&>nav]:overflow-x-auto">
-          <h2>Sections</h2>
-          <nav aria-label="Settings sections">
+          <h2>Seções</h2>
+          <nav aria-label="Seções de configurações">
             {SETTINGS_SECTIONS.map(({ id, title, icon: Icon }) => (
               <button
                 key={id}
@@ -380,7 +380,7 @@ export function SettingsPage() {
                   <span
                     className="settings-unsaved-dot ml-auto size-1.5 shrink-0 rounded-full bg-amber-500"
                     role="img"
-                    aria-label="Unsaved changes"
+                    aria-label="Alterações não salvas"
                   />
                 )}
               </button>
@@ -417,18 +417,18 @@ export function SettingsPage() {
                   <span className="text-xs font-medium text-fg-muted">{visibleSelectedCount} repos selected</span>
                   <DSButton onClick={refreshRepositoryAccess} disabled={loading || authDisconnected}>
                     <RefreshCw className="size-3.5" />
-                    Refresh
+                    Atualizar
                   </DSButton>
                 </div>
               }
             >
               {authDisconnected ? (
-                <DSEmptyState>Reconnect GitLab to manage repositories.</DSEmptyState>
+                <DSEmptyState>Reconecte o GitLab para gerenciar repositórios.</DSEmptyState>
               ) : (
                 <div className="settings-select-stack flex flex-col gap-3.5 p-4">
                   <MultiSelect
-                    label="Organizations"
-                    placeholder="Select organizations"
+                    label="Organizações"
+                    placeholder="Selecionar organizações"
                     options={workspaceOptions}
                     selected={selectedLogins}
                     onToggle={(login) => setSelectedLogins((current) => toggleSet(current, login))}
@@ -439,20 +439,20 @@ export function SettingsPage() {
                     <div
                       className="settings-monitor-all flex flex-col gap-2"
                       role="group"
-                      aria-label="Monitor all repositories"
+                      aria-label="Monitorar todos os repositórios"
                     >
                       {[...selectedLogins].sort().map((login) => (
                         <label key={login} className="flex cursor-pointer items-center gap-2.5 text-small text-fg">
                           <input
                             type="checkbox"
-                            aria-label={`Monitor all ${login} repositories`}
+                            aria-label={`Monitorar todos os repositórios de ${login}`}
                             checked={monitorAllLogins.has(login)}
                             disabled={loading}
                             onChange={() => setMonitorAllLogins((current) => toggleSet(current, login))}
                           />
                           <span>
-                            All <strong className="font-semibold">{login}</strong> repositories, including ones created
-                            later
+                            Todos os repositórios de <strong className="font-semibold">{login}</strong>, inclusive os
+                            criados depois
                           </span>
                         </label>
                       ))}
@@ -488,7 +488,7 @@ export function SettingsPage() {
                     title="GitLab"
                     detail={
                       status.auth.loggedIn
-                        ? `${status.auth.login ?? "GitLab CLI"} · ${authUsesEnvToken ? "GITLAB_TOKEN from environment" : status.auth.host}`
+                        ? `${status.auth.login ?? "GitLab CLI"} · ${authUsesEnvToken ? "GITLAB_TOKEN do ambiente" : status.auth.host}`
                         : "Não conectado"
                     }
                     connected={status.auth.loggedIn}
@@ -501,7 +501,7 @@ export function SettingsPage() {
                         )
                       ) : (
                         <DSButton tone="primary" onClick={() => connectGitLab.mutate("login")} disabled={loading}>
-                          {connectGitLab.isPending ? "Starting" : "Conectar GitLab"}
+                          {connectGitLab.isPending ? "Iniciando" : "Conectar GitLab"}
                         </DSButton>
                       )
                     }
@@ -518,7 +518,7 @@ export function SettingsPage() {
                   )}
                 </>
               ) : (
-                <DSEmptyState>Checking access…</DSEmptyState>
+                <DSEmptyState>Verificando acesso…</DSEmptyState>
               )}
             </SettingsGroup>
           </SettingsSection>

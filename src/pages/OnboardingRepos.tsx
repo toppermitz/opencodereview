@@ -62,7 +62,7 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
     <>
       <StepHeader
         title="Escolha seus repositórios"
-        subtitle="OpenCodeReview indexes these and reviews their new merge requests."
+        subtitle="O OpenCodeReview indexa estes e revisa os merge requests novos."
       />
       <section className="flex min-h-0 flex-col gap-2.5" aria-label="Repositórios">
         <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-muted/60 px-3 focus-within:border-line-strong">
@@ -131,7 +131,7 @@ export function ReposStep({ onBack, onSaved }: { onBack: () => void; onSaved: (c
                         {repo.defaultBranch ?? "default branch unknown"}
                       </span>
                     </span>
-                    {repo.isPrivate && <Lock className="size-3.5 flex-none text-fg-subtle" aria-label="Private" />}
+                    {repo.isPrivate && <Lock className="size-3.5 flex-none text-fg-subtle" aria-label="Privado" />}
                   </button>
                 </li>
               );

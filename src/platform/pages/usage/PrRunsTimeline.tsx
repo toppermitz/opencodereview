@@ -24,7 +24,7 @@ function usualWho(runs: UsageRun[]) {
 
 function runSummary(runs: UsageRun[]) {
   const total = runs.reduce((sum, run) => sum + run.tokens, 0);
-  const parts = [`${runs.length} ${runs.length === 1 ? "run" : "runs"} in this period`];
+  const parts = [`${runs.length} ${runs.length === 1 ? "execução" : "execuções"} neste período`];
   for (const outcome of SUMMARY_ORDER) {
     const matching = runs.filter((run) => run.outcome === outcome);
     if (!matching.length) continue;
@@ -32,7 +32,9 @@ function runSummary(runs: UsageRun[]) {
     if (outcome !== "superseded") parts.push(`${matching.length} ${label}`);
     else {
       const tokens = matching.reduce((sum, run) => sum + run.tokens, 0);
-      parts.push(`${matching.length} superseded by new commits (${pct(tokens, total)} of tokens)`);
+      parts.push(
+        `${matching.length} substituído${matching.length === 1 ? "" : "s"} por commits novos (${pct(tokens, total)} dos tokens)`,
+      );
     }
   }
   return parts.join(" · ");
@@ -44,7 +46,7 @@ export function PrRunsTimeline({ prId, days, tz }: { prId: number; days: UsageRa
     queryFn: () => setupApi.usagePrRuns(prId, { days, tz }),
   });
   if (runs.isError) return <DSError>{usageError(runs.error)}</DSError>;
-  if (!runs.data) return <BrandLoading size="compact" label="Loading runs…" />;
+  if (!runs.data) return <BrandLoading size="compact" label="Carregando execuções…" />;
   const usual = usualWho(runs.data);
   const peak = Math.max(1, ...runs.data.map((run) => run.tokens));
   return (
@@ -56,10 +58,10 @@ export function PrRunsTimeline({ prId, days, tz }: { prId: number; days: UsageRa
           search={{ pr: prId }}
           className="font-medium text-fg no-underline underline-offset-2 hover:underline"
         >
-          Open review →
+          Abrir revisão →
         </Link>
       </div>
-      <ol className="flex flex-col" aria-label="Runs, newest first">
+      <ol className="flex flex-col" aria-label="Execuções, da mais nova">
         {runs.data.map((run) => {
           const meta = outcomeMeta[run.outcome];
           return (

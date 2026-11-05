@@ -17,7 +17,7 @@ function RowName({ row }: { row: UsageGroupRow }) {
   if (row.key === "unattributed")
     return (
       <span className="inline-flex items-center gap-1.5 text-fg-muted">
-        Unattributed
+        Sem atribuição
         <Hint text={UNATTRIBUTED_HINT} />
       </span>
     );
@@ -38,19 +38,20 @@ function GroupTable({
   total: number;
   kind: "repos" | "models" | "accounts";
 }) {
-  if (!rows.length) return <DSEmptyState>No runs in this period. Run a review from Reviews to fill it.</DSEmptyState>;
+  if (!rows.length)
+    return <DSEmptyState>Nenhuma execução neste período. Rode uma revisão em Revisões para preencher.</DSEmptyState>;
   const repos = kind === "repos";
   return (
     <table className="w-full table-fixed border-collapse text-small">
       <thead>
         <tr className="border-b border-line text-left">
-          <th className={th}>{repos ? "Repositório" : kind === "models" ? "Model" : "Account"}</th>
+          <th className={th}>{repos ? "Repositório" : kind === "models" ? "Modelo" : "Conta"}</th>
           <th className={`${th} w-24 text-right`}>Tokens</th>
-          <th className={`${th} w-56 max-md:hidden`}>Share</th>
-          {!repos && <th className={`${th} w-28 text-right max-md:hidden`}>Cache reads</th>}
-          <th className={`${th} w-16 text-right max-md:hidden`}>Runs</th>
-          {repos && <th className={`${th} w-32 text-right max-md:hidden`}>Findings</th>}
-          {repos && <th className={`${th} w-28 text-right max-md:hidden`}>Median time</th>}
+          <th className={`${th} w-56 max-md:hidden`}>Participação</th>
+          {!repos && <th className={`${th} w-28 text-right max-md:hidden`}>Leituras de cache</th>}
+          <th className={`${th} w-16 text-right max-md:hidden`}>Execuções</th>
+          {repos && <th className={`${th} w-32 text-right max-md:hidden`}>Achados</th>}
+          {repos && <th className={`${th} w-28 text-right max-md:hidden`}>Tempo mediano</th>}
         </tr>
       </thead>
       <tbody>
@@ -84,20 +85,20 @@ export function UsageBreakdown({ report, query }: { report: UsageReport; query: 
   const tabs = [
     { id: "prs", label: "Merge requests" },
     { id: "repos", label: "Repositórios" },
-    { id: "models", label: "Models" },
-    ...(showAccounts ? [{ id: "accounts", label: "Accounts" }] : []),
+    { id: "models", label: "Modelos" },
+    ...(showAccounts ? [{ id: "accounts", label: "Contas" }] : []),
   ];
   const active: TabId = tabs.some((item) => item.id === tab) ? tab : "prs";
   const total = report.totals.tokens;
   return (
-    <section className="flex flex-col gap-3" aria-label="Usage breakdown">
+    <section className="flex flex-col gap-3" aria-label="Detalhamento do uso">
       <ArrowTabs
         tabs={tabs}
         activeId={active}
         panelId={PANEL_ID}
-        label="Break down usage by"
-        previousLabel="Previous breakdown"
-        nextLabel="Next breakdown"
+        label="Detalhar uso por"
+        previousLabel="Detalhamento anterior"
+        nextLabel="Próximo detalhamento"
         showArrows={false}
         onChange={(id) => setTab(id as TabId)}
       />
@@ -113,7 +114,7 @@ export function UsageBreakdown({ report, query }: { report: UsageReport; query: 
             <GroupTable rows={report.byAccount} total={total} kind="accounts" />
             {report.byAccount.some((row) => row.key === "unattributed") && (
               <p className="text-caption text-fg-subtle">
-                Unattributed covers runs from before usage was recorded per account.
+                Sem atribuição cobre execuções de antes do uso ser registrado por conta.
               </p>
             )}
           </div>

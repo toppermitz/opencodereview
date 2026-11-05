@@ -18,7 +18,7 @@ export function RunStrip({ runs, className }: { runs: UsageStripRun[]; className
   const strip = (
     <span
       role="img"
-      aria-label={`${runs.length} ${runs.length === 1 ? "run" : "runs"}: ${counts.join(", ")}`}
+      aria-label={`${runs.length} ${runs.length === 1 ? "execução" : "execuções"}: ${counts.join(", ")}`}
       className="flex h-2 w-full gap-px overflow-hidden rounded-sm"
     >
       {runs.map((run) => (
@@ -38,7 +38,7 @@ export function RunStrip({ runs, className }: { runs: UsageStripRun[]; className
           {runs.map((run, index) => (
             <li key={run.runId} className="flex justify-between gap-4 tabular-nums">
               <span>
-                Run {index + 1} · {outcomeMeta[run.outcome].label}
+                Execução {index + 1} · {outcomeMeta[run.outcome].label}
               </span>
               <span className="font-mono text-fg-muted">{compactTokens(run.tokens)}</span>
             </li>

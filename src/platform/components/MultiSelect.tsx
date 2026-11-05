@@ -75,7 +75,9 @@ export function MultiSelect({
           loading ? (
             <BrandLoading size="compact" />
           ) : (
-            <div className="settings-empty-inline px-3 py-4 text-center text-small text-fg-subtle">No matches</div>
+            <div className="settings-empty-inline px-3 py-4 text-center text-small text-fg-subtle">
+              Nenhuma correspondência
+            </div>
           )
         ) : (
           visibleOptions.map((option) => (
@@ -199,7 +201,7 @@ export function MultiSelect({
               <h2 id={`${id}-title`} className="text-heading text-fg">
                 {label}
               </h2>
-              <DSButton tone="ghost" aria-label={`Close ${label.toLowerCase()}`} onClick={() => setOpen(false)}>
+              <DSButton tone="ghost" aria-label={`Fechar ${label.toLowerCase()}`} onClick={() => setOpen(false)}>
                 <X className="size-4" />
               </DSButton>
             </header>
@@ -209,7 +211,7 @@ export function MultiSelect({
                 {selectedOptions.length} selecionado{selectedOptions.length === 1 ? "" : "s"}
               </span>
               <DSButton tone="primary" onClick={() => setOpen(false)}>
-                Done
+                Concluir
               </DSButton>
             </footer>
           </dialog>

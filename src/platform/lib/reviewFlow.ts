@@ -304,13 +304,40 @@ export interface ReviewChunks {
 const MAX_VISIBLE_CHUNKS = 1000;
 const validChunkId = (id: number): boolean => Number.isSafeInteger(id) && id > 0 && id <= MAX_VISIBLE_CHUNKS;
 
+const CHUNK_STATUS_ALIASES: Record<string, string> = {
+  done: "done",
+  cached: "cached",
+  validating: "validating",
+  running: "running",
+  queued: "queued",
+  failed: "failed",
+  error: "error",
+  cancelled: "cancelled",
+  superseded: "superseded",
+  concluído: "done",
+  concluido: "done",
+  "em cache": "cached",
+  validando: "validating",
+  "em execução": "running",
+  "em execucao": "running",
+  "na fila": "queued",
+  falhou: "failed",
+  erro: "error",
+  cancelado: "cancelled",
+  substituído: "superseded",
+  substituido: "superseded",
+};
+
 export function parseChunkProgress(raw: string): ChunkProgress | null {
   const tail = raw.slice(0, 32_768).trimStart();
-  const summary = tail.match(/^chunks progress:\s+(\d+)\/(\d+)\s+done,\s+(\d+)\s+running\b/i);
+  // Accept English (historical runs) and Portuguese (current backend) progress lines.
+  const summary = tail.match(
+    /^(?:chunks progress:\s+(\d+)\/(\d+)\s+done,\s+(\d+)\s+running|progresso dos chunks:\s+(\d+)\/(\d+)\s+conclu[ií]dos,\s+(\d+)\s+em execu[cç][aã]o)\b/i,
+  );
   if (!summary) return null;
-  const [done, total, running] = summary.slice(1).map(Number);
+  const [done, total, running] = (summary[1] ? summary.slice(1, 4) : summary.slice(4, 7)).map(Number);
   if (!validChunkId(total) || done + running > total) return null;
-  const header = /^chunk status:\s*\r?$/im.exec(tail);
+  const header = /^(?:chunk status|status dos chunks):\s*\r?$/im.exec(tail);
   const chunks: ChunkProgress["chunks"] = [];
   if (header) {
     for (const line of tail
@@ -318,15 +345,16 @@ export function parseChunkProgress(raw: string): ChunkProgress | null {
       .trimStart()
       .split(/\r?\n/)) {
       const match = line.match(
-        /^\s*(\d+)\s+(done|cached|validating|running|queued|failed|error|cancelled|superseded)(?:\s+((?:\d+h)?(?:\d+m)?\d+s))?\s*$/i,
+        /^\s*(\d+)\s+(done|cached|validating|running|queued|failed|error|cancelled|superseded|conclu[ií]do|em cache|validando|em execu[cç][aã]o|na fila|falhou|erro|cancelado|substitu[ií]do)(?:\s+((?:\d+h)?(?:\d+m)?\d+s))?\s*$/i,
       );
       if (!match) break;
       const id = Number(match[1]);
-      if (id <= total && validChunkId(id) && !chunks.some((chunk) => chunk.id === id))
-        chunks.push({ id, status: match[2].toLowerCase(), duration: match[3] });
+      const status = CHUNK_STATUS_ALIASES[match[2].toLowerCase()];
+      if (status && id <= total && validChunkId(id) && !chunks.some((chunk) => chunk.id === id))
+        chunks.push({ id, status, duration: match[3] });
     }
   }
-  const current = header ? /^current chunk:\s+(\d+)\s*\r?$/im.exec(tail) : null;
+  const current = header ? /^(?:current chunk|chunk atual):\s+(\d+)\s*\r?$/im.exec(tail) : null;
   const currentId =
     current && validChunkId(Number(current[1])) && Number(current[1]) <= total ? Number(current[1]) : null;
   const body = current ? tail.slice(current.index + current[0].length).trim() : "";

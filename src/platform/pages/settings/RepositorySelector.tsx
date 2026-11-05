@@ -29,7 +29,7 @@ export function RepositorySelector({
   return (
     <div className="settings-repository-selector flex min-w-0 flex-col gap-3">
       <div className="settings-multiselect-label flex items-center justify-between text-caption font-medium text-fg-muted [&>span:last-child]:text-fg-subtle">
-        <span id="settings-repositories-label">Repositories</span>
+        <span id="settings-repositories-label">Repositórios</span>
         <span>
           {repos.filter(isSelected).length} of {repos.length} selected
         </span>
@@ -38,7 +38,7 @@ export function RepositorySelector({
         aria-label="Buscar repositórios"
         icon={<Search className="size-4" />}
         value={search}
-        placeholder="Search by organization or repository name…"
+        placeholder="Buscar por organização ou nome do repositório…"
         onChange={(event) => setSearch(event.target.value)}
         disabled={!hasOrganizations || loading}
       />
@@ -50,14 +50,14 @@ export function RepositorySelector({
         aria-busy={loading}
       >
         {!hasOrganizations ? (
-          <DSEmptyState>Select organizations above to browse their repositories.</DSEmptyState>
+          <DSEmptyState>Selecione organizações acima para ver os repositórios.</DSEmptyState>
         ) : loading ? (
           <BrandLoading size="compact" label="Carregando repositórios…" />
         ) : filteredRepos.length === 0 ? (
           <DSEmptyState>
             {query
-              ? "No repositories match this search."
-              : "No repositories available. Refresh repository access to check again."}
+              ? "Nenhum repositório corresponde à busca."
+              : "Nenhum repositório disponível. Atualize o acesso para verificar de novo."}
           </DSEmptyState>
         ) : (
           filteredRepos.map((repo) => (
@@ -76,7 +76,7 @@ export function RepositorySelector({
                 {repo.fullName}
               </span>
               <span className="settings-repository-meta max-w-56 text-right text-caption text-fg-subtle [overflow-wrap:anywhere]">
-                {repo.defaultBranch || "Unknown branch"} · {repo.isPrivate ? "Private" : "Public"}
+                {repo.defaultBranch || "Branch desconhecido"} · {repo.isPrivate ? "Privado" : "Público"}
               </span>
             </label>
           ))

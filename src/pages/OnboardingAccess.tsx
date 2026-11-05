@@ -46,7 +46,7 @@ export function GitlabStep({
     <>
       <StepHeader
         title="Conectar GitLab"
-        subtitle="OpenCodeReview reads your merge requests and posts its reviews as you."
+        subtitle="O OpenCodeReview lê seus merge requests e publica as revisões como você."
       />
       <ChoiceList label="Hospedeiro de código">
         <ChoiceRow
@@ -77,12 +77,14 @@ export function GitlabStep({
               {busy &&
                 (prompt.code ? (
                   <>
-                    <p className="text-small font-medium text-fg">Enter this device code on GitLab to approve access</p>
+                    <p className="text-small font-medium text-fg">
+                      Digite este código de dispositivo no GitLab para aprovar o acesso
+                    </p>
                     <CopyCode code={prompt.code} />
                     <div className="flex flex-wrap items-center gap-3">
                       <p className="flex items-center gap-2 text-small text-fg-muted">
                         <BrandLoadingIcon />
-                        <span>Waiting for approval. This page updates by itself.</span>
+                        <span>Aguardando aprovação. Esta página atualiza sozinha.</span>
                       </p>
                       {prompt.url && (
                         <a
@@ -100,7 +102,7 @@ export function GitlabStep({
                 ) : (
                   <p className="flex items-center gap-2 text-small text-fg-muted">
                     <BrandLoadingIcon />
-                    <span>Starting GitLab sign-in…</span>
+                    <span>Iniciando login do GitLab…</span>
                   </p>
                 ))}
               {!busy && flow.failure && (
@@ -132,8 +134,8 @@ export function GitlabStep({
 type SignIn = { provider: AiProvider["provider"]; method: "oauth" | "code" };
 
 const planDetail: Record<AiProvider["provider"], string> = {
-  claude: "Pro, Max or Team plan",
-  codex: "ChatGPT Plus or Pro plan",
+  claude: "Plano Pro, Max ou Team",
+  codex: "Plano ChatGPT Plus ou Pro",
 };
 
 /** The second way into each provider, offered from the row's menu. */

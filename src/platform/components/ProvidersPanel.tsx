@@ -11,7 +11,7 @@ type Provider = AiAccount["provider"];
 const PROVIDERS: Provider[] = ["claude", "codex"];
 const planHint: Record<Provider, string> = {
   claude: "Claude Pro, Max or Team plan",
-  codex: "ChatGPT Plus or Pro plan",
+  codex: "Plano ChatGPT Plus ou Pro",
 };
 
 const groupClass = "flex flex-col overflow-hidden rounded-xl border border-line/70 bg-surface";
@@ -82,8 +82,8 @@ export function ProvidersPanel() {
         <div className={cx(groupClass, "px-4 py-3")}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-small font-medium text-fg">Reviews run on</div>
-              <div className="text-caption text-fg-subtle">New reviews start with this provider.</div>
+              <div className="text-small font-medium text-fg">Revisões usam</div>
+              <div className="text-caption text-fg-subtle">Novas revisões começam com este provedor.</div>
             </div>
             <select
               aria-label="Revisões usam"
@@ -112,7 +112,7 @@ export function ProvidersPanel() {
                   {providerName[provider]}
                   {index === 0 && (
                     <span className="rounded-full bg-brand-soft px-2 py-0.5 text-caption font-semibold text-brand-hover">
-                      Next review
+                      Próxima revisão
                     </span>
                   )}
                 </span>
@@ -205,12 +205,12 @@ function ProviderDetail({
       <AccountsPanel provider={provider} />
       {engine && (
         <div className="flex flex-col gap-2">
-          <h3 className="px-1 text-small font-semibold text-fg">Model</h3>
+          <h3 className="px-1 text-small font-semibold text-fg">Modelo</h3>
           <div className={cx(groupClass, "divide-y divide-line")}>
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
-                <div className="text-small font-medium text-fg">Model</div>
-                <div className="text-caption text-fg-subtle">The model reviews run on with this provider.</div>
+                <div className="text-small font-medium text-fg">Modelo</div>
+                <div className="text-caption text-fg-subtle">O modelo em que as revisões rodam com este provedor.</div>
               </div>
               {engine.models.length > 1 && (
                 <select
@@ -237,12 +237,12 @@ function ProviderDetail({
             {model && model.efforts.length > 0 && (
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
                 <div>
-                  <div className="text-small font-medium text-fg">Effort</div>
+                  <div className="text-small font-medium text-fg">Esforço</div>
                   <div className="text-caption text-fg-subtle">
-                    More effort finds subtler issues and uses more of your plan.
+                    Mais esforço encontra problemas mais sutis e usa mais do seu plano.
                   </div>
                 </div>
-                <fieldset className="flex flex-wrap gap-1" aria-label="Effort">
+                <fieldset className="flex flex-wrap gap-1" aria-label="Esforço">
                   {model.efforts.map((effort) => (
                     <button
                       key={effort}

@@ -169,19 +169,19 @@ describe("Usage page", () => {
   it("leads with the period's tokens and the totals", async () => {
     await render();
     expect(host.querySelector("[data-usage-hero]")?.textContent).toBe("12.42M");
-    expect(host.textContent).toContain("tokens · 142 runs on 58 PRs");
-    expect(host.textContent).toContain("2 runs without reported usage");
-    expect(host.textContent).toContain("Read from cache");
+    expect(host.textContent).toContain("tokens · 142 execuções em 58 MRs");
+    expect(host.textContent).toContain("2 execuções sem uso reportado");
+    expect(host.textContent).toContain("Lido do cache");
     expect(host.textContent).toContain("+ 24.84M");
     // Findings lead with what the reviews kept; posted is the published part.
     expect(host.textContent).toContain("350");
-    expect(host.textContent).toContain("311 posted · 44 questions");
+    expect(host.textContent).toContain("311 publicados · 44 perguntas");
     expect(host.textContent).toContain("4m 12s");
     expect(host.textContent).toContain("38%");
     // 4M of 12.42M is above the 25% overhead threshold.
     expect([...host.querySelectorAll("dd")].find((dd) => dd.textContent === "4M")?.className).toContain("text-warning");
     // One known provider: no provider list.
-    expect(host.querySelector('[aria-label="Tokens by provider"]')).toBeNull();
+    expect(host.querySelector('[aria-label="Tokens por provedor"]')).toBeNull();
     expect(setupApi.usageReport).toHaveBeenCalledWith({ days: 30, repoId: null, tz: -new Date().getTimezoneOffset() });
   });
 
@@ -195,7 +195,7 @@ describe("Usage page", () => {
     expect(onUrlUpdate.mock.lastCall?.[0].options.history).toBe("replace");
     expect(setupApi.usageReport).toHaveBeenLastCalledWith(expect.objectContaining({ days: 90 }));
 
-    await click(button("Filter by repository"));
+    await click(button("Filtrar por repositório"));
     const items = [...document.querySelectorAll('[role="menuitemradio"]')];
     expect(items.map((item) => item.getAttribute("aria-checked"))).toEqual(["true", "false", "false"]);
     await click(button("acme/web", document.body));
@@ -207,18 +207,18 @@ describe("Usage page", () => {
     await render();
     const tabs = [...host.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent);
     // A single known account does not earn an Accounts tab.
-    expect(tabs).toEqual(["Merge requests", "Repositories", "Models"]);
-    await click(button("Models"));
-    expect(button("Models").getAttribute("aria-selected")).toBe("true");
+    expect(tabs).toEqual(["Merge requests", "Repositórios", "Modelos"]);
+    await click(button("Modelos"));
+    expect(button("Modelos").getAttribute("aria-selected")).toBe("true");
     const panel = host.querySelector('[role="tabpanel"]')!;
     expect(panel.textContent).toContain("claude-opus");
-    expect(panel.textContent).toContain("Unattributed");
-    const hint = panel.querySelector<HTMLButtonElement>('button[aria-label*="before OpenCodeReview tracked usage"]');
+    expect(panel.textContent).toContain("Sem atribuição");
+    const hint = panel.querySelector<HTMLButtonElement>('button[aria-label*="antes do OpenCodeReview rastrear uso"]');
     expect(hint).not.toBeNull();
     // The explanation shows on focus, not only on a slow native hover title.
     await act(async () => hint?.focus());
     expect(document.body.querySelector('[role="tooltip"]')?.textContent).toContain(
-      "before OpenCodeReview tracked usage",
+      "antes do OpenCodeReview rastrear uso",
     );
     await act(async () => hint?.blur());
     expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
@@ -229,7 +229,7 @@ describe("Usage page", () => {
       report({ byAccount: [group("7", "work@example.com", 9_000_000), group("8", "home@example.com", 3_420_000)] }),
     );
     await render();
-    await click(button("Accounts"));
+    await click(button("Contas"));
     expect(host.querySelector('[role="tabpanel"]')?.textContent).toContain("home@example.com");
   });
 
@@ -239,14 +239,14 @@ describe("Usage page", () => {
     const row = host.querySelector<HTMLButtonElement>('[role="tabpanel"] button[aria-expanded]')!;
     expect(row.textContent).toContain("Refactor auth");
     expect(row.getAttribute("aria-expanded")).toBe("false");
-    expect(row.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("2 runs: 1 falhou, 1 publicado");
+    expect(row.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("2 execuções: 1 falhou, 1 publicado");
     await click(row);
     expect(row.getAttribute("aria-expanded")).toBe("true");
     expect(setupApi.usagePrRuns).toHaveBeenCalledTimes(1);
     expect(setupApi.usagePrRuns).toHaveBeenCalledWith(412, { days: 30, tz: -new Date().getTimezoneOffset() });
     const panel = host.querySelector(`#${row.getAttribute("aria-controls")}`)!;
-    expect(panel.textContent).toContain("2 runs in this period · 1 failed");
-    expect(panel.querySelector('a[href="/platform/reviews?pr=412"]')?.textContent).toBe("Open review →");
+    expect(panel.textContent).toContain("2 execuções neste período · 1 falhou");
+    expect(panel.querySelector('a[href="/platform/reviews?pr=412"]')?.textContent).toBe("Abrir revisão →");
     const dimmed = panel.querySelector('li[data-usage-reported="false"]')!;
     expect(dimmed.className).toContain("opacity-50");
     expect(dimmed.textContent).toContain("—");
@@ -265,12 +265,12 @@ describe("Usage page", () => {
       report({ totals: { ...report().totals, runs: 0, prs: 0, tokens: 0 } }),
     );
     await render("?days=7&repo=1");
-    expect(host.textContent).toContain("Usage appears after a review runs. Start one from Reviews.");
+    expect(host.textContent).toContain("O uso aparece depois que uma revisão roda. Comece uma em Revisões.");
     expect(host.querySelector('a[href="/platform/reviews"]')).not.toBeNull();
     expect(setupApi.usagePrs).not.toHaveBeenCalled();
-    await click(button("Clear filter"));
+    await click(button("Limpar filtro"));
     expect(onUrlUpdate.mock.lastCall?.[0].searchParams.has("repo")).toBe(false);
-    await click(button("Show 90 days"));
+    await click(button("Mostrar 90 dias"));
     expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get("days")).toBe("90");
   });
 
@@ -280,9 +280,9 @@ describe("Usage page", () => {
     expect(shareCardData(report()).tokens).toBe("12.42M");
     await render();
     await click(button("Share"));
-    const dialog = document.body.querySelector('[role="dialog"][aria-label="Share usage image"]');
-    expect(dialog?.textContent).toContain("no repository, merge request, account or model names");
-    await click(button("Close", dialog ?? document.body));
+    const dialog = document.body.querySelector('[role="dialog"][aria-label="Compartilhar imagem de uso"]');
+    expect(dialog?.textContent).toContain("sem nome de repositório, merge request, conta ou modelo");
+    await click(button("Fechar", dialog ?? document.body));
     expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   });
 

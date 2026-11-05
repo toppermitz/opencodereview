@@ -41,13 +41,13 @@ it("replaces a crashed page with a recoverable error screen", async () => {
   const view = createRoot(container);
   await act(async () => view.render(<RouterProvider router={router} />));
   await vi.waitFor(() =>
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain("This page couldn’t be shown"),
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("Esta página não pôde ser mostrada"),
   );
   expect(container.querySelector("pre")?.textContent).toContain("reading 'analyzing'");
-  expect(container.querySelector('a[href="/platform/reviews"]')?.textContent).toBe("Go to Reviews");
+  expect(container.querySelector('a[href="/platform/reviews"]')?.textContent).toBe("Ir para Revisões");
   broken = false;
   await act(async () =>
-    [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Try again"))!.click(),
+    [...container.querySelectorAll("button")].find((button) => button.textContent?.includes("Tentar de novo"))!.click(),
   );
   await vi.waitFor(() => expect(container.textContent).toContain("Recovered"));
   act(() => view.unmount());

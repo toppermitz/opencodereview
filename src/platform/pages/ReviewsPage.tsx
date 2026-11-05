@@ -528,7 +528,7 @@ export function ReviewsPage() {
             {!listWidth.compact && (filtersOpen || filterCount > 0) && (
               <div id="review-process-filters" className="review-process-filters flex flex-col gap-2">
                 <MultiSelect
-                  label="People"
+                  label="Pessoas"
                   placeholder="Filtrar pessoas"
                   options={authorOptions}
                   selected={selectedAuthors}
@@ -552,7 +552,7 @@ export function ReviewsPage() {
                     title="Limpar todos os filtros"
                     onClick={clearFilters}
                   >
-                    Clear filters
+                    Limpar filtros
                   </DSButton>
                 )}
               </div>
@@ -639,7 +639,7 @@ export function ReviewsPage() {
                         </DSBadge>
                         <DSBadge
                           tone="violet"
-                          title="Input, output and cache writes. Cache reads are shown in the run details. Running executions report usage when they finish."
+                          title="Entrada, saída e escritas de cache. Leituras de cache aparecem nos detalhes da execução. Execuções em andamento reportam uso quando terminam."
                         >
                           Total recorded <b className="font-semibold">{formatFlowTokens(totals.tokens)}</b>
                           {totals.tokens !== null && totals.partial ? " · partial" : ""}
@@ -774,7 +774,7 @@ export function ReviewsPage() {
             !workspace.processesOpen && <BrandLoading label="Carregando revisões…" />
           ) : (
             <div className="review-workspace-empty m-6">
-              <DSEmptyState>Poll GitLab, then select a merge request to inspect its process.</DSEmptyState>
+              <DSEmptyState>Consulte o GitLab e selecione um merge request para inspecionar o processo.</DSEmptyState>
             </div>
           )}
         </div>

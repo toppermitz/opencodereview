@@ -9,10 +9,10 @@ export function PlatformChunkProgress({ progress }: { progress: ChunkProgress })
       <div className="flex items-end justify-between gap-4">
         <div>
           <div className="text-sm font-semibold text-fg">
-            {progress.done}/{progress.total} chunks done
+            {progress.done}/{progress.total} chunks concluídos
           </div>
           <div className="mt-1 text-xs font-semibold text-fg-muted">
-            {progress.running} running · {pct}% complete
+            {progress.running} em execução · {pct}% concluído
           </div>
         </div>
       </div>
@@ -43,7 +43,7 @@ export function UsageView({ run, usage }: { run: ReviewRun; usage: UsageStats | 
         <div>
           <div className="text-2xl font-semibold text-fg">{formatFlowTokens(totalTokens(run))}</div>
           <div className="text-xs font-semibold text-fg-muted">
-            this run · {durationLabel(run) ?? "time n/a"}
+            esta execução · {durationLabel(run) ?? "tempo n/d"}
             {run.usageModel ? ` · ${run.usageModel}` : ""}
           </div>
         </div>
@@ -52,7 +52,7 @@ export function UsageView({ run, usage }: { run: ReviewRun; usage: UsageStats | 
       {usage && usage.runCount > 1 && (
         <div className="mt-3 flex justify-between border-t border-line pt-3 text-xs font-semibold text-fg-muted">
           <span>
-            PR total ({usage.runCount} runs) · <b className="text-fg">{formatFlowTokens(totalTokens(usage))}</b>
+            Total do MR ({usage.runCount} execuções) · <b className="text-fg">{formatFlowTokens(totalTokens(usage))}</b>
           </span>
           <span>{tokenSplit(usage)}</span>
         </div>
@@ -63,9 +63,9 @@ export function UsageView({ run, usage }: { run: ReviewRun; usage: UsageStats | 
 
 function tokenSplit(usage: Pick<UsageStats, "inputTokens" | "outputTokens" | "cacheReadTokens">) {
   return [
-    `in ${fmtTokens(usage.inputTokens)}`,
-    `out ${fmtTokens(usage.outputTokens)}`,
-    ...(usage.cacheReadTokens > 0 ? [`cache reads ${fmtTokens(usage.cacheReadTokens)}`] : []),
+    `entrada ${fmtTokens(usage.inputTokens)}`,
+    `saída ${fmtTokens(usage.outputTokens)}`,
+    ...(usage.cacheReadTokens > 0 ? [`leituras de cache ${fmtTokens(usage.cacheReadTokens)}`] : []),
   ].join(" · ");
 }
 
@@ -78,14 +78,14 @@ export function RiskView({ run }: { run: ReviewRun }) {
         <div className="flex items-start justify-between gap-3">
           <div>
             <span className="text-2xl font-semibold text-fg">{risk.score}</span>
-            <span className="ml-1 text-xs font-semibold text-fg-muted">/100 Risk · {risk.level}</span>
+            <span className="ml-1 text-xs font-semibold text-fg-muted">/100 Risco · {risk.level}</span>
             <p className="mt-2 text-sm text-fg-muted">{risk.summary}</p>
           </div>
           <div className="flex items-center gap-3">
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-success">
-              {risk.autoMergeEligible ? "Auto-merge candidate" : "Human gate"}
+              {risk.autoMergeEligible ? "Candidato a auto-merge" : "Decisão humana"}
             </span>
-            <span className="text-xs font-semibold text-fg-subtle">Details ›</span>
+            <span className="text-xs font-semibold text-fg-subtle">Detalhes ›</span>
           </div>
         </div>
       </summary>
@@ -112,15 +112,16 @@ export function ContextView({ context }: { context: ReviewContextPlan }) {
   const contentReuse = context.scopeSelection?.mode === "content_reuse";
   const baseSync = context.scopeSelection?.mode === "base_sync" || contentReuse;
   const excluded = context.scopeSelection?.excludedFiles?.length ?? 0;
+  const fileWord = changed === 1 ? "arquivo" : "arquivos";
   const summary =
     (reprocess
-      ? `Explicit re-run · ${changed} file(s) reanalyzed without cached results`
+      ? `Reexecução explícita · ${changed} ${fileWord} reanalisados sem resultados em cache`
       : baseSync
-        ? `${contentReuse ? "Content-verified reuse" : "Base synchronization"} · ${changed} file(s) reviewed · ${context.scopeSelection?.reusedFiles.length ?? 0} reused`
+        ? `${contentReuse ? "Reuso verificado por conteúdo" : "Sincronização da base"} · ${changed} ${fileWord} revisados · ${context.scopeSelection?.reusedFiles.length ?? 0} reutilizados`
         : context.incremental
-          ? `Reviewed only the ${changed} changed file${changed === 1 ? "" : "s"} since the last review`
-          : `Full review · ${changed} changed file${changed === 1 ? "" : "s"}`) +
-    (excluded ? ` · ${excluded} excluded, not reviewed` : "");
+          ? `Revisados só os ${changed} ${fileWord} alterados desde a última revisão`
+          : `Revisão completa · ${changed} ${fileWord} alterados`) +
+    (excluded ? ` · ${excluded} excluídos, não revisados` : "");
   return (
     <details className="context-audit rounded-lg border border-line bg-surface px-4 py-3">
       <summary className="cursor-pointer list-none text-sm font-semibold text-fg-muted">
@@ -128,14 +129,14 @@ export function ContextView({ context }: { context: ReviewContextPlan }) {
           className={`mr-3 rounded-full px-3 py-1 text-xs font-semibold ${context.incremental ? "bg-emerald-50 text-success" : "bg-indigo-50 text-brand"}`}
         >
           {reprocess
-            ? "Re-run"
+            ? "Reexecução"
             : contentReuse
-              ? "Content reuse"
+              ? "Reuso de conteúdo"
               : baseSync
-                ? "Base sync"
+                ? "Sync da base"
                 : context.incremental
                   ? "Incremental"
-                  : "Full PR"}
+                  : "MR completo"}
         </span>
         {summary}
         <span className="float-right text-fg-subtle">›</span>
@@ -146,12 +147,12 @@ export function ContextView({ context }: { context: ReviewContextPlan }) {
             context.scopeReason
           ) : context.incremental ? (
             <>
-              Only changes since <code>{shortSha(context.priorSha)}</code> → <code>{shortSha(context.headSha)}</code>{" "}
-              were reviewed; unchanged code was skipped.
+              Só mudanças desde <code>{shortSha(context.priorSha)}</code> → <code>{shortSha(context.headSha)}</code>{" "}
+              foram revisadas; código inalterado foi pulado.
             </>
           ) : (
             <>
-              Full PR vs base: <code>{shortSha(context.baseSha)}</code> → <code>{shortSha(context.headSha)}</code>.
+              MR completo vs base: <code>{shortSha(context.baseSha)}</code> → <code>{shortSha(context.headSha)}</code>.
             </>
           )}
         </p>
@@ -163,15 +164,15 @@ export function ContextView({ context }: { context: ReviewContextPlan }) {
         )}
         <div className="flex flex-wrap gap-3">
           <span>
-            <b>{changed}</b> changed
+            <b>{changed}</b> alterados
           </span>
           <span>
-            <b>{context.relatedFiles.length}</b> related
+            <b>{context.relatedFiles.length}</b> relacionados
           </span>
           <span>
-            <b>{context.testFiles.length}</b> tests
+            <b>{context.testFiles.length}</b> testes
           </span>
-          {context.omittedCount > 0 && <span>+{context.omittedCount} omitted</span>}
+          {context.omittedCount > 0 && <span>+{context.omittedCount} omitidos</span>}
         </div>
         {changed > 0 && (
           <ul className="grid max-h-36 gap-1 overflow-auto pl-5">

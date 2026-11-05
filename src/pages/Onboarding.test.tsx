@@ -167,7 +167,7 @@ describe("onboarding", () => {
     expect(container.querySelector("h1")?.textContent).toBe("Conecte seu plano");
     await vi.waitFor(() => expect(container.querySelector('[aria-label="Claude"]')).not.toBeNull());
     const claude = container.querySelector('[aria-label="Claude"]')!;
-    expect(claude.textContent).toContain("Pro, Max or Team plan");
+    expect(claude.textContent).toContain("Plano Pro, Max ou Team");
     expect(claude.textContent).not.toContain("v2.1.292");
     expect(claude.textContent).not.toContain("Não conectado");
     expect(claude.querySelector("button")?.textContent).toBe("Conectar");
@@ -201,7 +201,9 @@ describe("onboarding", () => {
       running: true,
       events: [{ kind: "prompt", url: "https://auth.openai.com/codex/device", code: "7KQ2-9XWPL" }],
     });
-    await act(async () => row().querySelector<HTMLButtonElement>('button[aria-label="More ChatGPT options"]')!.click());
+    await act(async () =>
+      row().querySelector<HTMLButtonElement>('button[aria-label="Mais opções de ChatGPT"]')!.click(),
+    );
     await act(async () =>
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
         .find((item) => item.textContent?.startsWith("Entrar com um código"))!
@@ -210,7 +212,7 @@ describe("onboarding", () => {
     await settle();
     expect(setupApi.codexAuthStart).toHaveBeenLastCalledWith(undefined, "device");
     await vi.waitFor(() =>
-      expect(container.querySelector('[aria-label="Codex sign-in code"]')?.textContent).toBe("7KQ2-9XWPL"),
+      expect(container.querySelector('[aria-label="Código de login do Codex"]')?.textContent).toBe("7KQ2-9XWPL"),
     );
   });
 
@@ -240,21 +242,21 @@ describe("onboarding", () => {
     vi.mocked(setupApi.claudeTokenSave).mockResolvedValue({ ok: true });
     await render(status({ auth: github, nextStep: 2 }));
     await act(async () =>
-      container.querySelector<HTMLButtonElement>('button[aria-label="More Claude options"]')!.click(),
+      container.querySelector<HTMLButtonElement>('button[aria-label="Mais opções de Claude"]')!.click(),
     );
     await act(async () =>
       [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
         .find((item) => item.textContent?.startsWith("Colar um token"))!
         .click(),
     );
-    const input = container.querySelector<HTMLInputElement>('input[aria-label="Claude token"]')!;
+    const input = container.querySelector<HTMLInputElement>('input[aria-label="Token do Claude"]')!;
     await act(async () => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "sk-ant-oat01-fixture");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     vi.mocked(setupApi.aiProviders).mockResolvedValue(providers({ accounts: 1, ready: 1, label: "Claude" }));
     vi.mocked(setupApi.setupStatus).mockResolvedValue(status({ auth: github, nextStep: 3 }));
-    await act(async () => button("Save token")!.click());
+    await act(async () => button("Salvar token")!.click());
     await settle();
     expect(setupApi.claudeTokenSave).toHaveBeenCalledWith("sk-ant-oat01-fixture", undefined);
     await vi.waitFor(() =>

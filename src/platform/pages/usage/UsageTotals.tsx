@@ -35,32 +35,32 @@ export function UsageTotals({ totals }: { totals: Totals }) {
   return (
     <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-5">
       <Total
-        label="Runs"
+        label="Execuções"
         value={totals.runs.toLocaleString()}
-        note={`on ${totals.prs.toLocaleString()} ${totals.prs === 1 ? "PR" : "PRs"}`}
+        note={`em ${totals.prs.toLocaleString()} ${totals.prs === 1 ? "MR" : "MRs"}`}
       />
       <Total
         label="Achados"
         value={totals.findingsFound.toLocaleString()}
-        note={`${totals.findings.toLocaleString()} posted · ${totals.questionsFound.toLocaleString()} ${totals.questionsFound === 1 ? "question" : "questions"}`}
-        hint="Findings the reviews kept, published or not; posted counts the ones published to GitLab."
+        note={`${totals.findings.toLocaleString()} publicados · ${totals.questionsFound.toLocaleString()} ${totals.questionsFound === 1 ? "pergunta" : "perguntas"}`}
+        hint="Achados que as revisões mantiveram, publicados ou não; publicados conta os que foram ao GitLab."
       />
       <Total
-        label="Median time"
+        label="Tempo mediano"
         value={formatFlowDuration(totals.medianDurationMs)}
-        hint="From a run's first stage to its last, without time spent in the queue."
+        hint="Da primeira etapa da execução até a última, sem o tempo na fila."
       />
       <Total
-        label="Reused chunks"
+        label="Chunks reutilizados"
         value={totals.chunks > 0 ? pct(totals.reusedChunks, totals.chunks) : "—"}
-        note={totals.chunks > 0 && `${totals.reusedChunks.toLocaleString()} of ${totals.chunks.toLocaleString()}`}
-        hint="Chunks whose earlier review result was reused instead of running the AI again. Not the provider's prompt cache."
+        note={totals.chunks > 0 && `${totals.reusedChunks.toLocaleString()} de ${totals.chunks.toLocaleString()}`}
+        hint="Chunks cujo resultado anterior foi reutilizado em vez de rodar a IA de novo. Não é o cache de prompt do provedor."
       />
       <Total
-        label="Re-review overhead"
+        label="Custo de re-revisão"
         value={compactTokens(totals.overheadTokens)}
         note={pct(totals.overheadTokens, totals.tokens)}
-        hint="Tokens spent on runs that were superseded by new commits, failed or were cancelled."
+        hint="Tokens gastos em execuções substituídas por commits novos, que falharam ou foram canceladas."
         className={overheadShare > 0.25 ? "text-warning" : undefined}
       />
     </dl>

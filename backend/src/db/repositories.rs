@@ -3,7 +3,7 @@ use super::*;
 impl Database {
     pub fn ensure_temp_repo_for_index(&self, repo_id: i64, full_name: &str) -> Result<(), String> {
         let now = now_millis();
-        let (owner, name) = full_name.split_once('/').unwrap_or(("unknown", full_name));
+        let (owner, name) = full_name.rsplit_once('/').unwrap_or(("unknown", full_name));
         self.conn
             .execute(
                 "INSERT INTO repos (id, owner, name, full_name, is_private, created_at, updated_at)

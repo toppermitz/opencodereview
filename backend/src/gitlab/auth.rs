@@ -402,7 +402,9 @@ pub(crate) fn find_url(line: &str) -> Option<String> {
     })
 }
 
-/// Drive `glab auth login` (web/token flow) from the GUI.
+/// Drive `glab auth login --device` (OAuth device flow) from the GUI.
+/// Self-Hosted needs an explicit API host/protocol; without `--device`/`--web`
+/// glab waits on an interactive login-type prompt that never arrives over pipes.
 pub fn run_auth_flow(cancel: &AtomicBool, action: &str, emit: &mut dyn FnMut(serde_json::Value)) {
     let host = match require_gitlab_host() {
         Ok(host) => host,
@@ -411,14 +413,24 @@ pub fn run_auth_flow(cancel: &AtomicBool, action: &str, emit: &mut dyn FnMut(ser
             return;
         }
     };
-    let args: Vec<&str> = if action == "refresh" {
-        vec!["auth", "login", "--hostname", host.as_str(), "--git-protocol", "https"]
-    } else {
-        vec!["auth", "login", "--hostname", host.as_str(), "--git-protocol", "https"]
-    };
+    let _ = action;
+    let args = [
+        "auth",
+        "login",
+        "--hostname",
+        host.as_str(),
+        "--api-host",
+        host.as_str(),
+        "--api-protocol",
+        "https",
+        "--git-protocol",
+        "https",
+        "--device",
+        "--insecure-storage",
+    ];
     let mut auth_cmd = Command::new("glab");
     auth_cmd
-        .args(&args)
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());

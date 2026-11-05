@@ -139,10 +139,8 @@ check_glab_cli() {
       bad "GITLAB_TOKEN set but glab api user failed against $HOST"
     fi
   else
-    skip "GITLAB_TOKEN unset — cannot prove authenticated glab login/workspaces (add agent secret, do not paste in chat)"
-    local code
-    code="$(GITLAB_HOST="$HOST" "$GLAB" api user 2>/dev/null | head -c 80 || true)"
-    if [[ "$code" == *401* ]] || ! GITLAB_HOST="$HOST" "$GLAB" api user >/dev/null 2>&1; then
+    skip "GITLAB_TOKEN unset — authenticated login/workspaces/MR notes not proven"
+    if ! GITLAB_HOST="$HOST" "$GLAB" api user >/dev/null 2>&1; then
       ok "Unauthenticated glab api user correctly rejected by $HOST"
     else
       bad "Unauthenticated glab api user unexpectedly succeeded"

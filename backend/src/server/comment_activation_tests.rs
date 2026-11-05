@@ -118,7 +118,7 @@ fn activation_requires_author_and_persists_queue_and_marker() {
     assert_eq!(f.db.queued_pr_ids().unwrap(), vec![f.pr_id]);
     let (marker, body) = f.activation_marker_body();
     assert!(marker.contains("ocr-activation:v1"));
-    assert!(body.contains("### ⏳ OpenCodeReview is reviewing this pull request"));
+    assert!(body.contains("### ⏳ OpenCodeReview is reviewing this merge request"));
     assert!(body.contains("[`abc12345`](https://gitlab.example.com/acme/repo/-/commit/abc1234567)"));
     let reopened = crate::db::Db::for_test_at(f.root.join("test.sqlite")).open().unwrap();
     assert!(reopened.pr_comment_activated(1, 7).unwrap());

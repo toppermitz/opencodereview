@@ -315,7 +315,7 @@ fn a_push_with_only_content_excluded_files_keeps_the_previous_outcome() {
     git(&["commit", "-qm", "large fixture"]);
     let head = git(&["rev-parse", "HEAD"]);
     git(&["remote", "add", "origin", root.to_str().unwrap()]);
-    git(&["update-ref", "refs/pull/1/head", &head]);
+    git(&["update-ref", "refs/merge-requests/1/head", &head]);
     let conn = db.handle().open().unwrap();
     conn.execute(
         "UPDATE pull_requests SET head_sha=$2 WHERE id=$1",
@@ -405,7 +405,7 @@ fn legacy_merge_with_only_excluded_delta_finishes_without_inference() {
     git(&["commit", "-qm", "lockfile sync"]);
     let head = git(&["rev-parse", "HEAD"]);
     git(&["remote", "add", "origin", root.to_str().unwrap()]);
-    git(&["update-ref", "refs/pull/1/head", &head]);
+    git(&["update-ref", "refs/merge-requests/1/head", &head]);
     let conn = db.handle().open().unwrap();
     conn.execute(
         "UPDATE pull_requests SET head_sha=$2 WHERE id=$1",
@@ -572,7 +572,7 @@ fn stacked_child_integration_finishes_without_inference(integration: &str) {
     }
     let head = git(&["rev-parse", "HEAD"]);
     git(&["remote", "add", "origin", root.to_str().unwrap()]);
-    git(&["update-ref", "refs/pull/1/head", &head]);
+    git(&["update-ref", "refs/merge-requests/1/head", &head]);
     conn.execute(
         "UPDATE pull_requests SET head_sha=$2 WHERE id=$1",
         crate::pg_params![pr, head],

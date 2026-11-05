@@ -66,7 +66,6 @@ impl StatusCommentApi for GitLabStatusComments {
         parse_status_comments(&transport::glab_capture(&[
             "api",
             "--paginate",
-            "--slurp",
             &format!("projects/{project}/merge_requests/{number}/notes?per_page=100"),
         ])?)
     }
@@ -108,25 +107,38 @@ fn comment_already_deleted(error: &str) -> bool {
 
 pub(crate) fn parse_status_comments(bytes: &[u8]) -> Result<Vec<StatusComment>, String> {
     let value: serde_json::Value = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
-    let pages = value.as_array().ok_or("GitLab note pages must be an array")?;
+    let notes = flatten_paginated_array(value).ok_or("GitLab notes must be a JSON array")?;
     let mut comments = Vec::new();
-    for page in pages {
-        for c in page.as_array().ok_or("GitLab note page must be an array")? {
-            comments.push(StatusComment {
-                id: c.get("id").and_then(|v| v.as_i64()).ok_or("Missing note identity")?,
-                author_id: c
-                    .pointer("/author/id")
-                    .and_then(|v| v.as_i64())
-                    .ok_or("Missing note author")?,
-                body: c
-                    .get("body")
-                    .and_then(|v| v.as_str())
-                    .ok_or("Missing note body")?
-                    .into(),
-            });
-        }
+    for c in notes {
+        comments.push(StatusComment {
+            id: c.get("id").and_then(|v| v.as_i64()).ok_or("Missing note identity")?,
+            author_id: c
+                .pointer("/author/id")
+                .and_then(|v| v.as_i64())
+                .ok_or("Missing note author")?,
+            body: c
+                .get("body")
+                .and_then(|v| v.as_str())
+                .ok_or("Missing note body")?
+                .into(),
+        });
     }
     Ok(comments)
+}
+
+/// Accepts the flat array from `glab api --paginate`, or a legacy array-of-pages.
+fn flatten_paginated_array(value: serde_json::Value) -> Option<Vec<serde_json::Value>> {
+    let items = value.as_array()?.clone();
+    if items.first().is_some_and(|item| item.is_array()) {
+        Some(
+            items
+                .into_iter()
+                .flat_map(|page| page.as_array().cloned().unwrap_or_default())
+                .collect(),
+        )
+    } else {
+        Some(items)
+    }
 }
 
 #[cfg(test)]
@@ -135,17 +147,17 @@ mod tests {
 
     #[test]
     fn status_comments_paginated_parse_is_complete_and_fails_closed() {
-        let page = |start: i64| {
-            (start..start + 100)
-                .map(|id| serde_json::json!({"id":id,"body":"status","author":{"id":7}}))
-                .collect::<Vec<_>>()
-        };
-        let raw = serde_json::to_vec(&serde_json::json!([page(1), page(101)])).unwrap();
+        let note = |id: i64| serde_json::json!({"id":id,"body":"status","author":{"id":7}});
+        let flat: Vec<_> = (1..=200).map(note).collect();
+        let raw = serde_json::to_vec(&serde_json::Value::Array(flat)).unwrap();
         let comments = parse_status_comments(&raw).unwrap();
         assert_eq!(comments.len(), 200);
         assert_eq!(comments[199].id, 200);
         assert_eq!(comments[199].author_id, 7);
-        assert!(parse_status_comments(br#"[[{"id":1,"body":"missing author"}]]"#).is_err());
+        // Legacy array-of-pages still flattens.
+        let legacy = serde_json::to_vec(&serde_json::json!([[note(1)], [note(2)]])).unwrap();
+        assert_eq!(parse_status_comments(&legacy).unwrap().len(), 2);
+        assert!(parse_status_comments(br#"[{"id":1,"body":"missing author"}]"#).is_err());
         assert!(parse_status_comments(br#"{"message":"API unavailable"}"#).is_err());
     }
 

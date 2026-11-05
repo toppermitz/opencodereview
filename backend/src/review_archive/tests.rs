@@ -1507,3 +1507,15 @@ fn transfer_accepts_only_the_current_policy() {
     assert!(Archive::decode(&descriptor, &raw, archive.blobs().to_vec()).is_ok());
     assert!(Incoming::new(descriptor, raw).is_err());
 }
+
+#[test]
+fn scope_accepts_nested_gitlab_namespaces() {
+    let mut nested = scope();
+    nested.host = "gitlab.example.com".into();
+    nested.repository = "acme/team/api".into();
+    assert!(nested.validate().is_ok());
+    nested.repository = "solo".into();
+    assert!(matches!(nested.validate(), Err(Error::Contract)));
+    nested.repository = "a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u".into();
+    assert!(matches!(nested.validate(), Err(Error::Contract)));
+}

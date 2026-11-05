@@ -264,10 +264,11 @@ impl Scope {
 
     pub fn validate(&self) -> Result<(), Error> {
         let names = self.repository.split('/').collect::<Vec<_>>();
+        // GitLab projects may nest under subgroups (`acme/team/api`).
         if self.host.len() > 253
             || !crate::gitlab::is_valid_gitlab_host(&self.host)
             || self.repository.len() > 256
-            || names.len() != 2
+            || !(2..=20).contains(&names.len())
             || names.iter().any(|name| {
                 name.is_empty()
                     || matches!(*name, "." | "..")

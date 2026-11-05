@@ -1,18 +1,13 @@
 use super::*;
 
-fn api_paginate(route: &str) -> Result<Vec<serde_json::Value>, String> {
-    let encoded = route.to_string();
-    let bytes = transport::glab_capture(&["api", "--paginate", "--slurp", &encoded])?;
-    let pages: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
-    let mut items = Vec::new();
-    for page in pages.as_array().cloned().unwrap_or_default() {
-        if let Some(arr) = page.as_array() {
-            items.extend(arr.iter().cloned());
-        } else if page.is_object() {
-            items.push(page);
-        }
+/// `glab api --paginate` merges REST array pages into one flat JSON array.
+pub(crate) fn api_paginate(route: &str) -> Result<Vec<serde_json::Value>, String> {
+    let bytes = transport::glab_capture(&["api", "--paginate", route])?;
+    let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    match value {
+        serde_json::Value::Array(items) => Ok(items),
+        other => Err(format!("expected a JSON array from glab --paginate, got {other}")),
     }
-    Ok(items)
 }
 
 pub fn list_workspaces() -> Result<Vec<WorkspaceInput>, String> {
@@ -59,20 +54,25 @@ pub fn list_repos(workspace_login: &str) -> Result<Vec<RepoInput>, String> {
             if !belongs {
                 return None;
             }
-            let (owner, name) = match full_name.split_once('/') {
-                Some((owner, rest)) => (owner.to_string(), rest.to_string()),
-                None => (workspace_login.to_string(), full_name.clone()),
-            };
+            // Keep subgroup identity in `owner` so checkout paths stay unique
+            // (`acme/team-a/api` → owner `acme/team-a`, name `api`).
+            let name = project
+                .get("path")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .or_else(|| full_name.rsplit_once('/').map(|(_, name)| name.to_string()))
+                .unwrap_or_else(|| full_name.clone());
+            let owner = full_name
+                .rsplit_once('/')
+                .map(|(owner, _)| owner.to_string())
+                .filter(|owner| !owner.is_empty())
+                .unwrap_or_else(|| workspace_login.to_string());
             let visibility = project.get("visibility").and_then(|v| v.as_str()).unwrap_or("private");
             Some(RepoInput {
                 workspace_login: workspace_login.to_string(),
                 owner,
-                name: project
-                    .get("path")
-                    .and_then(|v| v.as_str())
-                    .filter(|s| !s.is_empty())
-                    .map(str::to_string)
-                    .unwrap_or(name),
+                name,
                 full_name,
                 description: project
                     .get("description")

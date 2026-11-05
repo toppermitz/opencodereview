@@ -86,29 +86,28 @@ fn request_timeline(
         events.insert(updated);
     }
     // Notes that look like OCR reviews stand in for "published review" events.
+    // `glab api --paginate` returns one flat array; never swallow a failed history read.
     let notes_route = format!("projects/{project}/merge_requests/{number}/notes?per_page=100");
-    let notes = api(&["api", "--paginate", "--slurp", &notes_route]).unwrap_or(serde_json::json!([]));
+    let notes = api(&["api", "--paginate", &notes_route])?;
     let mut reviews = Vec::new();
-    for page in notes.as_array().cloned().unwrap_or_default() {
-        for note in page.as_array().cloned().unwrap_or_else(|| vec![page.clone()]) {
-            let body = note.get("body").and_then(|v| v.as_str()).unwrap_or_default();
-            if !crate::review::contains_review_attribution(body) && !body.contains("<!-- ocr-review-post:") {
-                continue;
-            }
-            let id = note.get("id").and_then(|v| v.as_i64()).unwrap_or_default();
-            let login = note
-                .pointer("/author/username")
-                .and_then(|v| v.as_str())
-                .unwrap_or_default()
-                .to_lowercase();
-            events.insert(format!("note:{id}"));
-            reviews.push(AttributedReview {
-                id,
-                node_id: format!("note:{id}"),
-                login,
-                teams: BTreeSet::new(),
-            });
+    for note in notes.as_array().cloned().unwrap_or_default() {
+        let body = note.get("body").and_then(|v| v.as_str()).unwrap_or_default();
+        if !crate::review::contains_review_attribution(body) && !body.contains("<!-- ocr-review-post:") {
+            continue;
         }
+        let id = note.get("id").and_then(|v| v.as_i64()).unwrap_or_default();
+        let login = note
+            .pointer("/author/username")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default()
+            .to_lowercase();
+        events.insert(format!("note:{id}"));
+        reviews.push(AttributedReview {
+            id,
+            node_id: format!("note:{id}"),
+            login,
+            teams: BTreeSet::new(),
+        });
     }
     Ok(RequestTimeline {
         open: state == "OPEN",

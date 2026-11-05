@@ -16,17 +16,17 @@ pub(crate) fn kill_tree(pid: u32, child: &mut std::process::Child) {
     let _ = child.wait();
 }
 
-/// Fetch the PR head into a private local ref via git transport (github.com),
+/// Fetch the merge-request head into a private local ref via git transport,
 /// never the REST API. Returns the head SHA. Does not touch the working tree.
 pub(crate) fn fetch_pr_head(repo_path: &Path, number: i64, cancel: &AtomicBool) -> Result<String, String> {
-    let refspec = format!("refs/pull/{number}/head:refs/ocr/pr-{number}");
+    let refspec = format!("refs/merge-requests/{number}/head:refs/ocr/pr-{number}");
     git_capture(
         repo_path,
         &["fetch", "origin", &refspec, "--no-tags", "--force", "--quiet"],
         cancel,
         GIT_TIMEOUT_SECS,
     )
-    .map_err(|error| format!("could not fetch PR branch via git: {error}"))?;
+    .map_err(|error| format!("could not fetch merge request head via git: {error}"))?;
     let sha = String::from_utf8(git_capture(
         repo_path,
         &["rev-parse", &format!("refs/ocr/pr-{number}")],
@@ -37,7 +37,7 @@ pub(crate) fn fetch_pr_head(repo_path: &Path, number: i64, cancel: &AtomicBool) 
     .trim()
     .to_string();
     if sha.is_empty() {
-        return Err("could not resolve PR head SHA after fetch".to_string());
+        return Err("could not resolve merge request head SHA after fetch".to_string());
     }
     Ok(sha)
 }

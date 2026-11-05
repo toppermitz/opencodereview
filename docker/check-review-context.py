@@ -172,7 +172,15 @@ def main():
             if args.skill_json:
                 fixture["skill"] = json.loads(pathlib.Path(args.skill_json).read_text())["content"]
             print(json.dumps({"exportedRun": fixture["runId"], "changedFiles": len(fixture["plan"]["changedFiles"]), "relatedFiles": len(fixture["plan"]["relatedFiles"]), "databaseWrites": False}), flush=True)
-            pr = json.loads(command("docker", "exec", args.container, "gh", "api", f"repos/{args.repository}/pulls/{args.pr}", "--jq", "{head: .head.sha, title: .title, body: .body}").stdout)
+            project = args.repository.replace("/", "%2F")
+            mr = json.loads(command(
+                "docker", "exec", args.container, "glab", "api",
+                f"projects/{project}/merge_requests/{args.pr}",
+            ).stdout)
+            head = mr.get("sha") or (mr.get("diff_refs") or {}).get("head_sha")
+            if not head:
+                raise RuntimeError("GitLab merge request response missing head sha")
+            pr = {"head": head, "title": mr.get("title") or "", "body": mr.get("description") or ""}
             packet = json.dumps({"fixture": fixture, "pr": pr})
             if args.hydrate_pinned_dependencies:
                 hydration = command("docker", "exec", "-i", *run_env, "-e", "OCR_DIAGNOSTIC_REPOS=/data/repos", args.container, installed, "review::usage_tests::hydrate_pinned_review_dependencies_without_inference", "--exact", "--ignored", "--nocapture", "--test-threads=1", input=packet, timeout=600)

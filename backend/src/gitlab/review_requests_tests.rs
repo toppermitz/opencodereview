@@ -107,6 +107,7 @@ fn mr(state: &str, reviewers: &[&str], updated_at: &str) -> serde_json::Value {
 }
 
 fn notes_pages(bodies: &[(&str, i64, &str)]) -> serde_json::Value {
+    // Flat array matching `glab api --paginate` (no --slurp).
     let notes: Vec<_> = bodies
         .iter()
         .map(|(body, id, user)| {
@@ -117,7 +118,7 @@ fn notes_pages(bodies: &[(&str, i64, &str)]) -> serde_json::Value {
             })
         })
         .collect();
-    serde_json::json!([notes])
+    serde_json::Value::Array(notes)
 }
 
 #[test]

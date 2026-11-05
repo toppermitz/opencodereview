@@ -221,15 +221,12 @@ pub(crate) fn write_issue_comment(
 pub fn find_issue_comment_id_by_marker(full_name: &str, number: i64, marker: &str) -> Result<Option<i64>, String> {
     let project = project_api_id(full_name);
     let route = format!("projects/{project}/merge_requests/{number}/notes?per_page=100");
-    let bytes = run_raw("glab", &["api", "--paginate", "--slurp", &route])?;
-    let pages = serde_json::from_slice::<serde_json::Value>(&bytes)
+    let bytes = run_raw("glab", &["api", "--paginate", &route])?;
+    let comments = serde_json::from_slice::<serde_json::Value>(&bytes)
         .map_err(|error| error.to_string())?
         .as_array()
         .cloned()
         .unwrap_or_default();
-    let comments = pages
-        .into_iter()
-        .flat_map(|page| page.as_array().cloned().unwrap_or_default());
     Ok(comments.into_iter().find_map(|comment| {
         let body = comment.get("body").and_then(|v| v.as_str()).unwrap_or_default();
         body.contains(marker)
@@ -448,7 +445,7 @@ impl ExistingOcrComment {
 pub(crate) fn existing_ocr_comments(full_name: &str, number: i64) -> Vec<ExistingOcrComment> {
     let project = project_api_id(full_name);
     let route = format!("projects/{project}/merge_requests/{number}/discussions?per_page=100");
-    let Ok(bytes) = run_raw("glab", &["api", "--paginate", "--slurp", &route]) else {
+    let Ok(bytes) = run_raw("glab", &["api", "--paginate", &route]) else {
         return Vec::new();
     };
     let Ok(pages) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
@@ -458,7 +455,6 @@ pub(crate) fn existing_ocr_comments(full_name: &str, number: i64) -> Vec<Existin
         .as_array()
         .into_iter()
         .flatten()
-        .flat_map(|page| page.as_array().into_iter().flatten())
         .flat_map(|discussion| {
             let position = discussion.get("position");
             discussion

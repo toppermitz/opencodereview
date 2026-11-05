@@ -27,14 +27,29 @@ impl FrozenContext {
     }
 }
 
+/// Host recorded on a frozen archive. Live reviews require `OCR_GITLAB_HOST`.
+/// Offline public-benchmark archives keep a stable `github.com` source host when
+/// no GitLab connection is configured, matching the datasets they mount.
+fn archive_source_host(offline: bool) -> Result<String, String> {
+    let configured = gitlab::gitlab_host();
+    if !configured.is_empty() {
+        return Ok(configured);
+    }
+    if offline {
+        return Ok("github.com".into());
+    }
+    Err("OCR_GITLAB_HOST is required (bare host or host:port for your GitLab Self-Hosted instance)".into())
+}
+
 pub fn capture(
     inputs: &ReviewInputs,
     plan: &ReviewContextPlan,
     head: &str,
     cancel: &AtomicBool,
 ) -> Result<Arc<FrozenContext>, String> {
+    let host = archive_source_host(inputs.offline)?;
     let scope = Scope {
-        host: gitlab::gitlab_host(),
+        host,
         repository: inputs.full_name.clone(),
         head_sha: head.into(),
         base_sha: plan.reviewed_base_sha.clone().ok_or("Pinned base unavailable")?,

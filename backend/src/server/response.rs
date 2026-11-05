@@ -10,21 +10,30 @@ pub(crate) fn gitlab_status() -> ToolStatus {
         };
     }
     match probe.output() {
-        Ok(output) => {
-            let text = format!(
-                "{}{}",
-                String::from_utf8_lossy(&output.stdout),
-                String::from_utf8_lossy(&output.stderr)
-            );
+        Ok(output) if output.status.success() => {
+            // `/health` is public: never forward the full `/user` JSON (email, etc.).
+            let username = serde_json::from_slice::<serde_json::Value>(&output.stdout)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("username")
+                        .or_else(|| value.get("login"))
+                        .and_then(|v| v.as_str())
+                        .map(str::to_string)
+                });
             ToolStatus {
-                ok: output.status.success(),
-                detail: text
-                    .lines()
-                    .map(str::trim)
-                    .find(|line| !line.is_empty())
-                    .unwrap_or("ok")
-                    .to_string(),
+                ok: true,
+                detail: username.unwrap_or_else(|| "authenticated".into()),
             }
+        }
+        Ok(output) => {
+            let detail = String::from_utf8_lossy(&output.stderr)
+                .lines()
+                .map(str::trim)
+                .find(|line| !line.is_empty())
+                .unwrap_or("glab api user failed")
+                .to_string();
+            ToolStatus { ok: false, detail }
         }
         Err(error) => ToolStatus {
             ok: false,

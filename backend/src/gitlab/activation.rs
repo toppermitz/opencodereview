@@ -55,13 +55,16 @@ pub(crate) fn conversation_comments_page(
     since: &str,
     page: usize,
 ) -> Result<Vec<ConversationComment>, String> {
+    // The activation scanner pages until a short page. GitLab notes are fetched
+    // completely on the first call so the scan cursor only advances after every
+    // open MR's notes have been read (or a hard error aborts the poll).
     if page != 1 {
         return Ok(Vec::new());
     }
     let project = project_api_id(full_name);
-    let route = format!("projects/{project}/merge_requests?state=opened&order_by=updated_at&sort=desc&per_page=50");
-    let bytes = transport::glab_capture(&["api", &route])?;
-    let mrs: Vec<serde_json::Value> = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+    let mrs = repo::api_paginate(&format!(
+        "projects/{project}/merge_requests?state=opened&order_by=updated_at&sort=desc&per_page=100"
+    ))?;
     let mut comments = Vec::new();
     for mr in mrs {
         let iid = mr.get("iid").and_then(|v| v.as_i64()).unwrap_or_default();
@@ -73,14 +76,9 @@ pub(crate) fn conversation_comments_page(
         if iid <= 0 {
             continue;
         }
-        let notes_route =
-            format!("projects/{project}/merge_requests/{iid}/notes?sort=asc&order_by=updated_at&per_page=100");
-        let Ok(note_bytes) = transport::glab_capture(&["api", &notes_route]) else {
-            continue;
-        };
-        let Ok(notes) = serde_json::from_slice::<Vec<serde_json::Value>>(&note_bytes) else {
-            continue;
-        };
+        let notes = repo::api_paginate(&format!(
+            "projects/{project}/merge_requests/{iid}/notes?sort=asc&order_by=updated_at&per_page=100"
+        ))?;
         for note in notes {
             let updated_at = note
                 .get("updated_at")

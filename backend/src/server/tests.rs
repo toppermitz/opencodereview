@@ -432,6 +432,86 @@ fn changed_review_target_is_not_a_review_failure() {
 }
 
 #[test]
+fn translated_target_change_errors_still_supersede_the_run() {
+    for error in [
+        "PR changed during preparation",
+        "PR state/head changed before preparation",
+        "PR head changed before preparation. Refresh the PR and try again.",
+        "PR base/head scope changed while fetching the snapshot. Run a full review.",
+        "Head do MR mudou antes da preparação. Atualize o MR e tente de novo.",
+        "Escopo base/head do MR mudou ao buscar o snapshot. Atualize o MR e rode uma revisão completa.",
+        "Escopo base/head do MR mudou durante a revisão. Atualize o MR e rode uma revisão completa.",
+    ] {
+        assert!(is_review_target_changed_error(error), "{error}");
+    }
+    assert!(!is_review_target_changed_error("Index preparation failed: git failed"));
+    assert!(!is_review_target_changed_error(
+        "A branch base imediata do MR está ausente."
+    ));
+
+    let root = std::env::temp_dir().join(format!(
+        "ocr-translated-target-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let db = crate::db::Db::for_test_at(root.join("test.sqlite")).open().unwrap();
+    db.ensure_temp_repo_for_index(1, "acme/fixture").unwrap();
+    let pr_id = db
+        .upsert_pull_request(&crate::db::PullRequestInput {
+            repo_id: 1,
+            number: 7,
+            title: "Fixture".to_string(),
+            author: "fixture".to_string(),
+            author_avatar_url: None,
+            is_draft: false,
+            head_sha: "head".to_string(),
+            base_sha: Some("base".to_string()),
+            base_ref: Some("main".to_string()),
+            head_ref: Some("feature".to_string()),
+            default_branch: Some("main".to_string()),
+            url: None,
+            lane: "manual_required".to_string(),
+            status_reason: None,
+        })
+        .unwrap();
+    for (error, force_full, reprocess) in [
+        (
+            "Head do MR mudou antes da preparação. Atualize o MR e tente de novo.",
+            true,
+            false,
+        ),
+        (
+            "Escopo base/head do MR mudou ao buscar o snapshot. Atualize o MR e rode uma revisão completa.",
+            false,
+            true,
+        ),
+    ] {
+        let run_id = db.start_review_skeleton_with(pr_id, Some("fixture")).unwrap();
+        db.set_review_run_running(run_id, &review::index_phase_json("running"))
+            .unwrap();
+        settle_preparation_error(&db, run_id, pr_id, 1, true, force_full, reprocess, error, false, false).unwrap();
+        let run = db.review_run_by_id(run_id).unwrap().unwrap();
+        assert_eq!(run.status, "superseded", "{error}");
+        assert!(run.error_message.is_none(), "{error}");
+        assert_eq!(db.take_force_full_next_review(pr_id).unwrap(), force_full, "{error}");
+        assert_eq!(db.take_reprocess_next_review(pr_id).unwrap(), reprocess, "{error}");
+    }
+    let run_id = db.start_review_skeleton_with(pr_id, Some("fixture")).unwrap();
+    db.set_review_run_running(run_id, &review::index_phase_json("running"))
+        .unwrap();
+    settle_preparation_error(&db, run_id, pr_id, 1, true, true, true, "git failed", false, false).unwrap();
+    let run = db.review_run_by_id(run_id).unwrap().unwrap();
+    assert_eq!(run.status, "failed");
+    assert_eq!(db.take_force_full_next_review(pr_id).unwrap(), false);
+    assert_eq!(db.take_reprocess_next_review(pr_id).unwrap(), false);
+    drop(db);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn stale_review_target_supersedes_run_without_failure_notification() {
     let root = std::env::temp_dir().join(format!(
         "ocr-stale-review-{}-{}",

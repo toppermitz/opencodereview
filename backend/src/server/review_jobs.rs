@@ -1,5 +1,49 @@
 use super::*;
 
+/// A head or base change is not a failed review when no separate superseded flag was
+/// set: keep the full-review or reprocess request and supersede the run.
+pub(crate) fn settle_preparation_error(
+    db: &Database,
+    run_id: i64,
+    pr_id: i64,
+    repo_id: i64,
+    auto_enabled: bool,
+    force_full: bool,
+    reprocess: bool,
+    error: &str,
+    superseded: bool,
+    cancelled: bool,
+) -> Result<(), String> {
+    let active = db
+        .review_run_by_id(run_id)?
+        .is_some_and(|run| matches!(run.status.as_str(), "running" | "pending"));
+    if !active {
+        return Ok(());
+    }
+    if superseded {
+        db.supersede_review_run_without_changing_pr(run_id, "Review superseded by a changed PR target")
+    } else if cancelled {
+        db.cancel_review_run(run_id)
+    } else if is_review_target_changed_error(error) {
+        db.restore_review_intent(pr_id, force_full, reprocess)?;
+        record_review_target_change(
+            db,
+            run_id,
+            pr_id,
+            repo_id,
+            auto_enabled,
+            ReviewTargetChange::HeadChanged,
+        )
+    } else {
+        let _ = db.update_review_run_progress(
+            run_id,
+            &review::preparation_failure_phase(false, false),
+            "Index preparation failed",
+        );
+        db.fail_review_run(run_id, &format!("Index preparation failed: {error}"))
+    }
+}
+
 pub(crate) fn supersede_active_review(db: &Database, pr_id: i64, job: &ReviewJob) -> Result<(), String> {
     db.restore_review_intent(pr_id, job.force_full, job.reprocess)?;
     job.superseded.store(true, Ordering::Relaxed);
@@ -214,34 +258,18 @@ pub(crate) fn start_review_job_with_intent(
             Ok(inputs) => run_review_job(db_handle, state.review_jobs.clone(), inputs, cancel, superseded),
             Err(error) => {
                 let _ = with_db_raw(&state, |db| {
-                    let active = db
-                        .review_run_by_id(run_id)?
-                        .is_some_and(|run| matches!(run.status.as_str(), "running" | "pending"));
-                    if !active {
-                        return Ok(());
-                    }
-                    if superseded.load(Ordering::Relaxed) {
-                        db.supersede_review_run_without_changing_pr(run_id, "Review superseded by a changed PR target")
-                    } else if cancel.load(Ordering::Relaxed) {
-                        db.cancel_review_run(run_id)
-                    } else if is_review_target_changed_error(&error) {
-                        db.restore_review_intent(pr_id, force_full, reprocess)?;
-                        record_review_target_change(
-                            db,
-                            run_id,
-                            pr_id,
-                            repo_id,
-                            settings.review_auto_enabled,
-                            ReviewTargetChange::HeadChanged,
-                        )
-                    } else {
-                        let _ = db.update_review_run_progress(
-                            run_id,
-                            &review::preparation_failure_phase(false, false),
-                            "Index preparation failed",
-                        );
-                        db.fail_review_run(run_id, &format!("Index preparation failed: {error}"))
-                    }
+                    settle_preparation_error(
+                        db,
+                        run_id,
+                        pr_id,
+                        repo_id,
+                        settings.review_auto_enabled,
+                        force_full,
+                        reprocess,
+                        &error,
+                        superseded.load(Ordering::Relaxed),
+                        cancel.load(Ordering::Relaxed),
+                    )
                 });
                 if let Ok(mut jobs) = state.review_jobs.lock() {
                     jobs.remove(&pr_id);

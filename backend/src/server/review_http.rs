@@ -307,6 +307,8 @@ pub(crate) fn is_review_target_changed_error(error: &str) -> bool {
         || error.starts_with("PR state/head changed")
         || error.starts_with("PR head changed")
         || error.starts_with("PR base/head scope changed")
+        || error.starts_with("Head do MR mudou")
+        || error.starts_with("Escopo base/head do MR mudou")
 }
 
 pub(crate) fn record_review_target_change(

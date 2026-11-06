@@ -817,10 +817,18 @@ impl Archive {
             return Err(Error::Revision);
         }
         let mut old = None;
+        let mut header: Option<(String, String)> = None;
         let mut removed = BTreeSet::new();
         for line in diff.lines() {
-            if line.starts_with("diff --git ") {
+            if let Some(paths) = line.strip_prefix("diff --git ").and_then(diff_git_paths) {
                 old = None;
+                header = Some(paths);
+            }
+            // An empty deleted blob has no `---`/`+++` hunk, only this header.
+            if line.starts_with("deleted file mode ") {
+                if let Some((path, _)) = &header {
+                    removed.insert(path.clone());
+                }
             }
             if let Some(raw) = line.strip_prefix("--- ") {
                 old = decoded_git_path(raw).and_then(|path| path.strip_prefix("a/").map(str::to_string));
@@ -884,6 +892,41 @@ impl Archive {
     pub fn manifest_bytes(&self) -> Result<Vec<u8>, Error> {
         manifest::encode(&self.manifest, self.compact)
     }
+}
+
+/// The `a/` and `b/` paths of a `diff --git` header. Git quotes a path that contains spaces or
+/// non-ASCII bytes, with the `a/` or `b/` prefix inside the quotes.
+fn diff_git_paths(rest: &str) -> Option<(String, String)> {
+    let (left, rest) = split_diff_token(rest)?;
+    let rest = rest.strip_prefix(' ')?;
+    let (right, tail) = split_diff_token(rest)?;
+    if !tail.is_empty() {
+        return None;
+    }
+    Some((
+        decoded_git_path(left)?.strip_prefix("a/")?.to_string(),
+        decoded_git_path(right)?.strip_prefix("b/")?.to_string(),
+    ))
+}
+
+fn split_diff_token(raw: &str) -> Option<(&str, &str)> {
+    if !raw.starts_with('"') {
+        let end = raw.find(' ').unwrap_or(raw.len());
+        return Some((&raw[..end], &raw[end..]));
+    }
+    let bytes = raw.as_bytes();
+    let mut index = 1;
+    while index < bytes.len() {
+        if bytes[index] == b'\\' {
+            index += 2;
+            continue;
+        }
+        if bytes[index] == b'"' {
+            return Some((&raw[..=index], &raw[index + 1..]));
+        }
+        index += 1;
+    }
+    None
 }
 
 pub(crate) fn decoded_git_path(raw: &str) -> Option<String> {

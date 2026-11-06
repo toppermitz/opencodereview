@@ -80,6 +80,25 @@ fn archive_identity_binds_scope_policy_and_all_evidence() {
 }
 
 #[test]
+fn empty_file_deletion_without_a_hunk_stays_assigned() {
+    let s = scope();
+    let archive = build(&[
+        ("empty.ts", &s.merge_base_sha, b""),
+        ("src/café.rs", &s.merge_base_sha, b""),
+        ("kept.rs", &s.head_sha, b"keep();\n"),
+    ]);
+    // Git prints no `---`/`+++` lines when the deleted blob is empty.
+    let diff = "diff --git a/empty.ts b/empty.ts\ndeleted file mode 100644\nindex e69de29..0000000\ndiff --git \"a/src/caf\\303\\251.rs\" \"b/src/caf\\303\\251.rs\"\ndeleted file mode 100644\nindex e69de29..0000000\n";
+    archive
+        .validate_assigned(
+            &["empty.ts".into(), "src/café.rs".into(), "kept.rs".into()],
+            diff,
+            &s.merge_base_sha,
+        )
+        .unwrap();
+}
+
+#[test]
 fn quoted_unicode_deletions_preserve_stage_scope_and_anchors() {
     let s = scope();
     let path = "src/café.rs";

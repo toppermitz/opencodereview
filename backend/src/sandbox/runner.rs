@@ -22,10 +22,23 @@ const UID: u32 = 10001;
 const SESSION: &str = "/scratch/session";
 const CLI: &str = "/opt/claude/bin/claude";
 const CODEX_CLI: &str = "/opt/codex/bin/codex";
+const GROK_CLI: &str = "/opt/grok/bin/grok";
 const TRANSCRIPT: &str = "/scratch/transcript.jsonl";
 /// Codex keeps its home, sign-in and final message here, owned by the model UID.
 const CODEX_HOME: &str = "/scratch/session/codex";
-const PROVIDERS: &[&str] = &["claude", "codex"];
+/// Grok keeps its home and sign-in here, owned by the model UID.
+const GROK_HOME: &str = "/scratch/session/grok";
+const PROVIDERS: &[&str] = &["claude", "codex", "grok"];
+
+/// Sign-in material the stage started with; Codex/Grok may refresh it mid-run.
+enum StageAuth {
+    None,
+    Codex(String),
+    Grok {
+        auth_json: Option<String>,
+        api_key: Option<String>,
+    },
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "operation", deny_unknown_fields)]
@@ -440,8 +453,10 @@ fn exchange(
                 credential,
             } if running => {
                 if let (Some(credential), Request::Run { account, provider, .. }) = (credential, request) {
-                    if provider == "codex" {
-                        crate::accounts::store_codex_auth(*account, &credential)?;
+                    match provider.as_str() {
+                        "codex" => crate::accounts::store_codex_auth(*account, &credential)?,
+                        "grok" => crate::accounts::store_grok_auth(*account, &credential)?,
+                        _ => {}
                     }
                 }
                 for (path, value, limit) in [
@@ -554,6 +569,70 @@ fn codex_session(account: i64, model: &str, effort: &str) -> Result<(Command, St
             effort,
         ));
     Ok((command, auth))
+}
+
+/// A Grok Build execution on `account`, with device auth and/or API key projected into `GROK_HOME`.
+#[cfg(unix)]
+fn grok_session(account: i64, model: &str, effort: &str) -> Result<(Command, StageAuth), String> {
+    let auth_root = std::env::var("OCR_RUNNER_AUTH_ROOT").unwrap_or_else(|_| "/claude-auth/app-managed".into());
+    let root = Path::new(&auth_root).join(format!("accounts/{account}/grok"));
+    let auth_json = read_output(&root.join("auth.json"), crate::providers::grok::MAX_AUTH_BYTES as u64)
+        .ok()
+        .flatten()
+        .filter(|raw| crate::providers::grok::validate_auth(raw).is_ok());
+    let api_key = read_output(&root.join("api-key"), crate::providers::grok::MAX_API_KEY_BYTES as u64)
+        .ok()
+        .flatten()
+        .and_then(|raw| {
+            let key = raw.trim().to_string();
+            crate::providers::grok::validate_api_key(&key).ok().map(|_| key)
+        });
+    if auth_json.is_none() && api_key.is_none() {
+        return Err(crate::providers::claude::Failure::Auth.encode());
+    }
+    let (model, effort) = crate::providers::engines::resolve("grok", model, effort)?;
+    let prompt = read_output(Path::new("/work/prompt.md"), 4_000_000)?.ok_or("Review prompt is missing")?;
+    let home = Path::new(GROK_HOME);
+    private_dir(Path::new(SESSION), 0o755)?;
+    private_dir(home, 0o700)?;
+    std::os::unix::fs::chown(home, Some(UID), Some(UID)).map_err(|e| e.to_string())?;
+    if let Some(raw) = &auth_json {
+        let path = home.join("auth.json");
+        fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .mode(0o600)
+            .open(&path)
+            .and_then(|mut file| file.write_all(raw.as_bytes()))
+            .map_err(|e| e.to_string())?;
+        std::os::unix::fs::chown(&path, Some(UID), Some(UID)).map_err(|e| e.to_string())?;
+    }
+    let mut command = Command::new(GROK_CLI);
+    let proxy = std::env::var("OCR_RUNNER_PROXY").unwrap_or_else(|_| "http://review-egress:8790".into());
+    command
+        .env_clear()
+        .env("PATH", "/opt/grok/bin:/usr/local/bin:/usr/bin:/bin")
+        .env("HOME", home)
+        .env("GROK_HOME", home)
+        .env("TMPDIR", "/tmp")
+        .env("HTTPS_PROXY", &proxy)
+        .env("HTTP_PROXY", &proxy)
+        .env("NO_COLOR", "1")
+        .env("GROK_DISABLE_AUTOUPDATER", "1")
+        .current_dir("/work")
+        .uid(UID)
+        .gid(UID)
+        .process_group(0)
+        .args(crate::providers::grok::print_args(
+            Path::new("/work"),
+            &prompt,
+            &model,
+            &effort,
+        ));
+    if let Some(key) = &api_key {
+        command.env("XAI_API_KEY", key);
+    }
+    Ok((command, StageAuth::Grok { auth_json, api_key }))
 }
 
 /// Inference arguments for an isolated stage; the prompt is supplied on stdin.
@@ -950,20 +1029,27 @@ fn run(
     let (mut command, signed_in) = match provider.as_str() {
         "codex" => {
             let (command, auth) = codex_session(account, &model, &effort)?;
-            (command, Some(auth))
+            (command, StageAuth::Codex(auth))
         }
-        _ => {
+        "grok" => grok_session(account, &model, &effort)?,
+        "claude" => {
             let mut command = session(account)?;
             inference(&mut command, &model, &effort)?;
-            (command, None)
+            (command, StageAuth::None)
         }
+        _ => return Err("Unsupported review provider".into()),
     };
     if preflight {
         return send(stream, &Response::Ready);
     }
     let stdout = fs::File::create(TRANSCRIPT).map_err(|e| e.to_string())?;
     let stderr = fs::File::create("/scratch/stderr").map_err(|e| e.to_string())?;
-    command.stdin(fs::File::open("/work/prompt.md").map_err(|e| e.to_string())?);
+    // Grok already embeds the prompt in `-p`; Codex and Claude read it from stdin.
+    if matches!(signed_in, StageAuth::Grok { .. }) {
+        command.stdin(Stdio::null());
+    } else {
+        command.stdin(fs::File::open("/work/prompt.md").map_err(|e| e.to_string())?);
+    }
     command.stdout(stdout).stderr(stderr);
     stream
         .set_read_timeout(Some(Duration::from_millis(1)))
@@ -992,6 +1078,7 @@ fn run(
                     let stdout = read_output(Path::new(TRANSCRIPT), 32_000_000)?.unwrap_or_default();
                     return Err(match provider.as_str() {
                         "codex" => crate::providers::codex::failure(&stdout, &stderr),
+                        "grok" => crate::providers::grok::failure(&stdout, &stderr),
                         _ => crate::providers::claude::failure(&stdout, &stderr),
                     });
                 }
@@ -1005,60 +1092,107 @@ fn run(
     })();
     terminate(&mut child)?;
     let mut transcript = read_output(Path::new(TRANSCRIPT), 32_000_000)?;
-    let Some(auth) = signed_in else {
-        let result = outcome.and_then(|()| final_response(transcript.as_deref()));
-        let (report, decisions, error) = match result {
-            Ok((report, decisions)) => (Some(report), decisions, None),
-            Err(error) => (None, None, Some(error)),
-        };
-        return send(
-            stream,
-            &Response::Finished {
-                report,
-                decisions,
-                transcript,
-                error,
-                credential: None,
-            },
-        );
-    };
-    // Codex may refresh its sign-in mid-stage; the broker keeps the new one so the next stage
-    // doesn't start from a revoked token.
-    let refreshed = read_output(
-        &Path::new(CODEX_HOME).join("auth.json"),
-        crate::providers::codex::MAX_AUTH_BYTES as u64,
-    )
-    .ok()
-    .flatten()
-    .filter(|raw| *raw != auth && crate::providers::codex::validate_auth(raw).is_ok());
-    let secrets = crate::providers::codex::secrets(&auth)
-        .into_iter()
-        .chain(
-            refreshed
-                .as_deref()
-                .map(crate::providers::codex::secrets)
-                .unwrap_or_default(),
-        )
-        .collect::<Vec<_>>();
-    let result = outcome
-        .and_then(|()| {
-            let text = read_output(&Path::new(CODEX_HOME).join("last-message.txt"), 4_000_000)?
-                .ok_or("Codex final response is missing")?;
-            parse_final_response(&text, true)
-        })
-        .and_then(|(report, decisions)| {
-            if secrets.iter().any(|secret| {
-                report.contains(secret) || decisions.as_ref().is_some_and(|decisions| decisions.contains(secret))
-            }) {
-                return Err("Review output contained the account's sign-in; discarded".into());
-            }
-            Ok((report, decisions))
-        });
+    match signed_in {
+        StageAuth::None => {
+            let result = outcome.and_then(|()| final_response(transcript.as_deref()));
+            let (report, decisions, error) = match result {
+                Ok((report, decisions)) => (Some(report), decisions, None),
+                Err(error) => (None, None, Some(error)),
+            };
+            send(
+                stream,
+                &Response::Finished {
+                    report,
+                    decisions,
+                    transcript,
+                    error,
+                    credential: None,
+                },
+            )
+        }
+        StageAuth::Codex(auth) => {
+            // Codex may refresh its sign-in mid-stage; the broker keeps the new one so the next stage
+            // doesn't start from a revoked token.
+            let refreshed = read_output(
+                &Path::new(CODEX_HOME).join("auth.json"),
+                crate::providers::codex::MAX_AUTH_BYTES as u64,
+            )
+            .ok()
+            .flatten()
+            .filter(|raw| *raw != auth && crate::providers::codex::validate_auth(raw).is_ok());
+            let secrets = crate::providers::codex::secrets(&auth)
+                .into_iter()
+                .chain(
+                    refreshed
+                        .as_deref()
+                        .map(crate::providers::codex::secrets)
+                        .unwrap_or_default(),
+                )
+                .collect::<Vec<_>>();
+            let result = outcome
+                .and_then(|()| {
+                    let text = read_output(&Path::new(CODEX_HOME).join("last-message.txt"), 4_000_000)?
+                        .ok_or("Codex final response is missing")?;
+                    parse_final_response(&text, true)
+                })
+                .and_then(|(report, decisions)| redact_secrets(report, decisions, &secrets));
+            redact_transcript(&mut transcript, &secrets);
+            finish_stage(stream, result, transcript, refreshed)
+        }
+        StageAuth::Grok { auth_json, api_key } => {
+            let refreshed = auth_json.as_ref().and_then(|auth| {
+                read_output(
+                    &Path::new(GROK_HOME).join("auth.json"),
+                    crate::providers::grok::MAX_AUTH_BYTES as u64,
+                )
+                .ok()
+                .flatten()
+                .filter(|raw| raw != auth && crate::providers::grok::validate_auth(raw).is_ok())
+            });
+            let secrets = crate::providers::grok::secrets(auth_json.as_deref(), api_key.as_deref())
+                .into_iter()
+                .chain(crate::providers::grok::secrets(refreshed.as_deref(), None))
+                .collect::<Vec<_>>();
+            let result = outcome
+                .and_then(|()| {
+                    let text = crate::providers::grok::final_result(transcript.as_deref().unwrap_or_default())?;
+                    parse_final_response(&text, true)
+                })
+                .and_then(|(report, decisions)| redact_secrets(report, decisions, &secrets));
+            redact_transcript(&mut transcript, &secrets);
+            finish_stage(stream, result, transcript, refreshed)
+        }
+    }
+}
+
+fn redact_secrets(
+    report: String,
+    decisions: Option<String>,
+    secrets: &[String],
+) -> Result<(String, Option<String>), String> {
+    if secrets
+        .iter()
+        .any(|secret| report.contains(secret) || decisions.as_ref().is_some_and(|decisions| decisions.contains(secret)))
+    {
+        return Err("Review output contained the account's sign-in; discarded".into());
+    }
+    Ok((report, decisions))
+}
+
+fn redact_transcript(transcript: &mut Option<String>, secrets: &[String]) {
     if let Some(raw) = transcript.as_mut() {
-        for secret in &secrets {
+        for secret in secrets {
             *raw = raw.replace(secret.as_str(), "[redacted]");
         }
     }
+}
+
+fn finish_stage(
+    stream: &mut impl Write,
+    result: Result<(String, Option<String>), String>,
+    transcript: Option<String>,
+    credential: Option<String>,
+) -> Result<(), String> {
     let (report, decisions, error) = match result {
         Ok((report, decisions)) => (Some(report), decisions, None),
         Err(error) => (None, None, Some(error)),
@@ -1070,7 +1204,7 @@ fn run(
             decisions,
             transcript,
             error,
-            credential: refreshed,
+            credential,
         },
     )
 }

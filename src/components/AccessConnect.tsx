@@ -446,3 +446,158 @@ export function CodexSignIn({
     </SignInFrame>
   );
 }
+
+/** Signs in to Grok with a one-time device code, saving it to `accountId` or to a new account. */
+export function GrokSignIn({
+  accountId,
+  onDone,
+  onCancel,
+}: {
+  accountId?: number;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [started, setStarted] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const events = useQuery({
+    queryKey: ["setup", "grok-auth-events"],
+    queryFn: () => setupApi.grokAuthEvents(),
+    enabled: started,
+    refetchInterval: (query) => (query.state.data?.running !== false ? 1000 : false),
+  });
+  const start = useMutation({
+    mutationFn: () => setupApi.grokAuthStart(accountId),
+    onSuccess: () => {
+      setStarted(true);
+      void events.refetch();
+    },
+  });
+  const cancel = useMutation({
+    mutationFn: () => setupApi.grokAuthCancel(),
+    onSettled: () => {
+      setStarted(false);
+      onCancel();
+    },
+  });
+  const { mutate: begin } = start;
+  useEffect(() => {
+    begin();
+  }, [begin]);
+  const list: FlowEvent[] = started ? (events.data?.events ?? []) : [];
+  const prompt = list.find((event) => event.kind === "prompt");
+  const done = list.find((event) => event.kind === "done");
+  useEffect(() => {
+    if (done?.success) onDone();
+  }, [done?.success, onDone]);
+  const failure = done && !done.success ? (done.message ?? "O login no Grok não terminou.") : null;
+  const error = start.error ?? events.error;
+  const problems = (
+    <>
+      {failure && <Problem>{failure}</Problem>}
+      {error && <Problem>{friendlyError(error)}</Problem>}
+    </>
+  );
+  const copy = async () => {
+    if (!prompt?.code) return;
+    await navigator.clipboard.writeText(prompt.code).catch(() => undefined);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
+  if (failure || error)
+    return (
+      <SignInFrame hint="Usa o uso do Grok do seu plano SuperGrok ou X Premium Plus." problems={problems}>
+        <Retry busy={start.isPending} onRetry={() => start.mutate()} onCancel={onCancel} />
+      </SignInFrame>
+    );
+  return (
+    <SignInFrame hint="Abra a página de login do Grok em qualquer dispositivo e digite este código de uso único.">
+      {prompt?.code ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: the label names the one-time code for tests and screen readers that honour it; the code text stays visible */}
+          <code
+            aria-label="Código de login do Grok"
+            className="rounded-lg bg-surface-sunken px-3.5 py-1.5 font-mono text-body font-semibold tracking-[0.14em] text-fg"
+          >
+            {prompt.code}
+          </code>
+          <button type="button" className={quietButton} onClick={() => void copy()}>
+            {copied ? "Copiado" : "Copiar"}
+          </button>
+        </div>
+      ) : (
+        <Waiting>Preparando um código…</Waiting>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        {prompt?.url && (
+          <a className={brandButton} href={prompt.url} target="_blank" rel="noreferrer">
+            Abrir página de login
+            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+          </a>
+        )}
+        <button type="button" className={quietButton} disabled={cancel.isPending} onClick={() => cancel.mutate()}>
+          Cancelar
+        </button>
+        {prompt?.code && (
+          <span className="ml-1">
+            <Waiting>Aguardando aprovação…</Waiting>
+          </span>
+        )}
+      </div>
+    </SignInFrame>
+  );
+}
+
+/** Pastes an xAI API key, saving it to `accountId` or to a new Grok account. */
+export function GrokApiKeySignIn({
+  accountId,
+  onDone,
+  onCancel,
+}: {
+  accountId?: number;
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [apiKey, setApiKey] = useState("");
+  const save = useMutation({
+    mutationFn: () => setupApi.grokApiKeySave(apiKey.trim(), accountId),
+    onSuccess: onDone,
+  });
+  return (
+    <SignInFrame
+      hint={
+        <>
+          Cole uma chave{" "}
+          <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-caption text-fg">XAI_API_KEY</code>{" "}
+          que começa com{" "}
+          <code className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-caption text-fg">xai-</code>.
+        </>
+      }
+      problems={save.error && <Problem>{friendlyError(save.error)}</Problem>}
+    >
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <input
+          aria-label="Chave de API do Grok"
+          type="password"
+          className={codeInput}
+          value={apiKey}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="xai-…"
+          onChange={(event) => setApiKey(event.target.value)}
+        />
+        <button type="submit" className={brandButton} disabled={!apiKey.trim() || save.isPending}>
+          {save.isPending ? "Salvando…" : "Salvar chave"}
+        </button>
+        <button type="button" className={quietButton} onClick={onCancel}>
+          Cancelar
+        </button>
+      </form>
+    </SignInFrame>
+  );
+}

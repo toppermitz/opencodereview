@@ -1,7 +1,7 @@
 """Checks the newest release of each AI CLI before it is pinned in docker/Dockerfile.
 
-  resolve          Print the Docker build arguments for the newest Claude Code and Codex releases
-                   (linux/amd64) and write a version table to the step summary.
+  resolve          Print the Docker build arguments for the newest Claude Code, Codex and Grok
+                   releases (linux/amd64) and write a version table to the step summary.
   flags IMAGE      Check that each CLI in IMAGE still accepts every flag its provider passes.
 
 No step reads credentials or calls a model.
@@ -18,6 +18,7 @@ import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CLAUDE_RELEASES = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases"
+GROK_ARTIFACTS = "https://storage.googleapis.com/grok-build-public-artifacts/cli"
 
 
 def fetch(url, binary=False):
@@ -46,6 +47,7 @@ def pinned():
 def resolve():
     claude = fetch(f"{CLAUDE_RELEASES}/latest").strip()
     codex = latest_github("openai/codex", "rust-v")
+    grok = fetch(f"{GROK_ARTIFACTS}/stable").strip().splitlines()[0].strip()
     manifest = json.loads(fetch(f"{CLAUDE_RELEASES}/{claude}/manifest.json"))
     args = {
         "CLAUDE_CLI_VERSION": claude,
@@ -53,10 +55,12 @@ def resolve():
         "CODEX_CLI_VERSION": codex,
         "CODEX_CLI_SHA256_AMD64": sha256(f"https://github.com/openai/codex/releases/download/rust-v{codex}/codex-x86_64-unknown-linux-musl.tar.gz"),
         "CODEX_CODE_MODE_HOST_SHA256_AMD64": sha256(f"https://github.com/openai/codex/releases/download/rust-v{codex}/codex-code-mode-host-x86_64-unknown-linux-musl.tar.gz"),
+        "GROK_CLI_VERSION": grok,
+        "GROK_CLI_SHA256_AMD64": sha256(f"{GROK_ARTIFACTS}/grok-{grok}-linux-x86_64"),
     }
     current = pinned()
     rows = ["| CLI | Pinned | Newest |", "| --- | --- | --- |"]
-    for name in ["CLAUDE", "CODEX"]:
+    for name in ["CLAUDE", "CODEX", "GROK"]:
         key = name + "_CLI_VERSION"
         mark = "" if current.get(key) == args[key] else " (new)"
         rows.append(f"| {name.title()} | {current.get(key, '?')} | {args[key]}{mark} |")
@@ -87,6 +91,7 @@ def flags(image):
     help_commands = {
         "claude": ["claude", "--help"],
         "codex": ["codex", "exec", "--help"],
+        "grok": ["grok", "--help"],
     }
     failures = []
     for name, command in help_commands.items():

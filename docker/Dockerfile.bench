@@ -25,7 +25,7 @@ RUN apt-get update \
   && apt-get update \
   && apt-get install -y --no-install-recommends postgresql-17 \
   && rm -rf /var/lib/apt/lists/*
-RUN chmod -R a+rX /opt/claude /opt/codex \
+RUN chmod -R a+rX /opt/claude /opt/codex /opt/grok \
   && install -d -m 0755 /work /output /scratch /evidence \
   && install -d -m 0700 /ipc
 COPY --from=build /usr/local/bin/ocr-sandbox /usr/local/bin/ocr-bench /usr/local/bin/

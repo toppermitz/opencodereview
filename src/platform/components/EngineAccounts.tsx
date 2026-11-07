@@ -1,7 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Check } from "lucide-react";
 import { useState } from "react";
-import { ClaudeSignIn, ClaudeTokenSignIn, CodexSignIn } from "../../components/AccessConnect";
+import {
+  ClaudeSignIn,
+  ClaudeTokenSignIn,
+  CodexSignIn,
+  GrokApiKeySignIn,
+  GrokSignIn,
+} from "../../components/AccessConnect";
 import { cx } from "../../components/DesignSystem";
 import type { AiAccount, UsageWindow } from "../../types";
 import {
@@ -120,12 +126,12 @@ export function AddAccount({ onDone, onCancel }: { onDone: (provider: Provider) 
           <ArrowLeft className="size-4" />
         </button>
         <span className="text-small font-semibold text-fg">
-          {choice ? `Add a ${providerName[choice.provider]} account` : "Add an account"}
+          {choice ? `Adicionar conta ${providerName[choice.provider]}` : "Adicionar conta"}
         </span>
       </div>
       {!choice ? (
         <div className="flex flex-col gap-1.5">
-          {(["claude", "codex"] as const).map((provider) => (
+          {(["claude", "codex", "grok"] as const).map((provider) => (
             <button
               key={provider}
               type="button"
@@ -135,7 +141,11 @@ export function AddAccount({ onDone, onCancel }: { onDone: (provider: Provider) 
               <ProviderGlyph provider={provider} />
               {providerName[provider]}
               <span className="ml-auto text-caption font-normal text-fg-subtle">
-                {provider === "claude" ? "Pro, Max or Team" : "Plus or Pro"}
+                {provider === "claude"
+                  ? "Pro, Max ou Team"
+                  : provider === "codex"
+                    ? "Plus ou Pro"
+                    : "SuperGrok ou X Premium Plus"}
               </span>
             </button>
           ))}
@@ -144,6 +154,12 @@ export function AddAccount({ onDone, onCancel }: { onDone: (provider: Provider) 
         <>
           {choice.provider === "codex" ? (
             <CodexSignIn mode={choice.alternative ? "device" : "browser"} onDone={done} onCancel={back} />
+          ) : choice.provider === "grok" ? (
+            choice.alternative ? (
+              <GrokApiKeySignIn onDone={done} onCancel={back} />
+            ) : (
+              <GrokSignIn onDone={done} onCancel={back} />
+            )
           ) : choice.alternative ? (
             <ClaudeTokenSignIn onDone={done} onCancel={back} />
           ) : (
@@ -155,10 +171,14 @@ export function AddAccount({ onDone, onCancel }: { onDone: (provider: Provider) 
             onClick={() => setChoice({ ...choice, alternative: !choice.alternative })}
           >
             {choice.alternative
-              ? `Sign in to ${providerName[choice.provider]} in the browser instead`
+              ? choice.provider === "grok"
+                ? "Entrar com um código de uso único"
+                : `Entrar no ${providerName[choice.provider]} pelo navegador`
               : choice.provider === "claude"
-                ? "Paste a token from claude setup-token instead"
-                : "Sign in with a one-time code instead"}
+                ? "Colar um token do claude setup-token"
+                : choice.provider === "grok"
+                  ? "Colar uma XAI_API_KEY"
+                  : "Entrar com um código de uso único"}
           </button>
         </>
       )}

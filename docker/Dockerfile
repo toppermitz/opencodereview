@@ -78,7 +78,23 @@ RUN case "$TARGETARCH" in \
   && ln -s /opt/codex/bin/codex /usr/local/bin/codex \
   && test "$(/opt/codex/bin/codex --version | cut -d ' ' -f2)" = "$CODEX_CLI_VERSION"
 LABEL ai.codex.cli.version="${CODEX_CLI_VERSION}"
+ARG GROK_CLI_VERSION=1.0.77
+ARG GROK_CLI_SHA256_AMD64=b702950aa5827d855e493278ab6215a4e0f5bceb5bba6c6243a9f55cdd143b0a
+ARG GROK_CLI_SHA256_ARM64=b30eee14a656124ef3c9da8577b5e783ef2cffabeb2b679c5c49633e77eed574
+RUN case "$TARGETARCH" in \
+      amd64) arch=x86_64; checksum="$GROK_CLI_SHA256_AMD64" ;; \
+      arm64) arch=aarch64; checksum="$GROK_CLI_SHA256_ARM64" ;; \
+      *) echo "Unsupported Grok CLI architecture: $TARGETARCH" >&2; exit 1 ;; \
+    esac \
+  && mkdir -p /opt/grok/bin \
+  && curl -fsSL --retry 3 "https://storage.googleapis.com/grok-build-public-artifacts/cli/grok-${GROK_CLI_VERSION}-linux-${arch}" -o /opt/grok/bin/grok \
+  && printf '%s  /opt/grok/bin/grok\n' "$checksum" | sha256sum -c - \
+  && chmod 0755 /opt/grok/bin/grok \
+  && ln -s /opt/grok/bin/grok /usr/local/bin/grok \
+  && test "$(GROK_DISABLE_AUTOUPDATER=1 /opt/grok/bin/grok --version | head -n1 | tr -d '\r' | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n1)" = "$GROK_CLI_VERSION"
+LABEL ai.grok.cli.version="${GROK_CLI_VERSION}"
 ENV DISABLE_AUTOUPDATER=1
+ENV GROK_DISABLE_AUTOUPDATER=1
 WORKDIR /app
 COPY --from=server /app/assets ./assets
 COPY --from=server /usr/local/bin/ocr-server /usr/local/bin/ocr-server

@@ -6,16 +6,16 @@
 
 [![License](https://img.shields.io/badge/license-PolyForm_Small_Business_1.0.0-blue.svg)](LICENSE)
 
-AI code review for GitLab Self-Hosted merge requests that runs on your own machine, using the Claude or ChatGPT account you already have.
+AI code review for GitLab Self-Hosted merge requests that runs on your own machine, using the Claude, ChatGPT or Grok account you already have.
 
-OpenCodeReview watches the repositories you pick, reviews each merge request with [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or [Codex](https://github.com/openai/codex) inside isolated Docker containers, checks every finding against the code, and posts the result on the merge request.
+OpenCodeReview watches the repositories you pick, reviews each merge request with [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://github.com/openai/codex) or [Grok Build](https://x.ai/build) inside isolated Docker containers, checks every finding against the code, and posts the result on the merge request.
 
 ![The OpenCodeReview review queue](site/app-reviews.png)
 
 ## Features
 
-- **Your own AI.** Reviews run on the Claude Code CLI (Claude Opus 5.5 at medium effort by default) or the Codex CLI, signed in with your Claude or ChatGPT account. The top bar picks each provider's model and effort. There is no OpenCodeReview account.
-- **Several accounts with failover.** Connect more than one account, of any provider, and pick the one new reviews start on. When an account hits its usage limit, the review continues on the next account of the same provider, then the other provider, and the limited account comes back after its window resets. Settings shows how much of each Claude and ChatGPT plan is left.
+- **Your own AI.** Reviews run on the Claude Code CLI (Claude Opus 5.5 at medium effort by default), the Codex CLI or Grok Build, signed in with your Claude, ChatGPT or Grok account. The top bar picks each provider's model and effort. There is no OpenCodeReview account.
+- **Several accounts with failover.** Connect more than one account, of any provider, and pick the one new reviews start on. When an account hits its usage limit, the review continues on the next account of the same provider, then another provider, and the limited account comes back after its window resets. Settings shows how much of each Claude and ChatGPT plan is left.
 - **Codebase indexing.** Each selected repository is indexed locally: file metadata, a package and import graph, and lightweight symbols. Reviews get the callers, dependencies and tests of the changed code, plus your convention files (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `REVIEW.md` and others).
 - **Usage.** See the tokens reviews used by day, merge request, repository, model and account, with findings, time and cache reuse. A merge request opens into each of its runs.
 - **Review skills.** The review methodology is a Markdown skill you can edit, version and roll back in the app.
@@ -33,7 +33,7 @@ git clone https://github.com/BridgLabs/opencodereview && cd opencodereview && do
 Open [http://localhost:1421](http://localhost:1421) and follow onboarding:
 
 1. **GitLab**: authorize with a device code against your Self-Hosted instance (`OCR_GITLAB_HOST` and `OCR_GITLAB_CLIENT_ID`).
-2. **Your plan**: connect at least one account. Claude uses `claude setup-token` (you paste back the code it shows); ChatGPT uses the `codex login` browser flow or a device code.
+2. **Your plan**: connect at least one account. Claude uses `claude setup-token` (you paste back the code it shows); ChatGPT uses the `codex login` browser flow or a device code; Grok uses `grok login --device-auth` or a pasted `XAI_API_KEY`.
 3. **Repositories**: choose the repositories to monitor. They are cloned and indexed in the background.
 4. **First review**: pick an open merge request. After that, new merge requests in monitored repositories are reviewed automatically.
 
@@ -51,7 +51,8 @@ Set `OCR_VERSION` (for example `OCR_VERSION=0.1.0`) to stay on one release; the 
 - A GitLab Self-Hosted account with access to the repositories you want reviewed, plus `OCR_GITLAB_HOST` and `OCR_GITLAB_CLIENT_ID` (OAuth Application ID with Device authorization).
 - At least one of:
   - a Claude subscription that works with Claude Code (Pro, Max, Team or Enterprise);
-  - a ChatGPT plan that includes Codex.
+  - a ChatGPT plan that includes Codex;
+  - a SuperGrok or X Premium Plus plan for Grok Build (or an xAI API key).
 
 Local models through Ollama or similar are not supported: the review egress proxy refuses private networks by design.
 
@@ -102,14 +103,14 @@ browser ──> web (nginx, :1421) ──/api──> server (Rust API, 127.0.0.1
 | --- | --- |
 | `web` | Serves the React UI and proxies `/api` to `server`. |
 | `server` | Rust HTTP API: GitLab polling through the `glab` CLI, indexing, review orchestration, publication and background jobs. |
-| `review-runner` | Runs Claude Code or Codex on a frozen snapshot of the merge request, one review stage per container at a time. 20 replicas by default (`OCR_REVIEW_RUNNERS`); idle ones use almost no memory. Each receives only a private socket and a read-only copy of the sign-in. |
-| `review-egress` | Outbound proxy that allows only `api.anthropic.com`, `chatgpt.com`, `api.openai.com` and `auth.openai.com`, on port 443 and public addresses only. |
+| `review-runner` | Runs Claude Code, Codex or Grok Build on a frozen snapshot of the merge request, one review stage per container at a time. 20 replicas by default (`OCR_REVIEW_RUNNERS`); idle ones use almost no memory. Each receives only a private socket and a read-only copy of the sign-in. |
+| `review-egress` | Outbound proxy that allows only `api.anthropic.com`, `chatgpt.com`, `api.openai.com`, `auth.openai.com`, `cli-chat-proxy.grok.com`, `auth.x.ai` and `api.x.ai`, on port 443 and public addresses only. |
 
 A review fetches the live base and head of the merge request, selects the scope (full, incremental, base sync or stacked), builds context from the index, freezes the evidence into an archive, runs the AI in a runner (split into chunks for large MRs), validates the report and publishes it. On GitLab, OpenCodeReview posts a summary note that it updates on each push, a result note that replaces the previous one, and the validated findings as merge request discussions with inline comments. Approving or requesting changes uses GitLab quick actions (`/approve`, `/request_changes`) on that note. Clean reviews wait for a human decision unless Settings → Auto-aprovar MRs limpos is on and the risk score is within the limit. A later review resolves OpenCodeReview discussions that the new result no longer keeps.
 
 ## Security and privacy
 
-- **Your code goes only to your AI provider.** The merge request evidence is sent to Anthropic or OpenAI with your own sign-in, the same way their CLIs work when you use them directly. OpenCodeReview has no servers and sends no telemetry.
+- **Your code goes only to your AI provider.** The merge request evidence is sent to Anthropic, OpenAI or xAI with your own sign-in, the same way their CLIs work when you use them directly. OpenCodeReview has no servers and sends no telemetry.
 - **Sign-ins stay local.** GitLab credentials, AI sign-ins and keys are stored in the `ocr-data` Docker volume (AI sign-ins and keys with file mode `0600`). They are never logged or sent to the browser. **Sign out** (GitLab, in Integrations) and **Remove account** (AI accounts, in Providers) delete them.
 - **Runners are sandboxed.** Read-only root filesystem, no Linux capabilities beyond what supervision needs, an unprivileged user for the AI process, no access to the database or repository cache, and provider-only network access.
 - **The UI is meant for a trusted network.** The API is protected by an installation token that the web container injects into the UI, so anyone who can open the UI can use it. Compose publishes port 1421 on every network interface of the host, and Docker's port rules bypass host firewalls such as ufw. On a shared network or a VPS, change the mapping to `127.0.0.1:1421:1421` and reach it through an SSH tunnel, or put an authenticated reverse proxy in front.

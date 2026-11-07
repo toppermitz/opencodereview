@@ -16,8 +16,16 @@ pub(crate) struct DiscoveredModel {
 /// Credential material discovery needs; `None` means no signed-in account for that provider.
 #[derive(Clone, Debug)]
 pub(crate) enum ProviderAuth {
-    Claude { token: String },
-    Codex { auth_json: String },
+    Claude {
+        token: String,
+    },
+    Codex {
+        auth_json: String,
+    },
+    Grok {
+        auth_json: Option<String>,
+        api_key: Option<String>,
+    },
     None,
 }
 
@@ -29,6 +37,7 @@ pub(crate) trait ProviderCli: Send + Sync {
 
 struct ClaudeProvider;
 struct CodexProvider;
+struct GrokProvider;
 
 impl ProviderCli for ClaudeProvider {
     fn id(&self) -> &'static str {
@@ -58,11 +67,26 @@ impl ProviderCli for CodexProvider {
     }
 }
 
+impl ProviderCli for GrokProvider {
+    fn id(&self) -> &'static str {
+        "grok"
+    }
+
+    fn display_name(&self) -> &'static str {
+        "Grok"
+    }
+
+    fn discover_models(&self, auth: &ProviderAuth) -> Result<Vec<DiscoveredModel>, String> {
+        crate::providers::grok::discover_models(auth)
+    }
+}
+
 static CLAUDE: ClaudeProvider = ClaudeProvider;
 static CODEX: CodexProvider = CodexProvider;
-static PROVIDERS: [&dyn ProviderCli; 2] = [&CLAUDE, &CODEX];
+static GROK: GrokProvider = GrokProvider;
+static PROVIDERS: [&dyn ProviderCli; 3] = [&CLAUDE, &CODEX, &GROK];
 
-/// Every CLI OpenCodeReview reviews with. Add a provider here after a product discussion.
+/// Every CLI OpenCodeReview reviews with.
 pub(crate) fn registered() -> &'static [&'static dyn ProviderCli] {
     &PROVIDERS
 }
@@ -159,6 +183,24 @@ fn codex_auth_for(id: i64) -> Option<String> {
         })
 }
 
+fn grok_auth_for(id: i64) -> (Option<String>, Option<String>) {
+    let auth_json = runner_auth_roots()
+        .into_iter()
+        .map(|root| root.join(format!("accounts/{id}/grok/auth.json")))
+        .chain(std::iter::once(crate::accounts::grok_auth_path(id)))
+        .find_map(|path| {
+            std::fs::read_to_string(path)
+                .ok()
+                .filter(|raw| crate::providers::grok::validate_auth(raw).is_ok())
+        });
+    let api_key = runner_auth_roots()
+        .into_iter()
+        .map(|root| root.join(format!("accounts/{id}/grok/api-key")))
+        .chain(std::iter::once(crate::accounts::grok_api_key_path(id)))
+        .find_map(|path| crate::providers::grok::read_api_key(&path).ok());
+    (auth_json, api_key)
+}
+
 /// First signed-in account for `provider`, and the auth material discovery needs.
 pub(crate) fn first_auth(provider: &str) -> (Option<i64>, ProviderAuth) {
     for id in discoverable_account_ids() {
@@ -171,6 +213,12 @@ pub(crate) fn first_auth(provider: &str) -> (Option<i64>, ProviderAuth) {
             "codex" => {
                 if let Some(auth_json) = codex_auth_for(id) {
                     return (Some(id), ProviderAuth::Codex { auth_json });
+                }
+            }
+            "grok" => {
+                let (auth_json, api_key) = grok_auth_for(id);
+                if auth_json.is_some() || api_key.is_some() {
+                    return (Some(id), ProviderAuth::Grok { auth_json, api_key });
                 }
             }
             _ => {}

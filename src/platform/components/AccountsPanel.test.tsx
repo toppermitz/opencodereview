@@ -168,7 +168,12 @@ it("adds a ChatGPT account through the browser sign-in", async () => {
   try {
     await act(async () =>
       [...container.querySelectorAll("button")]
-        .find((button) => button.textContent?.includes("Add ChatGPT account"))!
+        .find((button) => button.textContent?.includes("Outros provedores"))!
+        .click(),
+    );
+    await act(async () =>
+      [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+        .find((item) => item.textContent?.startsWith("ChatGPT"))!
         .click(),
     );
     await act(async () => {
@@ -181,7 +186,7 @@ it("adds a ChatGPT account through the browser sign-in", async () => {
           ?.textContent,
       ).toBe("Open ChatGPT sign-in"),
     );
-    expect(container.textContent).toContain("Add a ChatGPT account");
+    expect(container.textContent).toContain("Adicionar conta ChatGPT");
   } finally {
     await unmount();
   }

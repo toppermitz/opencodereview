@@ -2,10 +2,23 @@ use serde_json::{json, Value};
 use std::ffi::OsString;
 use std::path::Path;
 use std::process::Command;
+use std::time::Duration;
 
-/// The default model and reasoning effort; Settings can pick others from `engines`.
+use crate::providers::provider::{DiscoveredModel, ProviderAuth};
+
+/// The default model and reasoning effort; Settings can pick others from discovery.
 pub const MODEL: &str = "claude-opus-5-5";
 pub const EFFORT: &str = "medium";
+
+/// Efforts Claude accepts when `/v1/models` omits capability details.
+const DEFAULT_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
+
+/// Offline fallback when the account token cannot reach `/v1/models` (runner smoke, brief outage).
+const FALLBACK_MODELS: &[(&str, &str)] = &[
+    ("claude-opus-5-5", "Opus 5.5"),
+    ("claude-sonnet-5-5", "Sonnet 5.5"),
+    ("claude-haiku-5-5", "Haiku 5.5"),
+];
 
 /// Built-in tools every isolated stage may call; the PreToolUse guard narrows each call further.
 pub(crate) const RUNNER_TOOLS: &str = "Read,Grep,Glob,Bash,Write";
@@ -273,9 +286,171 @@ pub(crate) fn failure(stdout: &str, stderr: &str) -> String {
     }
 }
 
+/// Models available to the signed-in Claude account via `GET /v1/models`.
+pub(crate) fn discover_models(auth: &ProviderAuth) -> Result<Vec<DiscoveredModel>, String> {
+    let ProviderAuth::Claude { token } = auth else {
+        return Ok(Vec::new());
+    };
+    match fetch_models(token) {
+        Ok(models) if !models.is_empty() => Ok(models),
+        Ok(_) => Ok(fallback_models()),
+        Err(_) => Ok(fallback_models()),
+    }
+}
+
+fn fallback_models() -> Vec<DiscoveredModel> {
+    FALLBACK_MODELS
+        .iter()
+        .map(|(id, label)| DiscoveredModel {
+            id: (*id).into(),
+            label: (*label).into(),
+            efforts: DEFAULT_EFFORTS.iter().map(|effort| (*effort).into()).collect(),
+            default_effort: EFFORT.into(),
+        })
+        .collect()
+}
+
+fn fetch_models(token: &str) -> Result<Vec<DiscoveredModel>, String> {
+    let mut builder = reqwest::blocking::Client::builder().timeout(Duration::from_secs(15));
+    if let Ok(proxy) = std::env::var("OCR_RUNNER_PROXY").or_else(|_| std::env::var("HTTPS_PROXY")) {
+        if !proxy.is_empty() {
+            builder = builder.proxy(reqwest::Proxy::all(&proxy).map_err(|error| error.to_string())?);
+        }
+    }
+    let client = builder.build().map_err(|error| error.to_string())?;
+    let mut models = Vec::new();
+    let mut after_id: Option<String> = None;
+    loop {
+        let mut url = "https://api.anthropic.com/v1/models?limit=1000".to_string();
+        if let Some(after) = &after_id {
+            url.push_str("&after_id=");
+            url.push_str(after);
+        }
+        let response = client
+            .get(&url)
+            .bearer_auth(token)
+            .header("anthropic-beta", "oauth-2025-04-20")
+            .header("anthropic-version", "2023-06-01")
+            .send()
+            .map_err(|_| "Claude model catalogue is unavailable right now")?;
+        if !response.status().is_success() {
+            return Err("Claude model catalogue is unavailable right now".into());
+        }
+        let body: Value = response
+            .json()
+            .map_err(|_| "Claude returned an unreadable model catalogue")?;
+        models.extend(parse_models_page(&body)?);
+        if body["has_more"].as_bool() != Some(true) {
+            break;
+        }
+        let Some(last) = body["last_id"].as_str().map(str::to_string) else {
+            break;
+        };
+        after_id = Some(last);
+    }
+    Ok(models)
+}
+
+/// Parses one `/v1/models` page into picker rows (active and deprecated only).
+pub(crate) fn parse_models_page(body: &Value) -> Result<Vec<DiscoveredModel>, String> {
+    let Some(data) = body.get("data").and_then(Value::as_array) else {
+        return Err("Claude model catalogue is missing data".into());
+    };
+    Ok(data.iter().filter_map(parse_model).collect())
+}
+
+fn parse_model(value: &Value) -> Option<DiscoveredModel> {
+    let lifecycle = value.get("lifecycle").and_then(Value::as_str).unwrap_or("active");
+    if lifecycle == "retired" {
+        return None;
+    }
+    let id = value.get("id")?.as_str()?.to_string();
+    if id.is_empty() {
+        return None;
+    }
+    let label = value
+        .get("display_name")
+        .and_then(Value::as_str)
+        .filter(|name| !name.is_empty())
+        .unwrap_or(&id)
+        .to_string();
+    let efforts = effort_levels(value);
+    let default_effort = if efforts.iter().any(|effort| effort == "medium") {
+        "medium".into()
+    } else {
+        efforts.first().cloned().unwrap_or_else(|| EFFORT.into())
+    };
+    Some(DiscoveredModel {
+        id,
+        label,
+        efforts,
+        default_effort,
+    })
+}
+
+fn effort_levels(value: &Value) -> Vec<String> {
+    let Some(effort) = value.pointer("/capabilities/effort") else {
+        return DEFAULT_EFFORTS.iter().map(|level| (*level).into()).collect();
+    };
+    if effort.get("supported").and_then(Value::as_bool) == Some(false) {
+        return Vec::new();
+    }
+    let levels = ["low", "medium", "high", "xhigh", "max"];
+    let supported = levels
+        .iter()
+        .filter(|level| {
+            effort
+                .get(**level)
+                .and_then(|entry| entry.get("supported"))
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+        })
+        .map(|level| (*level).to_string())
+        .collect::<Vec<_>>();
+    if supported.is_empty() {
+        DEFAULT_EFFORTS.iter().map(|level| (*level).into()).collect()
+    } else {
+        supported
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_models_page_keeps_active_models_and_their_efforts() {
+        let body = json!({
+            "data": [
+                {
+                    "id": "claude-opus-5-5",
+                    "display_name": "Opus 5.5",
+                    "lifecycle": "active",
+                    "capabilities": {
+                        "effort": {
+                            "supported": true,
+                            "low": { "supported": true },
+                            "medium": { "supported": true },
+                            "high": { "supported": true },
+                            "xhigh": { "supported": false },
+                            "max": { "supported": true }
+                        }
+                    }
+                },
+                {
+                    "id": "claude-legacy",
+                    "display_name": "Legacy",
+                    "lifecycle": "retired"
+                }
+            ]
+        });
+        let models = parse_models_page(&body).unwrap();
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id, "claude-opus-5-5");
+        assert_eq!(models[0].label, "Opus 5.5");
+        assert_eq!(models[0].efforts, vec!["low", "medium", "high", "max"]);
+        assert_eq!(models[0].default_effort, "medium");
+    }
 
     #[test]
     fn print_args_pass_the_model_and_never_enable_session_state() {

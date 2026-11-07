@@ -76,6 +76,7 @@ fn store(path: &std::path::Path, id: i64, bytes: &[u8]) -> Result<(), String> {
         let _ = fs::remove_file(&temporary);
     }
     result?;
+    crate::providers::provider::invalidate_cache();
     sandbox_sync::sync_app_auth()
 }
 
@@ -85,6 +86,7 @@ pub(crate) fn remove(id: i64) -> Result<(), String> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
         Err(_) => return Err("Could not remove the account credentials".into()),
     }
+    crate::providers::provider::invalidate_cache();
     sandbox_sync::sync_app_auth()
 }
 

@@ -219,8 +219,8 @@ def main():
         print("PASS cgroup CPU/memory/PID limits and read-only rootfs")
         catalog = rpc(clients[0], catalog=True)
         assert catalog[-1]["event"] == "Catalog", catalog
-        assert catalog[-1]["models"] == [MODEL], catalog
-        print("PASS private socket and fixed Claude model")
+        assert MODEL in catalog[-1]["models"], catalog
+        print("PASS private socket and discovered review models")
         prepared = rpc(clients[0], preflight=True)
         assert prepared[-1]["event"] == "Ready" and not any(event["event"] == "Started" for event in prepared), prepared
         print("PASS archive installation and exact CLI preflight without inference")

@@ -88,12 +88,12 @@ pub(crate) fn cli_version(output: &str) -> Option<String> {
 pub(crate) fn review_engines(state: &SharedState) -> Result<serde_json::Value, String> {
     use crate::providers::engines;
     with_db_read_raw(state, |db| {
-        engines::PROVIDERS
-            .iter()
+        engines::providers()
+            .into_iter()
             .map(|(provider, name)| {
                 let (model, effort) = db.review_engine(provider)?;
                 let models = engines::models(provider)
-                    .iter()
+                    .into_iter()
                     .map(|entry| {
                         serde_json::json!({
                             "id": entry.id,
@@ -139,7 +139,7 @@ pub(crate) fn save_review_engine(request: &Request, state: &SharedState) -> Resu
 pub(crate) fn ai_providers(state: &SharedState) -> Result<serde_json::Value, String> {
     let accounts = with_db_read_raw(state, |db| db.list_ai_accounts())?;
     Ok(serde_json::Value::Array(
-        [("claude", "Claude"), ("codex", "ChatGPT")]
+        crate::providers::engines::providers()
             .into_iter()
             .map(|(provider, name)| {
                 // A scratch home keeps CLIs that log or create state on every start out of the data volume.

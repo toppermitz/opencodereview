@@ -2,8 +2,13 @@
 use serde_json::Value;
 use std::ffi::OsString;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 use crate::providers::claude::Failure;
+use crate::providers::provider::{DiscoveredModel, ProviderAuth};
+
+/// Reasoning efforts Codex accepts when a catalogue entry omits levels.
+const DEFAULT_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh"];
 
 /// `auth.json` written by `codex login`; anything larger is not a Codex credential.
 pub(crate) const MAX_AUTH_BYTES: usize = 64 * 1024;
@@ -208,9 +213,172 @@ pub(crate) fn failure(stdout: &str, stderr: &str) -> String {
     }
 }
 
+/// Models available to the signed-in Codex account via `codex debug models`.
+pub(crate) fn discover_models(auth: &ProviderAuth) -> Result<Vec<DiscoveredModel>, String> {
+    let mut models = match auth {
+        ProviderAuth::Codex { auth_json } => debug_models(Some(auth_json), false)
+            .or_else(|_| debug_models(Some(auth_json), true))
+            .or_else(|_| debug_models(None, true))?,
+        ProviderAuth::None | ProviderAuth::Claude { .. } => debug_models(None, true)?,
+    };
+    if !models.iter().any(|model| model.id == "default") {
+        models.insert(
+            0,
+            DiscoveredModel {
+                id: "default".into(),
+                label: "Codex default".into(),
+                efforts: DEFAULT_EFFORTS.iter().map(|effort| (*effort).into()).collect(),
+                default_effort: "medium".into(),
+            },
+        );
+    }
+    Ok(models)
+}
+
+fn debug_models(auth_json: Option<&str>, bundled: bool) -> Result<Vec<DiscoveredModel>, String> {
+    let home = std::env::temp_dir().join(format!("ocr-codex-models-{}", crate::sandbox::secret()?));
+    std::fs::create_dir_all(&home).map_err(|error| error.to_string())?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o700));
+    }
+    if let Some(raw) = auth_json {
+        std::fs::write(home.join("auth.json"), raw).map_err(|error| error.to_string())?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(home.join("auth.json"), std::fs::Permissions::from_mode(0o600));
+        }
+    }
+    let mut command = Command::new("codex");
+    command
+        .args(["debug", "models"])
+        .env("CODEX_HOME", &home)
+        .env("HOME", &home)
+        .env("NO_COLOR", "1")
+        .env_remove("OPENAI_API_KEY")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null());
+    if bundled {
+        command.arg("--bundled");
+    }
+    if let Ok(proxy) = std::env::var("OCR_RUNNER_PROXY").or_else(|_| std::env::var("HTTPS_PROXY")) {
+        if !proxy.is_empty() {
+            command.env("HTTPS_PROXY", &proxy).env("HTTP_PROXY", &proxy);
+        }
+    }
+    let output = command
+        .output()
+        .map_err(|_| "Codex model catalogue is unavailable right now")?;
+    let _ = std::fs::remove_dir_all(&home);
+    if !output.status.success() {
+        return Err("Codex model catalogue is unavailable right now".into());
+    }
+    let body: Value =
+        serde_json::from_slice(&output.stdout).map_err(|_| "Codex returned an unreadable model catalogue")?;
+    parse_debug_models(&body)
+}
+
+/// Parses `codex debug models` JSON into picker rows (`visibility == "list"` only).
+pub(crate) fn parse_debug_models(body: &Value) -> Result<Vec<DiscoveredModel>, String> {
+    let Some(models) = body.get("models").and_then(Value::as_array) else {
+        return Err("Codex model catalogue is missing models".into());
+    };
+    Ok(models.iter().filter_map(parse_model).collect())
+}
+
+fn parse_model(value: &Value) -> Option<DiscoveredModel> {
+    let visibility = value.get("visibility").and_then(Value::as_str).unwrap_or("list");
+    if visibility != "list" {
+        return None;
+    }
+    let id = value
+        .get("slug")
+        .or_else(|| value.get("id"))
+        .and_then(Value::as_str)?
+        .to_string();
+    if id.is_empty() {
+        return None;
+    }
+    let label = value
+        .get("display_name")
+        .and_then(Value::as_str)
+        .filter(|name| !name.is_empty())
+        .unwrap_or(&id)
+        .to_string();
+    let efforts = value
+        .get("supported_reasoning_levels")
+        .and_then(Value::as_array)
+        .map(|levels| {
+            levels
+                .iter()
+                .filter_map(|level| {
+                    level
+                        .get("effort")
+                        .or_else(|| level.get("id"))
+                        .and_then(Value::as_str)
+                        .map(str::to_string)
+                })
+                .collect::<Vec<_>>()
+        })
+        .filter(|levels| !levels.is_empty())
+        .unwrap_or_else(|| DEFAULT_EFFORTS.iter().map(|effort| (*effort).into()).collect());
+    let default_effort = value
+        .get("default_reasoning_level")
+        .and_then(Value::as_str)
+        .filter(|effort| efforts.iter().any(|known| known == *effort))
+        .unwrap_or_else(|| {
+            if efforts.iter().any(|effort| effort == "medium") {
+                "medium"
+            } else {
+                efforts.first().map(String::as_str).unwrap_or("medium")
+            }
+        })
+        .to_string();
+    Some(DiscoveredModel {
+        id,
+        label,
+        efforts,
+        default_effort,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_debug_models_keeps_listed_slugs_and_efforts() {
+        let body = serde_json::json!({
+            "models": [
+                {
+                    "slug": "gpt-5.5",
+                    "display_name": "GPT-5.5",
+                    "visibility": "list",
+                    "default_reasoning_level": "medium",
+                    "supported_reasoning_levels": [
+                        { "effort": "low" },
+                        { "effort": "medium" },
+                        { "effort": "high" },
+                        { "effort": "xhigh" }
+                    ]
+                },
+                {
+                    "slug": "hidden",
+                    "display_name": "Hidden",
+                    "visibility": "hide"
+                }
+            ]
+        });
+        let models = parse_debug_models(&body).unwrap();
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].id, "gpt-5.5");
+        assert_eq!(models[0].label, "GPT-5.5");
+        assert_eq!(models[0].efforts, vec!["low", "medium", "high", "xhigh"]);
+        assert_eq!(models[0].default_effort, "medium");
+    }
 
     #[test]
     fn exec_args_disable_extensions_and_read_the_prompt_from_stdin() {

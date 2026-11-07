@@ -863,10 +863,7 @@ fn run(
         return send(
             stream,
             &Response::Catalog {
-                models: crate::providers::engines::all_model_ids()
-                    .into_iter()
-                    .map(str::to_string)
-                    .collect(),
+                models: crate::providers::engines::all_model_ids(),
                 version,
             },
         );

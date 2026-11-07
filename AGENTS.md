@@ -6,7 +6,7 @@ Guide for contributors and AI coding agents working on OpenCodeReview. Read it b
 
 ```text
 src/, src/platform/                      React frontend: onboarding, reviews, indexing, skills, settings
-backend/src/providers/                   AI CLIs: claude.rs (CLI arguments, tool policy), codex.rs, engines.rs (models)
+backend/src/providers/                   AI CLIs: claude.rs, codex.rs, provider.rs (CLI interface), engines.rs (facade)
 backend/src/accounts/                    AI account credentials, plan usage, sign-in projection into runners
 backend/src/sandbox/                     ocr-sandbox: runner, egress proxy, read commands, tool guard
 backend/src/review/                      Review orchestration, scope, coverage, evidence, findings, validation
@@ -41,7 +41,7 @@ bench/                                   Public benchmark adapters (ReviewBench,
 ## Product rules
 
 - OpenCodeReview is reviews, indexing and skills. Do not add unrelated product areas without a discussion in an issue first.
-- Reviews run Claude Code (`claude --print`) or Codex (`codex exec`). Each provider's model and effort come from the list in `backend/src/providers/engines.rs`, picked in the top-bar engine picker (`EnginePicker`, stored as `review_engine_<provider>`). The first entry is the default: Claude Opus 5.5 at medium effort, and Codex's own default model at medium. Add models only to that list; do not add other providers without a product discussion.
+- Reviews run Claude Code (`claude --print`) or Codex (`codex exec`). Each provider's model and effort come from that CLI's discovery behind `ProviderCli` (`backend/src/providers/provider.rs`): Claude via `GET /v1/models` with the account OAuth token, Codex via `codex debug models`. The top-bar engine picker (`EnginePicker`, stored as `review_engine_<provider>`) lists what discovery returns; the first entry is the default. Do not hardcode model catalogues; do not add other providers without a product discussion.
 - All AI CLIs are baked into the image at pinned, checksum-verified versions. Do not add runtime CLI installs or auto-updates.
 - Accounts are tried in priority order, the first usable account's provider before the other (`pick_ai_account`, mirrored by `nextAccountId` in the UI); a usage limit rests the account and the same stage reruns on the next one.
 - Usage is reported in tokens only. Do not add currency or cost estimates.

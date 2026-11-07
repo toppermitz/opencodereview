@@ -2203,6 +2203,34 @@ fn empty_repository_index_is_not_a_failure() {
 
 #[test]
 fn review_engines_default_per_provider_and_reject_unknown_choices() {
+    use crate::providers::provider::{self, DiscoveredModel};
+    provider::invalidate_cache();
+    provider::set_test_catalog(
+        "claude",
+        vec![DiscoveredModel {
+            id: "claude-opus-5-5".into(),
+            label: "Opus 5.5".into(),
+            efforts: vec!["low".into(), "medium".into(), "high".into(), "max".into()],
+            default_effort: "medium".into(),
+        }],
+    );
+    provider::set_test_catalog(
+        "codex",
+        vec![
+            DiscoveredModel {
+                id: "default".into(),
+                label: "Codex default".into(),
+                efforts: vec!["low".into(), "medium".into(), "high".into(), "xhigh".into()],
+                default_effort: "medium".into(),
+            },
+            DiscoveredModel {
+                id: "gpt-5.5".into(),
+                label: "GPT-5.5".into(),
+                efforts: vec!["low".into(), "medium".into(), "high".into(), "xhigh".into()],
+                default_effort: "medium".into(),
+            },
+        ],
+    );
     let db = Db::for_test().open().unwrap();
     assert_eq!(
         db.review_engine("claude").unwrap(),

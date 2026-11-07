@@ -98,7 +98,7 @@ pub fn prompt(inputs: &ReviewInputs, context: &Path, files: &[String], output: &
     let Some(frozen) = &inputs.frozen else {
         return prompt;
     };
-    let unavailable = ["PENDING_REVIEW.md"]
+    let unavailable = ["RELATED_ISSUES.md", "PENDING_REVIEW.md"]
         .into_iter()
         .filter(|path| !context.join(path).is_file())
         .collect::<Vec<_>>();

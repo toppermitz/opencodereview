@@ -70,7 +70,7 @@ bench/                                   Public benchmark adapters (ReviewBench,
 - Output repair allows at most one extra execution per stage. It may run beside reported missing evidence. It only corrects lines, sides, quotes and empty counter-evidence, and except for a schema error it gets a short prompt and returns only those corrections, which are applied to the rejected report; anything else it changes is put back as first reported, and the result is validated as usual.
 - With `review_lens_pass` on, each stage gets one lens execution after its report validates. The lens only adds findings, its report is validated on its own and again once merged, and any lens failure leaves the first report as it stands.
 - A review with a time budget (only `ocr-bench` gives one) starts the lens, an output repair or a final integration batch only while the work it still requires fits before the deadline. Without time for a repair, the invalid points are dropped instead; a batch left out keeps its candidates' chunk-validated comments, marked unconfirmed. Without a budget every step runs.
-- Publication is idempotent and bound to the exact validated selection. Nothing approves automatically.
+- Publication is idempotent and bound to the exact validated selection. GitLab verdicts use note quick actions (`/approve`, `/request_changes`). Nothing approves automatically unless `auto_approve_enabled` is on and the run's risk score is at or below `auto_approve_max_risk_score`; otherwise clean reviews stay in preview for a human decision. Re-reviews resolve open OCR discussions that the new published set no longer keeps.
 - Archive retention deletes only frozen code of merged pull requests; never delete review results, audits, Git data or coverage.
 
 ## Runtime

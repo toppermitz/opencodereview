@@ -202,6 +202,17 @@ impl Database {
         if key == "auto_post_mode" && !matches!(value, "off" | "comment" | "request_changes") {
             return Err("auto_post_mode must be off, comment, or request_changes.".to_string());
         }
+        if key == "auto_approve_enabled" && !matches!(value, "true" | "false") {
+            return Err("auto_approve_enabled must be true or false.".to_string());
+        }
+        if key == "auto_approve_max_risk_score" {
+            let score = value
+                .parse::<i64>()
+                .map_err(|_| "Auto-approve max risk score must be an integer >= 0.".to_string())?;
+            if score < 0 {
+                return Err("Auto-approve max risk score must be an integer >= 0.".to_string());
+            }
+        }
         if key == "review_result_mode" && !matches!(value, "silent" | "result_comment") {
             return Err("review_result_mode must be silent or result_comment.".to_string());
         }

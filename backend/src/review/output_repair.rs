@@ -285,7 +285,7 @@ pub(super) fn validate<T>(
             .find(|name| context.join(name).is_file())
             .unwrap_or("PR_DIFF.patch");
         format!(
-            "Frozen source files are at /evidence/snapshot/trees/<revision>/<repository-path>; permitted revisions: {}; current head: {}. PR.md and {diff} are in {}. PR.md references have no revision.{}",
+            "Frozen source files are at /evidence/snapshot/trees/<revision>/<repository-path>; permitted revisions: {}; current head: {}. PR.md, RELATED_ISSUES.md (when present) and {diff} are in {}. PR.md and RELATED_ISSUES.md references have no revision.{}",
             scope.revisions().into_iter().collect::<Vec<_>>().join(", "),
             scope.head_sha,
             context.display(),

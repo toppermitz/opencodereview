@@ -83,6 +83,34 @@ export function ReviewSettingsPanel({
           onChange={(value) => onSave("review_suggestions_enabled", value)}
         />
       </SettingsGroup>
+      <SettingsGroup
+        title="Aprovação automática"
+        description="Quando a revisão não encontra achados, pode aprovar o MR no GitLab sozinha se o risco couber no limite."
+      >
+        <SettingChoice
+          title="Auto-aprovar MRs limpos"
+          description="Publica /approve no GitLab quando não há achados e o risco está no máximo permitido. Desligado deixa a decisão no carrossel (Aprovar, Marcar como revisado ou Ignorar)."
+          options={["true", "false"]}
+          labels={{ true: "Ligado", false: "Desligado" }}
+          value={String(settings.autoApproveEnabled)}
+          disabled={loading}
+          onChange={(value) => onSave("auto_approve_enabled", value)}
+        />
+        <SettingRow
+          title="Risco máximo para auto-aprovar"
+          description="Só auto-aprova se o score de risco da execução for menor ou igual a este valor. Sem score, não auto-aprova. O padrão é 20."
+        >
+          <input
+            className="settings-number-input h-9 w-24 rounded-md border border-line bg-surface px-3 text-small text-fg shadow-card outline-none focus:border-brand focus:ring-3 focus:ring-brand/15"
+            type="number"
+            aria-label="Risco máximo para auto-aprovar"
+            min={0}
+            value={settings.autoApproveMaxRiskScore}
+            disabled={loading || !settings.autoApproveEnabled}
+            onChange={(event) => onSave("auto_approve_max_risk_score", event.target.value)}
+          />
+        </SettingRow>
+      </SettingsGroup>
       <SettingsGroup title="Filtros de título" description="Pula MRs de baixo valor por palavra-chave.">
         <TokenEditor
           label="Palavras-chave ignoradas"

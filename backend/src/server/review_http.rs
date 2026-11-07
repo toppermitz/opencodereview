@@ -180,12 +180,15 @@ pub(crate) fn decide_review_http(
                         }
                     });
                 }
+                resolve_after_review_post(&full_name, number, &draft.annotated_comments_json, event);
             }
             if matches!(event, "APPROVE" | "REQUEST_CHANGES") {
                 if let Some(review_id) = posted_review_id {
                     let _ = with_db_raw(state, |db| db.set_ocr_review(pr_id, review_id, event));
                 }
             }
+        } else if draft.suppressed_count > 0 || matches!(event, "APPROVE") {
+            resolve_after_review_post(&full_name, number, &draft.annotated_comments_json, event);
         }
         with_db_raw(state, |db| {
             confirm_posted_review_live_head(
@@ -231,6 +234,9 @@ pub(crate) fn decide_review_http(
     })?;
     if !finalized {
         return Err("Review decision superseded by a new PR head.".to_string());
+    }
+    if payload.decision == "mark_reviewed" && !has_findings {
+        let _ = gitlab::resolve_stale_ocr_discussions(&full_name, number, &[]);
     }
     let prior = with_db_raw(state, |db| db.review_result(pr_id))?;
     if let Ok(result) = with_db_raw(state, |db| {

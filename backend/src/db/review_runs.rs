@@ -686,20 +686,36 @@ impl Database {
         let tx = self.conn.unchecked_transaction().map_err(|error| error.to_string())?;
         self.lock_pull_request(pr_id)?;
         if actor == "auto" {
-            let mode = self.settings()?.auto_post_mode;
+            let settings = self.settings()?;
             let run = self.review_run_by_id(run_id)?.ok_or("Review run not found.")?;
-            if crate::review::findings::auto_post_event(&mode, run.comments_json.as_deref(), run.review_body.as_deref())
-                != Some(event)
-                || !matches!(
-                    (event, decision),
-                    ("COMMENT", "comment") | ("REQUEST_CHANGES", "request_changes")
-                )
-            {
+            let allowed = match (event, decision) {
+                ("APPROVE", "approve_post") => {
+                    settings.auto_approve_enabled
+                        && run
+                            .risk_score
+                            .is_some_and(|score| score <= settings.auto_approve_max_risk_score)
+                        && !crate::review::findings::actionable(
+                            run.comments_json.as_deref(),
+                            run.review_body.as_deref(),
+                        )
+                }
+                ("COMMENT", "comment") | ("REQUEST_CHANGES", "request_changes") => {
+                    crate::review::findings::auto_post_event(
+                        &settings.auto_post_mode,
+                        run.comments_json.as_deref(),
+                        run.review_body.as_deref(),
+                    ) == Some(event)
+                }
+                _ => false,
+            };
+            if !allowed {
                 return Ok(false);
             }
-            let view = self.finding_audit(pr_id, run_id)?;
-            if view.requires_confirmation && (!view.can_auto_post() || selection_revision != Some(view.revision)) {
-                return Ok(false);
+            if !matches!((event, decision), ("APPROVE", "approve_post")) {
+                let view = self.finding_audit(pr_id, run_id)?;
+                if view.requires_confirmation && (!view.can_auto_post() || selection_revision != Some(view.revision)) {
+                    return Ok(false);
+                }
             }
         }
         let changed = self.conn.execute(

@@ -1166,6 +1166,10 @@ pub(crate) fn prepare_review_chunk(
     fs::copy(context_dir.join("PR.md"), chunk_context.join("PR.md"))
         .map_err(|error| format!("Incomplete review: could not copy the canonical PR description: {error}"))?;
     copy_if_exists(
+        &context_dir.join("RELATED_ISSUES.md"),
+        &chunk_context.join("RELATED_ISSUES.md"),
+    );
+    copy_if_exists(
         &context_dir.join("PENDING_REVIEW.md"),
         &chunk_context.join("PENDING_REVIEW.md"),
     );
@@ -1824,7 +1828,8 @@ pub(crate) fn chunk_review_map(map: &ReviewMap, chunk: &ReviewChunk) -> ReviewMa
         .chain(&chunk.global_context_files)
         .collect::<std::collections::BTreeSet<_>>();
     let mut scoped = map.clone();
-    scoped.description = "See PR.md for the complete PR description and author intent.".into();
+    scoped.description =
+        "See PR.md for the MR description and RELATED_ISSUES.md (when present) for linked GitLab issue intent.".into();
     scoped
         .dependency_edges
         .retain(|(from, to)| available.contains(from) && available.contains(to));
@@ -1967,6 +1972,7 @@ pub(crate) fn chunk_context_budget(
                 || matches!(
                     path.as_str(),
                     "context/PR.md"
+                        | "context/RELATED_ISSUES.md"
                         | "context/PENDING_REVIEW.md"
                         | "context/FROZEN.json"
                         | "context/PR_DIFF.patch"
@@ -1998,7 +2004,7 @@ pub(crate) fn chunk_context_budget(
         + render_chunk_context(map, chunk).len()
         + CHUNK_SCOPE_NOTE.len()
         + protocol_bytes;
-    let shared = ["PR.md", "PENDING_REVIEW.md"]
+    let shared = ["PR.md", "RELATED_ISSUES.md", "PENDING_REVIEW.md"]
         .iter()
         .map(|name| file_bytes(&context.join(name)) as usize)
         .sum::<usize>()
@@ -2374,5 +2380,5 @@ pub(crate) fn render_final_prompt(
         &merge_dir.join("report.json"),
     );
     let example = frozen::decision_example(inputs);
-    format!("{prompt}\nThis is independent verification. Write every title, detail and action in Brazilian Portuguese (português brasileiro); keep paths, identifiers, code quotes and JSON field names unchanged. Read {}/chunk_findings.json and chunk_summaries.md. Verify candidates against targeted snapshot reads, including cross-file risks even when chunks found nothing. Reject refuted hypotheses, do not merely carry them forward. Include findingDecisions alongside report in your final JSON response. Include exactly one decision per candidateId. decision is keep, discard, or needs_context. To keep a candidate exactly as its chunk validated it, use keep with \"unchanged\": true and no commentIndex: its validated comment is posted as is, so do not write it again in report.json findings. Write a finding in report.json only for a candidate you change (line, wording, impact or severity) or merge, and for a new problem; keep then requires commentIndex into report.json findings. discard requires concrete counter-evidence and a counterEvidence array using the same reference schema as report.json, including the exact frozen revision for code. Do not cite chunk reports or candidate summaries as counter-evidence: they are proposals, not source evidence. Replace every example path, line and quote with inspected snapshot bytes; retain the supplied contractVersion and snapshotId for frozen output. For conventions, include source:convention and the supplied convention revision; only external/*, PR.md and SCOPE_CONTEXT.md omit revision. For duplicates, write the merged finding once and map both candidates with keep to the same commentIndex; candidates in the same file with the same root cause and the same fix are duplicates too, kept as one comment at the place that matters most whose detail names the other lines and each distinct impact; candidates in different files, or needing different fixes, stay separate comments. Missing decisions/evidence make the review incomplete. Do not write formatted comments or summary.\nCandidate decision JSON example:\n{example}\nEnd candidate decision example.\n", merge_dir.display())
+    format!("{prompt}\nThis is independent verification. Write every title, detail and action in Brazilian Portuguese (português brasileiro); keep paths, identifiers, code quotes and JSON field names unchanged. Read {}/chunk_findings.json and chunk_summaries.md. Verify candidates against targeted snapshot reads, including cross-file risks even when chunks found nothing. Reject refuted hypotheses, do not merely carry them forward. Include findingDecisions alongside report in your final JSON response. Include exactly one decision per candidateId. decision is keep, discard, or needs_context. To keep a candidate exactly as its chunk validated it, use keep with \"unchanged\": true and no commentIndex: its validated comment is posted as is, so do not write it again in report.json findings. Write a finding in report.json only for a candidate you change (line, wording, impact or severity) or merge, and for a new problem; keep then requires commentIndex into report.json findings. discard requires concrete counter-evidence and a counterEvidence array using the same reference schema as report.json, including the exact frozen revision for code. Do not cite chunk reports or candidate summaries as counter-evidence: they are proposals, not source evidence. Replace every example path, line and quote with inspected snapshot bytes; retain the supplied contractVersion and snapshotId for frozen output. For conventions, include source:convention and the supplied convention revision; only external/*, PR.md, RELATED_ISSUES.md and SCOPE_CONTEXT.md omit revision. For duplicates, write the merged finding once and map both candidates with keep to the same commentIndex; candidates in the same file with the same root cause and the same fix are duplicates too, kept as one comment at the place that matters most whose detail names the other lines and each distinct impact; candidates in different files, or needing different fixes, stay separate comments. Missing decisions/evidence make the review incomplete. Do not write formatted comments or summary.\nCandidate decision JSON example:\n{example}\nEnd candidate decision example.\n", merge_dir.display())
 }

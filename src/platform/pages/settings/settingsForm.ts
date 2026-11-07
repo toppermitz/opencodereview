@@ -16,7 +16,8 @@ export type NumericSetting =
   | "reviewChunkSize"
   | "reviewParallelChunks"
   | "reviewMaxFiles"
-  | "reviewArchiveRetentionDays";
+  | "reviewArchiveRetentionDays"
+  | "autoApproveMaxRiskScore";
 export type SettingsForm = Omit<Settings, NumericSetting> & Record<NumericSetting, number | string>;
 export const settingField = (key: string) =>
   key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()) as keyof Settings;

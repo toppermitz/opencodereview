@@ -59,12 +59,18 @@ This skill embeds NO project rules. Adapt to the repo in front of you:
 
 Do not dump many files into context and reason over raw text. Be surgical.
 
-0. **Read the PR description first.** Start with the author's stated intent and
-   scope. If they say the change is part of a stack, a follow-up PR adds the
-   consumer, or something is intentionally deferred/out of scope, treat that as
-   ground truth: do NOT flag the absence of that deferred work as a bug. Review
-   the code that IS changed against its stated purpose.
-   A PR can safely implement only part of a larger change. Safe deferred work
+0. **Read the linked issue, then the MR description.** When `RELATED_ISSUES.md`
+   is present, start there: GitLab linked that issue via the MR title,
+   description, commits or discussions (`#123`, `Closes #123`, `Relates to #123`,
+   etc.). Treat the issue as the original request. Then read `PR.md` for how the
+   author framed the delivery. If the issue asked for one thing and the MR (or
+   the code) delivers another, report the mismatch as a finding or a precise
+   question — do not assume the MR text is the request. If they say the change
+   is part of a stack, a follow-up MR adds the consumer, or something is
+   intentionally deferred/out of scope, treat that as ground truth: do NOT flag
+   the absence of that deferred work as a bug. Review the code that IS changed
+   against its stated purpose (issue first when present).
+   An MR can safely implement only part of a larger change. Safe deferred work
    needs no finding or repetitive question; it does not excuse a proven regression
    in active code. Ask a precise Question when material scope or contract
    ownership remains ambiguous. Cite the supplied snapshot; omitted or unavailable

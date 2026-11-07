@@ -83,13 +83,38 @@ fn mr_diff_refs(full_name: &str, number: i64) -> Result<(String, String, String)
     ))
 }
 
+/// GitLab quick-action line for a review verdict, or `None` for a plain comment.
+pub(crate) fn gitlab_verdict_quick_action(event: &str) -> Option<&'static str> {
+    match event {
+        "APPROVE" => Some("/approve"),
+        "REQUEST_CHANGES" => Some("/request_changes"),
+        _ => None,
+    }
+}
+
+/// Ensure the MR note body carries the GitLab verdict quick action on its own line.
+pub(crate) fn with_gitlab_verdict(body: &str, event: &str) -> String {
+    let Some(action) = gitlab_verdict_quick_action(event) else {
+        return body.to_string();
+    };
+    if body.lines().any(|line| line.trim() == action) {
+        return body.to_string();
+    }
+    if body.trim().is_empty() {
+        action.to_string()
+    } else {
+        format!("{action}\n\n{body}")
+    }
+}
+
 /// Post a review as a summary note plus per-finding discussions on the MR.
 /// Returns the summary note id (or first discussion note id) for marker recovery.
 pub fn post_review(full_name: &str, number: i64, prepared: PreparedReview) -> Result<Option<i64>, String> {
     let payload: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&prepared.path).map_err(|e| e.to_string())?)
             .map_err(|e| format!("could not parse review payload: {e}"))?;
-    let body = payload.get("body").and_then(|v| v.as_str()).unwrap_or_default();
+    let event = payload.get("event").and_then(|v| v.as_str()).unwrap_or("COMMENT");
+    let body = with_gitlab_verdict(payload.get("body").and_then(|v| v.as_str()).unwrap_or_default(), event);
     let comments = payload
         .get("comments")
         .and_then(|v| v.as_array())
@@ -99,7 +124,7 @@ pub fn post_review(full_name: &str, number: i64, prepared: PreparedReview) -> Re
     let mut review_id = None;
 
     if !body.trim().is_empty() {
-        let note = post_mr_note(full_name, number, body)?;
+        let note = post_mr_note(full_name, number, &body)?;
         review_id = Some(note);
     }
 
@@ -378,6 +403,14 @@ pub(crate) fn dedupe_against(existing: &[ExistingOcrComment], comments: serde_js
 }
 
 #[derive(Debug, Clone)]
+pub struct KeepPoint {
+    pub fingerprint: Option<String>,
+    pub path: String,
+    pub line: i64,
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct ExistingOcrComment {
     author: String,
     url: String,
@@ -385,10 +418,32 @@ pub(crate) struct ExistingOcrComment {
     line: i64,
     fingerprint: Option<String>,
     title: Option<String>,
+    discussion_id: Option<String>,
+    resolved: bool,
+    resolvable: bool,
 }
 
 impl ExistingOcrComment {
-    fn from_discussion_note(note: &serde_json::Value, position: Option<&serde_json::Value>) -> Option<Self> {
+    fn from_discussion(discussion: &serde_json::Value) -> Option<Self> {
+        let discussion_id = discussion.get("id").and_then(|v| v.as_str()).map(str::to_string);
+        let resolved = discussion.get("resolved").and_then(|v| v.as_bool()).unwrap_or(false);
+        let resolvable = discussion.get("resolvable").and_then(|v| v.as_bool()).unwrap_or(false);
+        let notes = discussion.get("notes").and_then(|v| v.as_array())?;
+        let position = discussion
+            .get("position")
+            .or_else(|| notes.first().and_then(|note| note.get("position")));
+        notes
+            .iter()
+            .find_map(|note| Self::from_discussion_note(note, position, discussion_id.clone(), resolved, resolvable))
+    }
+
+    fn from_discussion_note(
+        note: &serde_json::Value,
+        position: Option<&serde_json::Value>,
+        discussion_id: Option<String>,
+        resolved: bool,
+        resolvable: bool,
+    ) -> Option<Self> {
         let body = note.get("body").and_then(|v| v.as_str()).unwrap_or_default();
         if !is_ocr_comment(body) {
             return None;
@@ -417,6 +472,9 @@ impl ExistingOcrComment {
             line,
             fingerprint: extract_ocr_fingerprint(body),
             title: point_title(body).map(str::to_string),
+            discussion_id,
+            resolved,
+            resolvable,
         })
     }
 
@@ -443,8 +501,120 @@ impl ExistingOcrComment {
                 .unwrap_or_default(),
             fingerprint: extract_ocr_fingerprint(body),
             title: point_title(body).map(str::to_string),
+            discussion_id: field("/discussion_id").map(str::to_string),
+            resolved: comment.get("resolved").and_then(|v| v.as_bool()).unwrap_or(false),
+            resolvable: comment.get("resolvable").and_then(|v| v.as_bool()).unwrap_or(true),
         })
     }
+}
+
+fn matches_keep_point(comment: &ExistingOcrComment, keep: &[KeepPoint]) -> bool {
+    keep.iter().any(|point| {
+        point.fingerprint.is_some() && point.fingerprint == comment.fingerprint
+            || point
+                .title
+                .as_deref()
+                .zip(comment.title.as_deref())
+                .is_some_and(|(title, other)| {
+                    crate::review::evidence::same_point(
+                        (&comment.path, comment.line, other),
+                        (&point.path, point.line, title),
+                    )
+                })
+    })
+}
+
+/// Discussion ids that should be resolved because they are open OCR threads not kept by the new review.
+pub(crate) fn stale_ocr_discussion_ids(existing: &[ExistingOcrComment], keep: &[KeepPoint]) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    existing
+        .iter()
+        .filter(|comment| comment.resolvable && !comment.resolved && !matches_keep_point(comment, keep))
+        .filter_map(|comment| comment.discussion_id.clone())
+        .filter(|id| seen.insert(id.clone()))
+        .collect()
+}
+
+pub(crate) fn keep_points_from_annotated_comments(annotated_json: &str) -> Vec<KeepPoint> {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(annotated_json) else {
+        return Vec::new();
+    };
+    value
+        .get("comments")
+        .and_then(|v| v.as_array())
+        .into_iter()
+        .flatten()
+        .filter(|comment| {
+            matches!(
+                comment.get("status").and_then(|v| v.as_str()),
+                Some("new" | "duplicate_suppressed")
+            )
+        })
+        .map(|comment| {
+            let path = comment
+                .get("path")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let line = comment.get("line").and_then(|v| v.as_i64()).unwrap_or_default();
+            let body = comment.get("body").and_then(|v| v.as_str()).unwrap_or_default();
+            KeepPoint {
+                fingerprint: comment
+                    .get("fingerprint")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string)
+                    .or_else(|| extract_ocr_fingerprint(body)),
+                title: point_title(body).map(str::to_string),
+                path,
+                line,
+            }
+        })
+        .collect()
+}
+
+pub(crate) fn resolve_discussion(full_name: &str, number: i64, discussion_id: &str) -> Result<(), String> {
+    let project = project_api_id(full_name);
+    let encoded = urlencoding_path_segment(discussion_id);
+    let route = format!("projects/{project}/merge_requests/{number}/discussions/{encoded}");
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or_default();
+    let path = std::env::temp_dir().join(format!("ocr-resolve-{}-{stamp}.json", std::process::id()));
+    std::fs::write(&path, serde_json::json!({ "resolved": true }).to_string()).map_err(|e| e.to_string())?;
+    let result = run_raw(
+        "glab",
+        &["api", "--method", "PUT", &route, "--input", &path.to_string_lossy()],
+    );
+    let _ = std::fs::remove_file(&path);
+    result
+        .map(|_| ())
+        .map_err(|error| format!("could not resolve discussion (GitLab API): {error}"))
+}
+
+/// Resolve open OCR discussions that the current review is no longer standing behind.
+/// Best-effort: individual failures are logged and skipped.
+pub fn resolve_stale_ocr_discussions(full_name: &str, number: i64, keep: &[KeepPoint]) -> usize {
+    let existing = existing_ocr_comments(full_name, number);
+    let mut resolved = 0usize;
+    for discussion_id in stale_ocr_discussion_ids(&existing, keep) {
+        match resolve_discussion(full_name, number, &discussion_id) {
+            Ok(()) => resolved += 1,
+            Err(error) => eprintln!("resolve OCR discussion {discussion_id} on {full_name}!{number}: {error}"),
+        }
+    }
+    resolved
+}
+
+fn urlencoding_path_segment(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => out.push(byte as char),
+            _ => out.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    out
 }
 
 pub(crate) fn existing_ocr_comments(full_name: &str, number: i64) -> Vec<ExistingOcrComment> {
@@ -460,16 +630,7 @@ pub(crate) fn existing_ocr_comments(full_name: &str, number: i64) -> Vec<Existin
         .as_array()
         .into_iter()
         .flatten()
-        .flat_map(|discussion| {
-            let position = discussion.get("position");
-            discussion
-                .get("notes")
-                .and_then(|v| v.as_array())
-                .into_iter()
-                .flatten()
-                .filter_map(move |note| ExistingOcrComment::from_discussion_note(note, position))
-                .collect::<Vec<_>>()
-        })
+        .filter_map(ExistingOcrComment::from_discussion)
         .collect()
 }
 
@@ -547,6 +708,85 @@ mod dedupe_tests {
         assert!(
             ExistingOcrComment::from_github(&serde_json::json!({"body": "LGTM", "path": "src/a.rs", "line": 7}))
                 .is_none()
+        );
+    }
+
+    #[test]
+    fn gitlab_verdicts_are_appended_as_standalone_quick_actions() {
+        assert_eq!(gitlab_verdict_quick_action("APPROVE"), Some("/approve"));
+        assert_eq!(gitlab_verdict_quick_action("REQUEST_CHANGES"), Some("/request_changes"));
+        assert_eq!(gitlab_verdict_quick_action("COMMENT"), None);
+        assert_eq!(with_gitlab_verdict("", "APPROVE"), "/approve");
+        assert_eq!(with_gitlab_verdict("Looks good", "APPROVE"), "/approve\n\nLooks good");
+        assert_eq!(
+            with_gitlab_verdict("/approve\n\nLooks good", "APPROVE"),
+            "/approve\n\nLooks good"
+        );
+        assert_eq!(with_gitlab_verdict("Findings", "COMMENT"), "Findings");
+        assert!(with_gitlab_verdict("Fix this", "REQUEST_CHANGES").starts_with("/request_changes\n\n"));
+    }
+
+    #[test]
+    fn stale_ocr_discussions_skip_kept_resolved_and_non_resolvable() {
+        let open = ExistingOcrComment::from_github(&serde_json::json!({
+            "path": "src/a.rs",
+            "line": 10,
+            "body": "<!-- ocr:fingerprint=fnv64:aaaaaaaaaaaaaaaa -->\n**[Achado] Cache is never invalidated**\n\nDetail",
+            "html_url": "https://x/1",
+            "user": {"login": "bot"},
+            "discussion_id": "disc-open",
+            "resolved": false,
+            "resolvable": true
+        }))
+        .unwrap();
+        let kept = ExistingOcrComment::from_github(&serde_json::json!({
+            "path": "src/a.rs",
+            "line": 12,
+            "body": "<!-- ocr:fingerprint=fnv64:bbbbbbbbbbbbbbbb -->\n**[Achado] Lock is held across the network call**\n\nDetail",
+            "html_url": "https://x/2",
+            "user": {"login": "bot"},
+            "discussion_id": "disc-kept",
+            "resolved": false,
+            "resolvable": true
+        }))
+        .unwrap();
+        let already = ExistingOcrComment::from_github(&serde_json::json!({
+            "path": "src/b.rs",
+            "line": 1,
+            "body": "<!-- ocr:fingerprint=fnv64:cccccccccccccccc -->\n**[Achado] Already fixed**\n\nDetail",
+            "html_url": "https://x/3",
+            "user": {"login": "bot"},
+            "discussion_id": "disc-done",
+            "resolved": true,
+            "resolvable": true
+        }))
+        .unwrap();
+        let keep = [KeepPoint {
+            fingerprint: Some("fnv64:bbbbbbbbbbbbbbbb".into()),
+            path: "src/a.rs".into(),
+            line: 12,
+            title: Some("Lock is held across the network call".into()),
+        }];
+        assert_eq!(
+            stale_ocr_discussion_ids(&[open, kept, already], &keep),
+            vec!["disc-open".to_string()]
+        );
+        assert_eq!(
+            stale_ocr_discussion_ids(
+                &[ExistingOcrComment::from_github(&serde_json::json!({
+                    "path": "src/a.rs",
+                    "line": 10,
+                    "body": "<!-- ocr:fingerprint=fnv64:aaaaaaaaaaaaaaaa -->\n**[Achado] Cache is never invalidated**\n\nDetail",
+                    "html_url": "https://x/1",
+                    "user": {"login": "bot"},
+                    "discussion_id": "disc-open",
+                    "resolved": false,
+                    "resolvable": true
+                }))
+                .unwrap()],
+                &[]
+            ),
+            vec!["disc-open".to_string()]
         );
     }
 }

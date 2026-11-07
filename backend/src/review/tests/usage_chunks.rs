@@ -18,7 +18,7 @@ fn chunk_metadata_references_the_complete_canonical_pr_description() {
     let scoped = super::chunk_review_map(&map, &chunk);
     assert_eq!(
         scoped.description,
-        "See PR.md for the complete PR description and author intent."
+        "See PR.md for the MR description and RELATED_ISSUES.md (when present) for linked GitLab issue intent."
     );
     assert_eq!(scoped.changed_files, map.changed_files);
     assert_eq!(scoped.reviewable_files, map.reviewable_files);

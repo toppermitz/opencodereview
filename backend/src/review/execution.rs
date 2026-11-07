@@ -547,6 +547,11 @@ pub(crate) fn run_inner(
         format!("# {}\n\n{}\n", inputs.pr_title.trim(), pr_body),
     )
     .map_err(|error| error.to_string())?;
+    // Linked GitLab issues (`#n`, Closes/Relates to, title) as the original ask.
+    // Offline/bench reviews have no live GitLab; skip without failing preparation.
+    if !inputs.offline {
+        crate::gitlab::write_related_issues_context(&inputs.full_name, inputs.number, &context_dir);
+    }
     if let Some(body) = inputs
         .unresolved_review_body
         .as_deref()

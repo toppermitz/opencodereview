@@ -212,7 +212,7 @@ fn review_preflight_refreshes_and_reuses_a_shared_index() {
 }
 
 #[test]
-fn clean_reviews_are_completed_without_finding_selection_even_with_auto_post_enabled() {
+fn clean_reviews_wait_for_decision_without_auto_approve() {
     let root = std::env::temp_dir().join(format!(
         "ocr-finding-gate-{}-{}",
         std::process::id(),
@@ -224,6 +224,7 @@ fn clean_reviews_are_completed_without_finding_selection_even_with_auto_post_ena
     let db = crate::db::Db::for_test_at(root.join("test.sqlite")).open().unwrap();
     db.ensure_temp_repo_for_index(1, "acme/fixture").unwrap();
     db.save_setting("auto_post_mode", "comment").unwrap();
+    db.save_setting("auto_approve_enabled", "false").unwrap();
     db.save_setting("pr_summary_comment_enabled", "false").unwrap();
     db.save_setting("review_result_mode", "silent").unwrap();
     let pr_id = db
@@ -277,16 +278,66 @@ fn clean_reviews_are_completed_without_finding_selection_even_with_auto_post_ena
         archive_dir: std::env::temp_dir().join(format!("ocr-review-archives-{}", crate::sandbox::secret().unwrap())),
         budget: None,
     };
-    for no_changes in [false, true] {
-        handle_completed_review(&db, &inputs, no_changes, false);
-        assert_eq!(db.review_run_by_id(run_id).unwrap().unwrap().status, "approved");
-        let result = db.review_result(pr_id).unwrap().unwrap();
-        assert_eq!(result.effective_state, "clean");
-        assert_ne!(result.publication_status, "pending");
-        let expected_lane = if no_changes { "approved" } else { "reviewed_cleanly" };
-        assert_eq!(db.pr_review_start_state(pr_id).unwrap().1, expected_lane);
-        assert!(!db.has_pending_action("review_ready", pr_id).unwrap());
-    }
+    handle_completed_review(&db, &inputs, false, false);
+    assert_eq!(db.review_run_by_id(run_id).unwrap().unwrap().status, "preview");
+    let result = db.review_result(pr_id).unwrap().unwrap();
+    assert_eq!(result.effective_state, "clean");
+    assert_eq!(db.pr_review_start_state(pr_id).unwrap().1, "ready");
+    assert!(db.has_pending_action("review_ready", pr_id).unwrap());
+    drop(db);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn can_auto_approve_clean_respects_settings_and_risk() {
+    let root = std::env::temp_dir().join(format!(
+        "ocr-auto-approve-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let db = crate::db::Db::for_test_at(root.join("test.sqlite")).open().unwrap();
+    db.ensure_temp_repo_for_index(1, "acme/fixture").unwrap();
+    let pr_id = db
+        .upsert_pull_request(&crate::db::PullRequestInput {
+            repo_id: 1,
+            number: 2,
+            title: "Fixture".to_string(),
+            author: "fixture".to_string(),
+            author_avatar_url: None,
+            is_draft: false,
+            head_sha: "abc".to_string(),
+            base_sha: None,
+            base_ref: Some("main".to_string()),
+            head_ref: None,
+            default_branch: Some("main".to_string()),
+            url: None,
+            lane: "ready".to_string(),
+            status_reason: None,
+        })
+        .unwrap();
+    let run_id = db.start_review_skeleton_with(pr_id, None).unwrap();
+    db.set_review_run_running(run_id, "[]").unwrap();
+    db.finish_review_run(run_id, "Nada a sinalizar", None, "[]").unwrap();
+    db.set_review_run_risk(
+        run_id,
+        &crate::db::ReviewRisk {
+            score: 10,
+            level: "low".into(),
+            summary: "low".into(),
+            auto_merge_eligible: true,
+            drivers: vec![],
+        },
+    )
+    .unwrap();
+    let run = db.review_run_by_id(run_id).unwrap().unwrap();
+    assert!(!can_auto_approve_clean(&db, &run, pr_id));
+    db.save_setting("auto_approve_enabled", "true").unwrap();
+    assert!(can_auto_approve_clean(&db, &run, pr_id));
+    db.save_setting("auto_approve_max_risk_score", "5").unwrap();
+    assert!(!can_auto_approve_clean(&db, &run, pr_id));
     drop(db);
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -770,15 +821,42 @@ fn findings_review_payload_lists_each_inline_comment_in_a_table() {
     .unwrap();
     let value: serde_json::Value = serde_json::from_str(&payload).unwrap();
     assert_eq!(value["comments"].as_array().map(Vec::len), Some(4));
-    assert_eq!(value["body"].as_str().unwrap(), "### ⚠️ Encontrei 3 problemas e 1 pergunta\n\n\
-Revisei [`5c540aa1`](https://gitlab.example.com/owner/repo/-/commit/5c540aa1234567). Cada problema abaixo tem os detalhes e uma correção sugerida.\n\n\
-| | Problema | Onde |\n|---|---|---|\n\
-| 🔴 | Rollback drops invoices written after deploy | `db/migrate/0042_billing_schema.sql:18` |\n\
-| 🟠 | Totals use `a \\| b` instead of `a \\|\\| b` | `src/billing/total.ts` |\n\
-| 🟡 | Missing rollout note | Geral |\n\
-| ❓ | Should the old schema stay readable during deploy? | `src/billing/invoices.ts:57` |\n\n\
-<sub>Revisado com [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>\n\n\
-<!-- ocr-review-post:v1 run=7 -->");
+    let body = value["body"].as_str().unwrap();
+    assert!(
+        body.starts_with("/request_changes\n\n### ⚠️ Encontrei 3 problemas e 1 pergunta\n\n"),
+        "{body}"
+    );
+    assert!(body.contains("Revisei [`5c540aa1`](https://"));
+    assert!(body.contains(
+        "/owner/repo/-/commit/5c540aa1234567). Cada problema abaixo tem os detalhes e uma correção sugerida."
+    ));
+    assert!(body
+        .contains("| 🔴 | Rollback drops invoices written after deploy | `db/migrate/0042_billing_schema.sql:18` |"));
+    assert!(body.contains("| 🟠 | Totals use `a \\| b` instead of `a \\|\\| b` | `src/billing/total.ts` |"));
+    assert!(body.contains("| 🟡 | Missing rollout note | Geral |"));
+    assert!(body.contains("| ❓ | Should the old schema stay readable during deploy? | `src/billing/invoices.ts:57` |"));
+    assert!(body.contains("<sub>Revisado com [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>"));
+    assert!(body.ends_with("<!-- ocr-review-post:v1 run=7 -->"));
+}
+
+#[test]
+fn approve_payload_includes_gitlab_quick_action() {
+    let payload = build_review_payload(
+        "owner/repo",
+        "abc123",
+        "APPROVE",
+        "",
+        Some(r#"{"comments":[]}"#),
+        None,
+        &[],
+    )
+    .unwrap();
+    let body = serde_json::from_str::<serde_json::Value>(&payload).unwrap()["body"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(body.starts_with("/approve\n"), "{body}");
+    assert!(!body.contains("/request_changes"));
 }
 
 #[test]
@@ -818,6 +896,11 @@ fn evidence_warning_publication_preserves_findings_and_recovery_markers() {
         assert_eq!(value["event"], event);
         assert_eq!(value["comments"][0]["body"], "retained finding");
         let body = value["body"].as_str().unwrap();
+        match event {
+            "APPROVE" => assert!(body.starts_with("/approve\n"), "{body}"),
+            "REQUEST_CHANGES" => assert!(body.starts_with("/request_changes\n"), "{body}"),
+            _ => assert!(!body.starts_with('/'), "{body}"),
+        }
         assert!(body.contains("[!WARNING]") && body.contains("docs/IDENTITIES.md"));
         assert!(body.contains("reference was not specified"));
         assert!(body.ends_with("<!-- publication-marker -->"));
@@ -852,7 +935,11 @@ fn evidence_warning_publication_preserves_findings_and_recovery_markers() {
     .unwrap();
     let empty: serde_json::Value = serde_json::from_str(&empty).unwrap();
     let body = empty["body"].as_str().unwrap();
-    assert!(body.starts_with("### ⚠️ Terminei com avisos\n\nRevisei [`head`](https://gitlab.example.com/owner/repo/-/commit/head).\n\n> [!WARNING]"));
+    assert!(
+        body.starts_with("### ⚠️ Terminei com avisos\n\nRevisei [`head`](https://"),
+        "{body}"
+    );
+    assert!(body.contains("/owner/repo/-/commit/head).\n\n> [!WARNING]"), "{body}");
     assert!(
         body.contains("[!WARNING]")
             && body.ends_with("Revisado com [OpenCodeReview](https://github.com/BridgLabs/opencodereview).</sub>")

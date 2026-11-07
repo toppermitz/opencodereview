@@ -47,7 +47,7 @@ pub(crate) fn scoped_diff(diff: &str, files: &[String], inventory: &[String]) ->
 
 fn shared_inputs(master: &Path) -> Result<BTreeMap<String, Input>, String> {
     let mut output = BTreeMap::new();
-    for name in ["PR.md", "PENDING_REVIEW.md"] {
+    for name in ["PR.md", "RELATED_ISSUES.md", "PENDING_REVIEW.md"] {
         let path = master.join(name);
         if path.exists() {
             output.insert(format!("context/{name}"), Input::File(path));
@@ -160,7 +160,7 @@ pub(crate) fn prepare(
             "context/REVIEW_MAP.md".into(),
             Input::Text(render_review_map_md(&scoped)),
         );
-        files.insert("context/CONTEXT.md".into(), Input::Text(format!("# Final integration batch\n\nAssigned files:\n{}\n\nThe frozen archive retains supporting code for cross-file verification. Other batches cover the remaining PR scope. Read PR.md and the complete supplied conventions and skill.\n", task.files.iter().map(|path| format!("- {path}\n")).collect::<String>())));
+        files.insert("context/CONTEXT.md".into(), Input::Text(format!("# Final integration batch\n\nAssigned files:\n{}\n\nThe frozen archive retains supporting code for cross-file verification. Other batches cover the remaining PR scope. Read PR.md, RELATED_ISSUES.md when present, and the complete supplied conventions and skill.\n", task.files.iter().map(|path| format!("- {path}\n")).collect::<String>())));
         files.insert("context/PR_DIFF.patch".into(), Input::Text(diff.clone()));
         if master.join("PUBLICATION_DIFF.patch").exists() {
             files.insert(

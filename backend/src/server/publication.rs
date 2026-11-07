@@ -363,6 +363,18 @@ pub(crate) fn publish_reserved_review_result(
     repo_path: &Path,
     already_posting: bool,
 ) -> Result<(), String> {
+    publish_reserved_review_result_with_finalize(db, result, full_name, number, repo_path, already_posting, true)
+}
+
+pub(crate) fn publish_reserved_review_result_with_finalize(
+    db: &Database,
+    result: &ReviewResult,
+    full_name: &str,
+    number: i64,
+    repo_path: &Path,
+    already_posting: bool,
+    finalize_lane: bool,
+) -> Result<(), String> {
     if db.settings()?.review_result_mode != "result_comment" {
         let _ = db.disable_review_result_publication(result.id);
         return Err("review result publication is disabled".to_string());
@@ -413,7 +425,7 @@ pub(crate) fn publish_reserved_review_result(
                 repo_path,
                 "Review result superseded during publication",
             )?;
-            if !finish_published_result_lane(db, result)? {
+            if finalize_lane && !finish_published_result_lane(db, result)? {
                 let error = "Review result superseded by a new PR head".to_string();
                 supersede_result_after_head_change(db, result, &error);
                 return Err(error);
@@ -427,6 +439,79 @@ pub(crate) fn publish_reserved_review_result(
             Err(error)
         }
     }
+}
+
+/// Whether a clean review may be auto-approved under product settings and risk.
+pub(crate) fn can_auto_approve_clean(db: &Database, run: &crate::db::ReviewRun, pr_id: i64) -> bool {
+    let Ok(settings) = db.settings() else {
+        return false;
+    };
+    if !settings.auto_approve_enabled {
+        return false;
+    }
+    let Some(score) = run.risk_score else {
+        return false;
+    };
+    if score > settings.auto_approve_max_risk_score {
+        return false;
+    }
+    if let (Ok(author), Some(login)) = (db.pr_author(pr_id), gitlab::current_login()) {
+        if author.eq_ignore_ascii_case(&login) {
+            return false;
+        }
+    }
+    true
+}
+
+pub(crate) fn resolve_after_review_post(full_name: &str, number: i64, annotated_comments_json: &str, event: &str) {
+    let keep = if matches!(event, "APPROVE") {
+        Vec::new()
+    } else {
+        gitlab::keep_points_from_annotated_comments(annotated_comments_json)
+    };
+    let _ = gitlab::resolve_stale_ocr_discussions(full_name, number, &keep);
+}
+
+/// Publish the clean status comment when configured, but keep the run in preview for a human decision.
+fn leave_clean_for_decision(
+    db: &Database,
+    run: &crate::db::ReviewRun,
+    inputs: &review::ReviewInputs,
+    prior: Option<&ReviewResult>,
+) {
+    let result = reserve_effective_review_result(
+        db,
+        run,
+        &inputs.full_name,
+        inputs.number,
+        "clean",
+        "clean",
+        &run.head_sha,
+        prior,
+        None,
+        None,
+        true,
+        None,
+    );
+    if let Ok(result) = result {
+        if result.publication_status == "pending" {
+            let _ = publish_reserved_review_result_with_finalize(
+                db,
+                &result,
+                &inputs.full_name,
+                inputs.number,
+                &inputs.repo_path,
+                false,
+                false,
+            );
+        }
+    }
+    let _ = db.mark_review_ready_for_run(inputs.pr_id, run.id);
+    let _ = db.set_pr_lane(
+        inputs.pr_id,
+        "ready",
+        Some("Clean review ready — approve, mark reviewed, or skip"),
+    );
 }
 
 pub(crate) fn record_review_result_failure(db: &Database, result: &ReviewResult, repo_id: i64, reason: &str) {
@@ -656,29 +741,63 @@ pub(crate) fn handle_completed_review(
     }
 
     if !has_findings {
-        log_auto_post(inputs, "clean result: publishing the no-issues status");
-        let result = reserve_effective_review_result(
-            db,
-            &run,
-            &inputs.full_name,
-            inputs.number,
-            "clean",
-            "clean",
-            &run.head_sha,
-            prior.as_ref(),
-            None,
-            None,
-            true,
-            None,
-        );
-        if let Ok(result) = result {
-            if result.publication_status == "pending" {
-                let _ =
-                    publish_effective_review_result(db, &result, &inputs.full_name, inputs.number, &inputs.repo_path);
-            } else {
-                let _ = finish_published_result_lane(db, &result);
+        if can_auto_approve_clean(db, &run, inputs.pr_id) {
+            log_auto_post(inputs, "clean result: auto-approving under auto_approve settings");
+            match auto_post_review(
+                db,
+                &run,
+                inputs.pr_id,
+                &inputs.full_name,
+                inputs.number,
+                &inputs.repo_path,
+                "APPROVE",
+            ) {
+                Ok(AutoPostReview::Posted(review_id)) => {
+                    log_auto_post(inputs, "auto-approved");
+                    let review_url = review_id.map(|id| {
+                        format!(
+                            "https://{}/{}/-/merge_requests/{}#note_{id}",
+                            gitlab::gitlab_host(),
+                            inputs.full_name,
+                            inputs.number
+                        )
+                    });
+                    if let Ok(result) = reserve_effective_review_result(
+                        db,
+                        &run,
+                        &inputs.full_name,
+                        inputs.number,
+                        "clean",
+                        "clean",
+                        &run.head_sha,
+                        prior.as_ref(),
+                        review_id,
+                        review_url.as_deref(),
+                        true,
+                        None,
+                    ) {
+                        if result.publication_status == "pending" {
+                            let _ = publish_effective_review_result(
+                                db,
+                                &result,
+                                &inputs.full_name,
+                                inputs.number,
+                                &inputs.repo_path,
+                            );
+                        }
+                    }
+                    let _ = gitlab::resolve_stale_ocr_discussions(&inputs.full_name, inputs.number, &[]);
+                }
+                Ok(AutoPostReview::Superseded) => log_auto_post(inputs, "superseded by a new PR head"),
+                Err(error) => {
+                    log_auto_post(inputs, &format!("auto-approve failed, left for a decision: {error}"));
+                    leave_clean_for_decision(db, &run, inputs, prior.as_ref());
+                }
             }
+            return;
         }
+        log_auto_post(inputs, "clean result: left for a decision");
+        leave_clean_for_decision(db, &run, inputs, prior.as_ref());
         return;
     }
 
@@ -963,14 +1082,24 @@ pub(crate) fn auto_post_review(
     let run = db
         .review_run_by_id(run.id)?
         .ok_or("Review run disappeared during automatic confirmation.")?;
-    let mode = match event {
-        "COMMENT" => "comment",
-        "REQUEST_CHANGES" => "request_changes",
+    let event = match event {
+        "APPROVE" => {
+            if review_has_findings(run.comments_json.as_deref(), run.review_body.as_deref()) {
+                return Err("Automatic approve requires a clean review.".into());
+            }
+            "APPROVE"
+        }
+        "COMMENT" | "REQUEST_CHANGES" => {
+            let mode = if event == "COMMENT" {
+                "comment"
+            } else {
+                "request_changes"
+            };
+            crate::review::findings::auto_post_event(mode, run.comments_json.as_deref(), run.review_body.as_deref())
+                .ok_or("Automatic publication is disabled.")?
+        }
         _ => return Err("Unsupported automatic review event.".into()),
     };
-    let event =
-        crate::review::findings::auto_post_event(mode, run.comments_json.as_deref(), run.review_body.as_deref())
-            .ok_or("Automatic publication is disabled.")?;
     validate_live_review_scope(db, run.id, full_name, number, &run.head_sha, repo_path)?;
     let draft = compose_review_post(full_name, number, &run, event, manual_selection);
     let valid_json = serde_json::json!({ "comments": draft.comments }).to_string();
@@ -1043,6 +1172,7 @@ pub(crate) fn auto_post_review(
             if review_has_findings(run.comments_json.as_deref(), run.review_body.as_deref()) {
                 retire_clean_comments_after_findings(db, full_name, number, run.id);
             }
+            resolve_after_review_post(full_name, number, &draft.annotated_comments_json, event);
         }
         if matches!(event, "APPROVE" | "REQUEST_CHANGES") {
             if let Some(review_id) = posted_review_id {
@@ -1051,10 +1181,13 @@ pub(crate) fn auto_post_review(
         }
     }
     // Nothing new reached GitLab when every finding was already posted; the review still finished,
-    // so its "reviewing" comment has to go too.
+    // so its "reviewing" comment has to go too. Still resolve OCR threads the new run no longer keeps.
     if posted_review_id.is_none() {
         let _ = db.retire_queue_acknowledgement(pr_id, &run.head_sha, Some(run.id));
         spawn_queue_acknowledgements(db.handle());
+        if duplicate_only || matches!(event, "APPROVE") {
+            resolve_after_review_post(full_name, number, &draft.annotated_comments_json, event);
+        }
     }
     confirm_posted_review_live_head(
         db,
@@ -1241,6 +1374,7 @@ pub(crate) fn build_review_payload(
         body.to_string()
     };
     let body = crate::review::warnings::append(&body, evidence_warnings);
+    let body = gitlab::with_gitlab_verdict(&body, event);
     // Footer is the only brand mark on a posted review. Append it for both generated
     // empty drafts and precomposed bodies from `finish_review_post`.
     let body = if body.trim().is_empty() || body.contains("Revisado com [OpenCodeReview]") {

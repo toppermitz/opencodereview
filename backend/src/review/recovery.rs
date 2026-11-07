@@ -136,7 +136,7 @@ fn prepare(
     write_review_map(&target, &chunk_review_map(map, &chunk))?;
     fs::copy(context.join("PR.md"), target.join("PR.md"))
         .map_err(|error| format!("Incomplete review: could not copy the canonical PR description: {error}"))?;
-    for name in ["PENDING_REVIEW.md"] {
+    for name in ["RELATED_ISSUES.md", "PENDING_REVIEW.md"] {
         if context.join(name).exists() {
             fs::copy(context.join(name), target.join(name)).map_err(|error| error.to_string())?;
         }

@@ -92,9 +92,9 @@ pub struct Settings {
     pub dismiss_stale_approvals: bool,
     pub auto_index_stale_repos: bool,
     /// Opt-in auto-post mode when a finished review HAS findings, instead of waiting
-    /// for manual approval: `"off"` (default — wait), `"comment"` (post as a NO-verdict
-    /// COMMENT review — no approve/request-changes), or `"request_changes"` (post a
-    /// blocking Request-changes review). Clean reviews always wait for manual.
+    /// for manual approval: `"off"` (wait), `"comment"` (post as a NO-verdict
+    /// COMMENT review — no approve/request-changes), or `"request_changes"` (post with
+    /// GitLab `/request_changes`). Clean reviews wait for manual unless `auto_approve_enabled`.
     pub auto_post_mode: String,
     pub review_assigned_only: bool,
     pub review_target_filter_enabled: bool,

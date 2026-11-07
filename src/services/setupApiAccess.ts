@@ -16,6 +16,7 @@ import { http } from "./setupApiTransport";
 let gitlabFlowSecret: string | null = sessionStorage.getItem("ocr.gitlabFlowSecret");
 let claudeFlowSecret: string | null = sessionStorage.getItem("ocr.claudeFlowSecret");
 let codexFlowSecret: string | null = sessionStorage.getItem("ocr.codexFlowSecret");
+let grokFlowSecret: string | null = sessionStorage.getItem("ocr.grokFlowSecret");
 export const setupApiAccess = {
   gitlabAuthStatus: () => http<GitLabAuthStatus>("/auth/gitlab/status"),
   gitlabAuthStart: async (action: "login" | "refresh" = "login") => {
@@ -123,6 +124,39 @@ export const setupApiAccess = {
     if (codexFlowSecret) headers["x-flow-secret"] = codexFlowSecret;
     return http<{ running: boolean }>("/auth/codex/cancel", { method: "POST", headers, body: JSON.stringify({}) });
   },
+  grokAuthStart: async (accountId?: number) => {
+    await http<{ running: boolean }>("/auth/grok/cancel", { method: "POST", body: JSON.stringify({}) }).catch(
+      () => undefined,
+    );
+    grokFlowSecret = null;
+    sessionStorage.removeItem("ocr.grokFlowSecret");
+    const result = await http<{ running: boolean; flowSecret?: string }>("/auth/grok/start", {
+      method: "POST",
+      body: JSON.stringify(accountId ? { accountId } : {}),
+    });
+    if (result.flowSecret) {
+      grokFlowSecret = result.flowSecret;
+      sessionStorage.setItem("ocr.grokFlowSecret", result.flowSecret);
+    }
+  },
+  grokAuthEvents: () => {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (grokFlowSecret) headers["x-flow-secret"] = grokFlowSecret;
+    return http<{
+      running: boolean;
+      events: Array<{ kind: string; code?: string; url?: string; success?: boolean; message?: string }>;
+    }>("/auth/grok/events", { headers });
+  },
+  grokAuthCancel: () => {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    if (grokFlowSecret) headers["x-flow-secret"] = grokFlowSecret;
+    return http<{ running: boolean }>("/auth/grok/cancel", { method: "POST", headers, body: JSON.stringify({}) });
+  },
+  grokApiKeySave: (apiKey: string, accountId?: number) =>
+    http<{ ok: boolean }>("/auth/grok/token", {
+      method: "POST",
+      body: JSON.stringify(accountId ? { apiKey, accountId } : { apiKey }),
+    }),
   gitlabAuthLogout: () => http<{ ok: boolean }>("/auth/gitlab/logout", { method: "POST", body: JSON.stringify({}) }),
   getSettings: () => http<Settings>("/settings"),
   saveSettingsBatch: (payload: {

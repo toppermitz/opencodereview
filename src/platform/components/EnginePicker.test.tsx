@@ -174,9 +174,10 @@ it("switches to another account of the provider, resuming a paused one and skipp
     expect(setupApi.updateAccount).toHaveBeenCalledWith(2, { enabled: true });
     expect(setupApi.reorderAccounts).toHaveBeenCalledWith([2, 1, 3]);
 
-    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Add an account"]')!.click());
-    expect(container.textContent).toContain("Add an account");
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Adicionar conta"]')!.click());
+    expect(container.textContent).toContain("Adicionar conta");
     expect(container.textContent).toContain("ChatGPT");
+    expect(container.textContent).toContain("Grok");
   } finally {
     await act(async () => root.unmount());
     container.remove();

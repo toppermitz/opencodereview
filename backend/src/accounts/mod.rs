@@ -1,6 +1,6 @@
 //! Credentials of the AI accounts listed in `ai_accounts`. Each account owns one directory,
 //! `$OCR_DATA_DIR/accounts/<id>/`, holding its provider's credential file:
-//! `claude/oauth-token` or `codex/auth.json`.
+//! `claude/oauth-token`, `codex/auth.json`, or `grok/auth.json` / `grok/api-key`.
 pub(crate) mod sandbox_sync;
 pub(crate) mod usage;
 
@@ -39,6 +39,14 @@ pub(crate) fn codex_auth_path(id: i64) -> PathBuf {
     root().join(id.to_string()).join("codex/auth.json")
 }
 
+pub(crate) fn grok_auth_path(id: i64) -> PathBuf {
+    root().join(id.to_string()).join("grok/auth.json")
+}
+
+pub(crate) fn grok_api_key_path(id: i64) -> PathBuf {
+    root().join(id.to_string()).join("grok/api-key")
+}
+
 pub(crate) fn store_claude_token(id: i64, token: &str) -> Result<(), String> {
     store(&claude_token_path(id), id, token.as_bytes())
 }
@@ -47,6 +55,18 @@ pub(crate) fn store_claude_token(id: i64, token: &str) -> Result<(), String> {
 pub(crate) fn store_codex_auth(id: i64, raw: &str) -> Result<(), String> {
     crate::providers::codex::validate_auth(raw)?;
     store(&codex_auth_path(id), id, raw.as_bytes())
+}
+
+/// Saves a Grok `auth.json` from device login or a refreshed stage.
+pub(crate) fn store_grok_auth(id: i64, raw: &str) -> Result<(), String> {
+    crate::providers::grok::validate_auth(raw)?;
+    store(&grok_auth_path(id), id, raw.as_bytes())
+}
+
+/// Saves a pasted xAI API key for a Grok account.
+pub(crate) fn store_grok_api_key(id: i64, key: &str) -> Result<(), String> {
+    crate::providers::grok::validate_api_key(key)?;
+    store(&grok_api_key_path(id), id, key.trim().as_bytes())
 }
 
 fn store(path: &std::path::Path, id: i64, bytes: &[u8]) -> Result<(), String> {
@@ -95,6 +115,10 @@ pub(crate) fn has_credential(provider: &str, id: i64) -> bool {
         "claude" => crate::providers::claude::read_token(&claude_token_path(id)).is_ok(),
         "codex" => fs::read_to_string(codex_auth_path(id))
             .is_ok_and(|raw| crate::providers::codex::validate_auth(&raw).is_ok()),
+        "grok" => {
+            fs::read_to_string(grok_auth_path(id)).is_ok_and(|raw| crate::providers::grok::validate_auth(&raw).is_ok())
+                || crate::providers::grok::read_api_key(&grok_api_key_path(id)).is_ok()
+        }
         _ => false,
     }
 }
@@ -159,13 +183,14 @@ mod tests {
     fn only_removed_providers_lose_their_sign_ins() {
         let root = std::env::temp_dir().join(format!("ocr-unsupported-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
-        for path in ["1/claude", "2/codex", "3/gemini", "4/opencode"] {
+        for path in ["1/claude", "2/codex", "5/grok", "3/gemini", "4/opencode"] {
             std::fs::create_dir_all(root.join(path)).unwrap();
             std::fs::write(root.join(path).join("secret"), "x").unwrap();
         }
         assert!(super::remove_unsupported_sign_ins(&root).unwrap());
         assert!(root.join("1/claude/secret").exists());
         assert!(root.join("2/codex/secret").exists());
+        assert!(root.join("5/grok/secret").exists());
         assert!(!root.join("3").exists());
         assert!(!root.join("4").exists());
         // Nothing left to remove, and a missing root is not an error.

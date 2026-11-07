@@ -1,5 +1,5 @@
-### Changed
+### Added
 
-- The engine picker lists models from each connected CLI account: Claude via the
-  Anthropic models API, Codex via `codex debug models`. New model releases show
-  up after sign-in without a product code change.
+- Reviews can run on [Grok Build](https://x.ai/build): connect a SuperGrok or X Premium Plus
+  account with a device code, or paste an `XAI_API_KEY`, then pick the model and effort in the
+  top-bar engine picker like Claude and ChatGPT.

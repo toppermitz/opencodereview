@@ -59,7 +59,7 @@ impl Database {
     }
 
     pub fn create_ai_account(&self, provider: &str, label: &str) -> Result<AiAccount, String> {
-        if !matches!(provider, "claude" | "codex") {
+        if !matches!(provider, "claude" | "codex" | "grok") {
             return Err("Unsupported account provider".into());
         }
         let label = label.trim();
@@ -184,7 +184,7 @@ impl Database {
     pub fn remove_unsupported_ai_accounts(&self) -> Result<Vec<i64>, String> {
         let mut statement = self
             .conn
-            .prepare("DELETE FROM ai_accounts WHERE provider NOT IN ('claude', 'codex') RETURNING id")
+            .prepare("DELETE FROM ai_accounts WHERE provider NOT IN ('claude', 'codex', 'grok') RETURNING id")
             .map_err(|error| error.to_string())?;
         let removed = statement
             .query_map([], |row| row.get::<_, i64>(0))
@@ -193,7 +193,7 @@ impl Database {
             .map_err(|error| error.to_string())?;
         self.conn
             .execute(
-                "DELETE FROM settings WHERE key LIKE 'review_engine_%' AND key NOT IN ('review_engine_claude', 'review_engine_codex')",
+                "DELETE FROM settings WHERE key LIKE 'review_engine_%' AND key NOT IN ('review_engine_claude', 'review_engine_codex', 'review_engine_grok')",
                 [],
             )
             .map_err(|error| error.to_string())?;

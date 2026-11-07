@@ -331,7 +331,7 @@ pub(crate) fn in_agent_folder(path: &str) -> bool {
     path.to_ascii_lowercase().split('/').any(|part| {
         matches!(
             part,
-            ".devin" | ".agents" | ".claude" | ".gemini" | ".cursor" | ".windsurf" | ".opencode" | ".zed"
+            ".devin" | ".agents" | ".claude" | ".gemini" | ".cursor" | ".windsurf" | ".opencode" | ".zed" | ".grok"
         )
     })
 }

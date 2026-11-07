@@ -11,7 +11,7 @@ import { AccountChoices, AddAccount } from "./EngineAccounts";
 export const ENGINES_QUERY_KEY = ["review-engines"] as const;
 
 type Provider = AiAccount["provider"];
-const PROVIDERS: Provider[] = ["claude", "codex"];
+const PROVIDERS: Provider[] = ["claude", "codex", "grok"];
 
 const effortLabel: Record<string, string> = {
   low: "Low",
@@ -140,9 +140,9 @@ export function EnginePicker() {
             ))}
             <button
               type="button"
-              aria-label="Add an account"
+              aria-label="Adicionar conta"
               aria-pressed={adding}
-              title="Add an account"
+              title="Adicionar conta"
               className={cx(
                 "grid size-10 flex-none cursor-pointer place-items-center rounded-xl text-fg-subtle hover:bg-surface hover:text-fg",
                 adding && "bg-surface-muted text-fg ring-1 ring-line-strong",

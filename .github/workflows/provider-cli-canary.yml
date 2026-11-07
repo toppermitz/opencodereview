@@ -1,7 +1,7 @@
 name: Provider CLI canary
 
-# The image pins each AI CLI (docker/Dockerfile). This run builds it with the newest Claude Code
-# and Codex releases instead, so a release that breaks reviews shows up before anyone bumps a pin:
+# The image pins each AI CLI (docker/Dockerfile). This run builds it with the newest Claude Code,
+# Codex and Grok releases instead, so a release that breaks reviews shows up before anyone bumps a pin:
 # the install and version checks in the Dockerfile, every flag the providers pass, and the runner
 # sandbox smoke. It needs no account and calls no model (docker/provider-cli-canary.py).
 #

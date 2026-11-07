@@ -122,9 +122,17 @@ fn relay(mut client: TcpStream, mut remote: TcpStream, idle: Duration) -> Result
     Ok(())
 }
 
-/// Model providers runners may reach: Anthropic for Claude accounts; ChatGPT, the OpenAI API
-/// and OpenAI's sign-in refresh for Codex accounts. Private networks, and so local models, stay out.
-const PROVIDER_HOSTS: &[&str] = &["api.anthropic.com", "chatgpt.com", "api.openai.com", "auth.openai.com"];
+/// Model providers runners may reach: Anthropic for Claude; ChatGPT / OpenAI for Codex; xAI for Grok.
+/// Private networks, and so local models, stay out.
+const PROVIDER_HOSTS: &[&str] = &[
+    "api.anthropic.com",
+    "chatgpt.com",
+    "api.openai.com",
+    "auth.openai.com",
+    "cli-chat-proxy.grok.com",
+    "auth.x.ai",
+    "api.x.ai",
+];
 
 const MAX_CONNECTIONS: usize = 48;
 
@@ -285,12 +293,21 @@ mod tests {
         }
         assert!(destination("GET https://api.anthropic.com/ HTTP/1.1\r\n\r\n", &allowed).is_err());
         let providers = PROVIDER_HOSTS.iter().map(|host| host.to_string()).collect::<Vec<_>>();
-        for host in ["chatgpt.com", "api.openai.com", "auth.openai.com"] {
+        for host in [
+            "chatgpt.com",
+            "api.openai.com",
+            "auth.openai.com",
+            "cli-chat-proxy.grok.com",
+            "auth.x.ai",
+            "api.x.ai",
+        ] {
             assert!(destination(&format!("CONNECT {host}:443 HTTP/1.1\r\n\r\n"), &providers).is_ok());
         }
         for host in [
             "openai.com",
             "evil.chatgpt.com",
+            "grok.com",
+            "evil.api.x.ai",
             "github.com",
             "www.googleapis.com",
             "play.googleapis.com",

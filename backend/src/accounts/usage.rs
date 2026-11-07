@@ -30,6 +30,7 @@ pub(crate) fn usage(id: i64, provider: &str) -> Value {
             }
         }),
         "codex" => codex(id),
+        "grok" => Ok(Vec::new()),
         _ => Err("Unknown provider".to_string()),
     };
     let value = match windows {

@@ -84,6 +84,8 @@ pub(crate) fn seed_account(db: &Db, engine: &Engine, credential: &str) -> Result
     match engine.provider.as_str() {
         "claude" => crate::accounts::store_claude_token(account.id, credential)?,
         "codex" => crate::accounts::store_codex_auth(account.id, credential)?,
+        "grok" if credential.trim_start().starts_with('{') => crate::accounts::store_grok_auth(account.id, credential)?,
+        "grok" => crate::accounts::store_grok_api_key(account.id, credential)?,
         _ => return Err("Unsupported provider".into()),
     }
     if engine.model.is_some() || engine.effort.is_some() {

@@ -219,7 +219,7 @@ pub(crate) fn discover_models(auth: &ProviderAuth) -> Result<Vec<DiscoveredModel
         ProviderAuth::Codex { auth_json } => debug_models(Some(auth_json), false)
             .or_else(|_| debug_models(Some(auth_json), true))
             .or_else(|_| debug_models(None, true))?,
-        ProviderAuth::None | ProviderAuth::Claude { .. } => debug_models(None, true)?,
+        ProviderAuth::None | ProviderAuth::Claude { .. } | ProviderAuth::Grok { .. } => debug_models(None, true)?,
     };
     if !models.iter().any(|model| model.id == "default") {
         models.insert(

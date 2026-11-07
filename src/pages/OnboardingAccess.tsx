@@ -7,6 +7,8 @@ import {
   CodexSignIn,
   CopyCode,
   friendlyError,
+  GrokApiKeySignIn,
+  GrokSignIn,
   useGitlabFlow,
 } from "../components/AccessConnect";
 import { BrandLoadingIcon } from "../components/BrandLoading";
@@ -136,6 +138,7 @@ type SignIn = { provider: AiProvider["provider"]; method: "oauth" | "code" };
 const planDetail: Record<AiProvider["provider"], string> = {
   claude: "Plano Pro, Max ou Team",
   codex: "Plano ChatGPT Plus ou Pro",
+  grok: "Plano SuperGrok ou X Premium Plus",
 };
 
 /** The second way into each provider, offered from the row's menu. */
@@ -153,6 +156,12 @@ const alternative: Record<
     label: "Entrar com um código",
     hint: "Digite um código de uso único em qualquer dispositivo",
     icon: <Smartphone />,
+    method: "code",
+  },
+  grok: {
+    label: "Colar uma chave de API",
+    hint: "Uma XAI_API_KEY que começa com xai-",
+    icon: <KeyRound />,
     method: "code",
   },
 };
@@ -267,6 +276,12 @@ export function PlanStep({ onBack, onContinue }: { onBack: () => void; onContinu
                       onDone={finish}
                       onCancel={() => setSignIn(null)}
                     />
+                  ) : provider.provider === "grok" ? (
+                    open.method === "code" ? (
+                      <GrokApiKeySignIn onDone={finish} onCancel={() => setSignIn(null)} />
+                    ) : (
+                      <GrokSignIn onDone={finish} onCancel={() => setSignIn(null)} />
+                    )
                   ) : open.method === "code" ? (
                     <ClaudeTokenSignIn onDone={finish} onCancel={() => setSignIn(null)} />
                   ) : (

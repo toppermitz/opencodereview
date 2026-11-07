@@ -196,6 +196,7 @@ mod tests {
     fn cli_version_reads_both_providers() {
         assert_eq!(cli_version("2.1.292 (Claude Code)\n").as_deref(), Some("2.1.292"));
         assert_eq!(cli_version("codex-cli 0.163.0\n").as_deref(), Some("0.163.0"));
+        assert_eq!(cli_version("grok 1.0.77\n").as_deref(), Some("1.0.77"));
         assert_eq!(cli_version("0.63.0\n").as_deref(), Some("0.63.0"));
         assert_eq!(cli_version("command not found"), None);
     }

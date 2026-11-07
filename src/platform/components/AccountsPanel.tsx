@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, LogIn, Pencil, Play, Plus, Smartphone, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { ClaudeSignIn, ClaudeTokenSignIn, CodexSignIn } from "../../components/AccessConnect";
+import {
+  ClaudeSignIn,
+  ClaudeTokenSignIn,
+  CodexSignIn,
+  GrokApiKeySignIn,
+  GrokSignIn,
+} from "../../components/AccessConnect";
 import { BrandLoading } from "../../components/BrandLoading";
 import { cx, DSButton, DSError, DSInput, DSMenu, DSSwitchIndicator } from "../../components/DesignSystem";
 import { setupApi } from "../../services/setupApi";
@@ -31,27 +37,45 @@ type Provider = AiAccount["provider"];
 export const providerName: Record<Provider, string> = {
   claude: "Claude",
   codex: "ChatGPT",
+  grok: "Grok",
 };
 
-/** Claude's asterisk or Codex's knot. */
+/** Claude's asterisk, Codex's knot, or Grok's geometric X. */
 export function ProviderGlyph({ provider }: { provider: Provider }) {
-  return provider === "codex" ? (
-    <svg
-      viewBox="0 0 24 24"
-      className="size-4 text-fg"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.8}
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {[0, 60, 120, 180, 240, 300].map((angle) => (
-        <path key={angle} d="M12 4.2a4 4 0 0 1 6.9 2.6l-.1 5.4-4.6 2.7" transform={`rotate(${angle} 12 12)`} />
-      ))}
-    </svg>
-  ) : (
-    <span className="text-[0.95rem] leading-none text-[#d97757]">✳</span>
-  );
+  if (provider === "codex") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="size-4 text-fg"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        {[0, 60, 120, 180, 240, 300].map((angle) => (
+          <path key={angle} d="M12 4.2a4 4 0 0 1 6.9 2.6l-.1 5.4-4.6 2.7" transform={`rotate(${angle} 12 12)`} />
+        ))}
+      </svg>
+    );
+  }
+  if (provider === "grok") {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        className="size-4 text-fg"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        aria-hidden="true"
+      >
+        <path d="M6.5 6.5 17.5 17.5" />
+        <path d="M17.5 6.5 6.5 17.5" />
+      </svg>
+    );
+  }
+  return <span className="text-[0.95rem] leading-none text-[#d97757]">✳</span>;
 }
 
 export function relative(ms: number) {
@@ -301,7 +325,7 @@ function AccountRow({
 /** The ways to add an account of each provider: its usual sign-in first. */
 function addOptions(provider: Provider, start: (code?: boolean) => void) {
   const main = {
-    label: `Sign in to ${providerName[provider]}`,
+    label: `Entrar no ${providerName[provider]}`,
     icon: <ProviderGlyph provider={provider} />,
     onSelect: () => start(),
   };
@@ -322,6 +346,16 @@ function addOptions(provider: Provider, start: (code?: boolean) => void) {
         label: "Entrar com um código",
         hint: "Digite um código de uso único em qualquer dispositivo",
         icon: <Smartphone />,
+        onSelect: () => start(true),
+      },
+    ];
+  if (provider === "grok")
+    return [
+      main,
+      {
+        label: "Colar uma chave de API",
+        hint: "Uma XAI_API_KEY que começa com xai-",
+        icon: <KeyRound />,
         onSelect: () => start(true),
       },
     ];
@@ -407,6 +441,12 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
                 onSelect: () => setSignIn({ provider: "codex" }),
               },
               {
+                label: "Grok",
+                hint: "Plano SuperGrok ou X Premium Plus",
+                icon: <ProviderGlyph provider="grok" />,
+                onSelect: () => setSignIn({ provider: "grok" }),
+              },
+              {
                 label: "Claude com um token",
                 hint: "De claude setup-token em outro computador",
                 icon: <KeyRound />,
@@ -418,6 +458,12 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
                 icon: <Smartphone />,
                 onSelect: () => setSignIn({ provider: "codex", code: true }),
               },
+              {
+                label: "Grok com uma chave de API",
+                hint: "Uma XAI_API_KEY que começa com xai-",
+                icon: <KeyRound />,
+                onSelect: () => setSignIn({ provider: "grok", code: true }),
+              },
             ]}
           />
         )}
@@ -428,7 +474,7 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
           <BrandLoading size="compact" label="Carregando contas…" />
         ) : provider && accounts.length === 0 && !signIn ? (
           <div className="flex flex-col items-start gap-3 px-4 py-5">
-            <p className="text-small text-fg-muted">No {providerName[provider]} account yet.</p>
+            <p className="text-small text-fg-muted">Nenhuma conta {providerName[provider]} ainda.</p>
             <div className="flex flex-wrap gap-2">
               {addOptions(provider, (code) => setSignIn({ provider, code })).map((option, index) => (
                 <DSButton key={option.label} tone={index === 0 ? "primary" : "secondary"} onClick={option.onSelect}>
@@ -441,18 +487,32 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
         ) : accounts.length === 0 && !signIn ? (
           <div className="flex flex-col items-start gap-3 px-4 py-5">
             <p className="text-small text-fg-muted">
-              Connect an AI account so OpenCodeReview can review merge requests. Add more later to keep reviewing when
-              one hits its limit.
+              Conecte uma conta de IA para o OpenCodeReview revisar merge requests. Adicione mais depois para continuar
+              revisando quando uma atingir o limite.
             </p>
             <div className="flex flex-wrap gap-2">
               <DSButton tone="primary" onClick={() => setSignIn({ provider: "claude" })}>
                 <Plus className="size-3.5" />
-                Add Claude account
+                Adicionar conta Claude
               </DSButton>
-              <DSButton onClick={() => setSignIn({ provider: "codex" })}>
-                <Plus className="size-3.5" />
-                Add ChatGPT account
-              </DSButton>
+              <DSMenu
+                label="Outros provedores"
+                text="Outros provedores"
+                items={[
+                  {
+                    label: "ChatGPT",
+                    hint: "Plano ChatGPT com Codex",
+                    icon: <ProviderGlyph provider="codex" />,
+                    onSelect: () => setSignIn({ provider: "codex" }),
+                  },
+                  {
+                    label: "Grok",
+                    hint: "Plano SuperGrok ou X Premium Plus",
+                    icon: <ProviderGlyph provider="grok" />,
+                    onSelect: () => setSignIn({ provider: "grok" }),
+                  },
+                ]}
+              />
             </div>
           </div>
         ) : (
@@ -497,8 +557,8 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
           <div className="border-t border-line px-4 py-4 first:border-t-0">
             <h3 className="mb-3 text-small font-semibold text-fg">
               {signIn.accountId
-                ? `Sign in again to “${accounts.find((account) => account.id === signIn.accountId)?.label ?? providerName[signIn.provider]}”`
-                : `Add a ${providerName[signIn.provider]} account`}
+                ? `Entrar de novo em “${accounts.find((account) => account.id === signIn.accountId)?.label ?? providerName[signIn.provider]}”`
+                : `Adicionar conta ${providerName[signIn.provider]}`}
             </h3>
             {signIn.provider === "codex" ? (
               <CodexSignIn
@@ -510,6 +570,26 @@ export function AccountsPanel({ provider }: { provider?: Provider } = {}) {
                 }}
                 onCancel={() => setSignIn(null)}
               />
+            ) : signIn.provider === "grok" ? (
+              signIn.code ? (
+                <GrokApiKeySignIn
+                  accountId={signIn.accountId}
+                  onDone={() => {
+                    setSignIn(null);
+                    refresh();
+                  }}
+                  onCancel={() => setSignIn(null)}
+                />
+              ) : (
+                <GrokSignIn
+                  accountId={signIn.accountId}
+                  onDone={() => {
+                    setSignIn(null);
+                    refresh();
+                  }}
+                  onCancel={() => setSignIn(null)}
+                />
+              )
             ) : signIn.code ? (
               <ClaudeTokenSignIn
                 accountId={signIn.accountId}

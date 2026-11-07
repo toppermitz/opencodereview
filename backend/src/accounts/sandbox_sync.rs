@@ -31,6 +31,14 @@ pub(crate) fn sync_app_auth() -> Result<(), String> {
             &crate::accounts::codex_auth_path(*id),
             &target.join(format!("accounts/{id}/codex/auth.json")),
         )?;
+        mirror(
+            &crate::accounts::grok_auth_path(*id),
+            &target.join(format!("accounts/{id}/grok/auth.json")),
+        )?;
+        mirror(
+            &crate::accounts::grok_api_key_path(*id),
+            &target.join(format!("accounts/{id}/grok/api-key")),
+        )?;
     }
     if let Ok(entries) = fs::read_dir(target.join("accounts")) {
         for entry in entries.flatten() {

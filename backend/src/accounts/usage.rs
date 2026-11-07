@@ -30,7 +30,7 @@ pub(crate) fn usage(id: i64, provider: &str) -> Value {
             }
         }),
         "codex" => codex(id),
-        "grok" => Ok(Vec::new()),
+        "grok" => grok(id),
         _ => Err("Unknown provider".to_string()),
     };
     let value = match windows {
@@ -138,6 +138,62 @@ pub(crate) fn codex_windows(result: &Value) -> Vec<Value> {
         let window = &limits[key];
         Some(json!({ "windowMins": window["windowDurationMins"].clone(), "usedPercent": window["usedPercent"].as_f64()?, "resetsAt": window["resetsAt"].as_i64().map(|seconds| seconds * 1000) }))
     }).collect()
+}
+
+/// Grok's shared weekly SuperGrok pool from `GET …/v1/billing?format=credits`.
+pub(crate) fn grok_windows(body: &Value) -> Vec<Value> {
+    let config = &body["config"];
+    let Some(used) = config["creditUsagePercent"].as_f64() else {
+        return Vec::new();
+    };
+    let period = &config["currentPeriod"];
+    let window_mins = match period["type"].as_str() {
+        Some("USAGE_PERIOD_TYPE_MONTHLY") => 43_200,
+        _ => 10_080,
+    };
+    let resets_at = period["end"]
+        .as_str()
+        .or_else(|| config["billingPeriodEnd"].as_str())
+        .map(str::to_string);
+    vec![json!({ "windowMins": window_mins, "usedPercent": used, "resetsAt": resets_at })]
+}
+
+/// SuperGrok plan pool via the same billing endpoint the Grok CLI `/usage` panel uses.
+fn grok(id: i64) -> Result<Vec<Value>, String> {
+    let raw = match fs::read_to_string(crate::accounts::grok_auth_path(id)) {
+        Ok(raw) => raw,
+        Err(_) => {
+            return if crate::providers::grok::read_api_key(&crate::accounts::grok_api_key_path(id)).is_ok() {
+                Err("Grok plan usage needs a SuperGrok sign-in; API keys have no shared pool".into())
+            } else {
+                Err("Not signed in".into())
+            };
+        }
+    };
+    let token = crate::providers::grok::access_token(&raw).ok_or("Not signed in")?;
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let response = client
+        .get("https://cli-chat-proxy.grok.com/v1/billing?format=credits")
+        .bearer_auth(token.trim())
+        .header("X-XAI-Token-Auth", "xai-grok-cli")
+        .header("Accept", "application/json")
+        .send()
+        .map_err(|_| "Grok usage is unavailable right now")?;
+    if response.status().as_u16() == 401 || response.status().as_u16() == 403 {
+        return Err("Grok rejected this sign-in; sign in again".into());
+    }
+    if !response.status().is_success() {
+        return Err("Grok usage is unavailable right now".into());
+    }
+    let body: Value = response.json().map_err(|_| "Grok returned unreadable usage")?;
+    let windows = grok_windows(&body);
+    if windows.is_empty() {
+        return Err("Grok returned no plan usage for this sign-in".into());
+    }
+    Ok(windows)
 }
 
 fn claude(id: i64) -> Result<Vec<Value>, String> {
@@ -285,6 +341,25 @@ mod tests {
         assert_eq!(
             codex,
             vec![json!({ "windowMins": 300, "usedPercent": 7.0, "resetsAt": 1_761_360_000_000_i64 })]
+        );
+        let grok = grok_windows(&json!({
+            "config": {
+                "currentPeriod": {
+                    "type": "USAGE_PERIOD_TYPE_WEEKLY",
+                    "start": "2026-11-02T21:28:16.395+00:00",
+                    "end": "2026-11-09T21:28:16.395+00:00"
+                },
+                "creditUsagePercent": 11.0,
+                "productUsage": [{ "product": "GrokBuild", "usagePercent": 3.0 }]
+            }
+        }));
+        assert_eq!(
+            grok,
+            vec![json!({
+                "windowMins": 10_080,
+                "usedPercent": 11.0,
+                "resetsAt": "2026-11-09T21:28:16.395+00:00"
+            })]
         );
     }
 

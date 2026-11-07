@@ -11,7 +11,12 @@ use crate::providers::provider::{DiscoveredModel, ProviderAuth};
 const DEFAULT_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh"];
 
 /// Offline fallback when the account cannot reach `grok models`.
-const FALLBACK_MODELS: &[(&str, &str)] = &[("grok-4", "Grok 4"), ("grok-code", "Grok Code")];
+const FALLBACK_MODELS: &[(&str, &str)] = &[
+    ("grok-4.7", "Grok 4.7"),
+    ("grok-4.7-build-fast", "Grok 4.7 Build Fast"),
+    ("grok-4.6", "Grok 4.6"),
+    ("grok-4.5", "Grok 4.5"),
+];
 
 /// `auth.json` written by `grok login`; anything larger is not a Grok credential.
 pub(crate) const MAX_AUTH_BYTES: usize = 64 * 1024;
@@ -56,13 +61,10 @@ pub(crate) fn print_args(workdir: &Path, prompt: &str, model: &str, effort: &str
     args
 }
 
-/// Checks that `raw` is a Grok `auth.json` from `grok login`.
-pub(crate) fn validate_auth(raw: &str) -> Result<(), String> {
-    if raw.len() > MAX_AUTH_BYTES {
-        return Err("Grok authentication is too large".into());
-    }
-    let value: Value = serde_json::from_str(raw).map_err(|_| "Grok authentication is not valid JSON")?;
-    let has_token = [
+/// True when `value` is one Grok auth entry (or a legacy flat shape) with a usable credential.
+fn entry_has_credential(value: &Value) -> bool {
+    [
+        value["key"].as_str(),
         value["access_token"].as_str(),
         value["refresh_token"].as_str(),
         value["tokens"]["access_token"].as_str(),
@@ -71,11 +73,94 @@ pub(crate) fn validate_auth(raw: &str) -> Result<(), String> {
         value["session"]["refresh_token"].as_str(),
     ]
     .iter()
-    .any(|token| token.is_some_and(|value| !value.is_empty()));
-    if !has_token {
+    .any(|token| token.is_some_and(|value| !value.is_empty()))
+}
+
+/// Checks that `raw` is a Grok `auth.json` from `grok login`.
+///
+/// Real files are a map of OIDC scopes to entries with `key` (access JWT) and optional
+/// `refresh_token`, e.g. `{"https://auth.x.ai::<client>":{"auth_mode":"oidc","key":"…"}}`.
+pub(crate) fn validate_auth(raw: &str) -> Result<(), String> {
+    if raw.len() > MAX_AUTH_BYTES {
+        return Err("Grok authentication is too large".into());
+    }
+    let value: Value = serde_json::from_str(raw).map_err(|_| "Grok authentication is not valid JSON")?;
+    let has_sign_in = entry_has_credential(&value)
+        || value
+            .as_object()
+            .is_some_and(|map| map.values().any(entry_has_credential));
+    if !has_sign_in {
         return Err("Grok authentication has no sign-in; sign in again".into());
     }
     Ok(())
+}
+
+/// Email or handle from a signed-in `auth.json`, to name the account.
+pub(crate) fn account_email(raw: &str) -> Option<String> {
+    use base64::Engine;
+    let value: Value = serde_json::from_str(raw).ok()?;
+    let entries: Vec<&Value> = match value.as_object() {
+        Some(map) if map.values().any(entry_has_credential) => map.values().collect(),
+        _ => vec![&value],
+    };
+    for entry in entries {
+        if let Some(email) = entry["email"]
+            .as_str()
+            .or_else(|| entry["user_email"].as_str())
+            .filter(|email| email.contains('@') && email.len() <= 80)
+        {
+            return Some(email.to_string());
+        }
+        for jwt in [
+            entry["key"].as_str(),
+            entry["access_token"].as_str(),
+            entry["id_token"].as_str(),
+        ]
+        .into_iter()
+        .flatten()
+        {
+            let Some(payload) = jwt.split('.').nth(1) else {
+                continue;
+            };
+            let Ok(bytes) = base64::engine::general_purpose::URL_SAFE_NO_PAD.decode(payload.trim_end_matches('='))
+            else {
+                continue;
+            };
+            let Ok(claims) = serde_json::from_slice::<Value>(&bytes) else {
+                continue;
+            };
+            if let Some(email) = claims["email"]
+                .as_str()
+                .or_else(|| claims["preferred_username"].as_str())
+                .filter(|email| email.contains('@') && email.len() <= 80)
+            {
+                return Some(email.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Access JWT (`key`) from a signed-in `auth.json`, for plan usage and discovery.
+pub(crate) fn access_token(raw: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(raw).ok()?;
+    let entries: Vec<&Value> = match value.as_object() {
+        Some(map) if map.values().any(entry_has_credential) => map.values().collect(),
+        _ => vec![&value],
+    };
+    for entry in entries {
+        for key in ["key", "access_token"] {
+            if let Some(token) = entry[key]
+                .as_str()
+                .or_else(|| entry["tokens"][key].as_str())
+                .or_else(|| entry["session"][key].as_str())
+                .filter(|token| !token.is_empty())
+            {
+                return Some(token.to_string());
+            }
+        }
+    }
+    None
 }
 
 /// Checks that `raw` looks like an xAI API key (`xai-…`).
@@ -98,19 +183,33 @@ pub(crate) fn read_api_key(path: &Path) -> Result<String, String> {
     Ok(raw.trim().into())
 }
 
+/// Collects credential strings from one auth entry (scoped or flat).
+fn entry_secrets(value: &Value, out: &mut Vec<String>) {
+    for key in ["key", "access_token", "refresh_token", "id_token"] {
+        for path in [
+            value[key].as_str(),
+            value["tokens"][key].as_str(),
+            value["session"][key].as_str(),
+        ] {
+            if let Some(secret) = path.filter(|secret| secret.len() >= 16) {
+                out.push(secret.to_string());
+            }
+        }
+    }
+}
+
 /// Credential values in an `auth.json` or API key that must never appear in review output.
 pub(crate) fn secrets(auth_json: Option<&str>, api_key: Option<&str>) -> Vec<String> {
     let mut out = Vec::new();
     if let Some(raw) = auth_json {
         if let Ok(value) = serde_json::from_str::<Value>(raw) {
-            for key in ["access_token", "refresh_token", "id_token"] {
-                for path in [
-                    value[key].as_str(),
-                    value["tokens"][key].as_str(),
-                    value["session"][key].as_str(),
-                ] {
-                    if let Some(secret) = path.filter(|secret| secret.len() >= 16) {
-                        out.push(secret.to_string());
+            entry_secrets(&value, &mut out);
+            // Scoped OIDC map: each value is an entry with `key` / `auth_mode`. Skip nested
+            // bags like `tokens` that entry_secrets already walks from the root.
+            if let Some(map) = value.as_object() {
+                for entry in map.values() {
+                    if entry.get("key").is_some() || entry.get("auth_mode").is_some() {
+                        entry_secrets(entry, &mut out);
                     }
                 }
             }
@@ -275,9 +374,10 @@ fn list_models(auth_json: Option<&str>, api_key: Option<&str>) -> Result<Vec<Dis
             let _ = std::fs::set_permissions(home.join("auth.json"), std::fs::Permissions::from_mode(0o600));
         }
     }
+    // `grok models` prints a plain-text catalogue; there is no `--json` flag.
     let mut command = Command::new("grok");
     command
-        .args(["models", "--json"])
+        .args(["models"])
         .env("GROK_HOME", &home)
         .env("HOME", &home)
         .env("NO_COLOR", "1")
@@ -285,7 +385,7 @@ fn list_models(auth_json: Option<&str>, api_key: Option<&str>) -> Result<Vec<Dis
         .env_remove("XAI_API_KEY")
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null());
+        .stderr(Stdio::piped());
     if let Some(key) = api_key {
         command.env("XAI_API_KEY", key);
     }
@@ -296,33 +396,20 @@ fn list_models(auth_json: Option<&str>, api_key: Option<&str>) -> Result<Vec<Dis
     }
     let output = command
         .output()
-        .or_else(|_| {
-            // Older builds accept `grok models` without `--json`.
-            let mut retry = Command::new("grok");
-            retry
-                .args(["models"])
-                .env("GROK_HOME", &home)
-                .env("HOME", &home)
-                .env("NO_COLOR", "1")
-                .env("GROK_DISABLE_AUTOUPDATER", "1")
-                .env_remove("XAI_API_KEY")
-                .stdin(Stdio::null())
-                .stdout(Stdio::piped())
-                .stderr(Stdio::null());
-            if let Some(key) = api_key {
-                retry.env("XAI_API_KEY", key);
-            }
-            retry.output()
-        })
         .map_err(|_| "Grok model catalogue is unavailable right now")?;
     let _ = std::fs::remove_dir_all(&home);
     if !output.status.success() {
         return Err("Grok model catalogue is unavailable right now".into());
     }
-    parse_models_output(&String::from_utf8_lossy(&output.stdout))
+    let mut text = String::from_utf8_lossy(&output.stdout).into_owned();
+    if !output.stderr.is_empty() {
+        text.push('\n');
+        text.push_str(&String::from_utf8_lossy(&output.stderr));
+    }
+    parse_models_output(&text)
 }
 
-/// Parses `grok models` JSON (array or `{models:[…]}`) into picker rows.
+/// Parses `grok models` output into picker rows (plain text today; JSON if a future build adds it).
 pub(crate) fn parse_models_output(raw: &str) -> Result<Vec<DiscoveredModel>, String> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -331,16 +418,100 @@ pub(crate) fn parse_models_output(raw: &str) -> Result<Vec<DiscoveredModel>, Str
     if let Ok(body) = serde_json::from_str::<Value>(trimmed) {
         return parse_models_json(&body);
     }
-    // Some builds print one JSON object per line.
-    let models = trimmed
+    // Some builds may print one JSON object per line.
+    let json_lines = trimmed
         .lines()
         .filter_map(|line| serde_json::from_str::<Value>(line.trim()).ok())
         .filter_map(|value| parse_model(&value))
         .collect::<Vec<_>>();
-    if models.is_empty() {
+    if !json_lines.is_empty() {
+        return Ok(json_lines);
+    }
+    parse_models_text(trimmed)
+}
+
+/// Parses the plain-text catalogue printed by `grok models`:
+///
+/// ```text
+/// Default model: grok-4.7
+/// Available models:
+///   * grok-4.7 (default)
+///   - grok-4.7-build-fast
+///   - grok-4.6
+/// ```
+fn parse_models_text(raw: &str) -> Result<Vec<DiscoveredModel>, String> {
+    let mut default_id: Option<String> = None;
+    let mut ids = Vec::new();
+    for line in raw.lines() {
+        let trimmed = line.trim();
+        if let Some(rest) = trimmed.strip_prefix("Default model:") {
+            let id = rest.split_whitespace().next().unwrap_or("").to_string();
+            if !id.is_empty() {
+                default_id = Some(id);
+            }
+            continue;
+        }
+        let Some(id) = model_line_id(trimmed) else {
+            continue;
+        };
+        if !ids.iter().any(|known| known == &id) {
+            ids.push(id);
+        }
+    }
+    if ids.is_empty() {
         return Err("Grok returned an unreadable model catalogue".into());
     }
-    Ok(models)
+    if let Some(default) = default_id {
+        if let Some(pos) = ids.iter().position(|id| *id == default) {
+            let id = ids.remove(pos);
+            ids.insert(0, id);
+        } else {
+            ids.insert(0, default);
+        }
+    }
+    Ok(ids
+        .into_iter()
+        .map(|id| DiscoveredModel {
+            label: humanize_model_id(&id),
+            efforts: DEFAULT_EFFORTS.iter().map(|effort| (*effort).into()).collect(),
+            default_effort: "medium".into(),
+            id,
+        })
+        .collect())
+}
+
+fn model_line_id(line: &str) -> Option<String> {
+    let rest = line
+        .strip_prefix("* ")
+        .or_else(|| line.strip_prefix("- "))
+        .or_else(|| line.strip_prefix("• "))?;
+    let id = rest.split_whitespace().next()?.trim();
+    if id.is_empty()
+        || !id
+            .chars()
+            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '.' || ch == '_')
+    {
+        return None;
+    }
+    Some(id.to_string())
+}
+
+fn humanize_model_id(id: &str) -> String {
+    id.split(['-', '_'])
+        .filter(|part| !part.is_empty())
+        .map(|part| {
+            if part.chars().next().is_some_and(|ch| ch.is_ascii_digit()) {
+                part.to_string()
+            } else {
+                let mut chars = part.chars();
+                match chars.next() {
+                    Some(first) => format!("{}{}", first.to_ascii_uppercase(), chars.as_str()),
+                    None => String::new(),
+                }
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn parse_models_json(body: &Value) -> Result<Vec<DiscoveredModel>, String> {
@@ -437,13 +608,28 @@ mod tests {
 
     #[test]
     fn auth_and_api_key_validation() {
-        let auth = r#"{"tokens":{"access_token":"tok_access_token_value","refresh_token":"tok_refresh_token_value"}}"#;
-        assert!(validate_auth(auth).is_ok());
+        let scoped = r#"{"https://auth.x.ai::client":{"auth_mode":"oidc","key":"tok_access_token_value","refresh_token":"tok_refresh_token_value","user_id":"u1"}}"#;
+        assert!(validate_auth(scoped).is_ok());
+        assert!(validate_auth(r#"{"https://auth.x.ai::client":{"auth_mode":"oidc"}}"#).is_err());
+        let legacy =
+            r#"{"tokens":{"access_token":"tok_access_token_value","refresh_token":"tok_refresh_token_value"}}"#;
+        assert!(validate_auth(legacy).is_ok());
         assert!(validate_auth(r#"{"tokens":{}}"#).is_err());
         assert!(validate_auth("not json").is_err());
         assert!(validate_api_key("xai-fixture-key-value").is_ok());
         assert!(validate_api_key("sk-other").is_err());
-        assert_eq!(secrets(Some(auth), Some("xai-fixture-key-value")).len(), 3);
+        assert_eq!(secrets(Some(scoped), Some("xai-fixture-key-value")).len(), 3);
+        assert_eq!(secrets(Some(legacy), None).len(), 2);
+        assert_eq!(account_email(scoped), None);
+        assert_eq!(access_token(scoped).as_deref(), Some("tok_access_token_value"));
+        let claims = base64::Engine::encode(
+            &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+            br#"{"email":"dev@example.com"}"#,
+        );
+        let with_email = format!(
+            r#"{{"https://auth.x.ai::client":{{"auth_mode":"oidc","key":"h.{claims}.s","refresh_token":"tok_refresh_token_value"}}}}"#
+        );
+        assert_eq!(account_email(&with_email).as_deref(), Some("dev@example.com"));
     }
 
     #[test]
@@ -454,6 +640,20 @@ mod tests {
         assert_eq!(models[0].id, "grok-4");
         assert_eq!(models[0].label, "Grok 4");
         assert_eq!(models[0].efforts, vec!["low", "medium", "high"]);
+        assert_eq!(models[0].default_effort, "medium");
+    }
+
+    #[test]
+    fn parse_models_text_lists_available_and_puts_default_first() {
+        let body = "You are logged in with grok.com.\n\nDefault model: grok-4.7\n\nAvailable models:\n  * grok-4.7 (default)\n  - grok-4.7-build-fast\n  - grok-4.6\n  - grok-4.5\n";
+        let models = parse_models_output(body).unwrap();
+        assert_eq!(
+            models.iter().map(|model| model.id.as_str()).collect::<Vec<_>>(),
+            vec!["grok-4.7", "grok-4.7-build-fast", "grok-4.6", "grok-4.5"]
+        );
+        assert_eq!(models[0].label, "Grok 4.7");
+        assert_eq!(models[1].label, "Grok 4.7 Build Fast");
+        assert_eq!(models[0].efforts, vec!["low", "medium", "high", "xhigh"]);
         assert_eq!(models[0].default_effort, "medium");
     }
 

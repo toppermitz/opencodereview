@@ -76,11 +76,13 @@ fn store_auth(db_handle: &Db, account: Option<i64>, raw: &str) -> Result<(), Str
                 .iter()
                 .filter(|account| account.provider == "grok")
                 .count();
-            let label = if count == 0 {
-                "Grok".to_string()
-            } else {
-                format!("Grok {}", count + 1)
-            };
+            let label = crate::providers::grok::account_email(raw).unwrap_or_else(|| {
+                if count == 0 {
+                    "Grok".to_string()
+                } else {
+                    format!("Grok {}", count + 1)
+                }
+            });
             db.create_ai_account("grok", &label)?.id
         }
     };
@@ -194,8 +196,10 @@ pub(crate) fn start_grok_auth(request: &Request, state: &SharedState) -> Result<
             }
             match child.try_wait() {
                 Ok(Some(status)) => {
-                    let saved = fs::read_to_string(home.join("auth.json"))
-                        .ok()
+                    // GROK_HOME points at the temp home; some builds still nest under `.grok/`.
+                    let saved = ["auth.json", ".grok/auth.json"]
+                        .iter()
+                        .find_map(|rel| fs::read_to_string(home.join(rel)).ok())
                         .filter(|_| status.success());
                     let event = match saved.map(|raw| store_auth(&db_handle, account, &raw)) {
                         Some(Ok(())) => {

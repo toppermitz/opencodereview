@@ -111,12 +111,20 @@ mod tests {
         );
         provider::set_test_catalog(
             "grok",
-            vec![DiscoveredModel {
-                id: "grok-4".into(),
-                label: "Grok 4".into(),
-                efforts: vec!["low".into(), "medium".into(), "high".into()],
-                default_effort: "medium".into(),
-            }],
+            vec![
+                DiscoveredModel {
+                    id: "grok-4.7".into(),
+                    label: "Grok 4.7".into(),
+                    efforts: vec!["low".into(), "medium".into(), "high".into(), "xhigh".into()],
+                    default_effort: "medium".into(),
+                },
+                DiscoveredModel {
+                    id: "grok-4.7-build-fast".into(),
+                    label: "Grok 4.7 Build Fast".into(),
+                    efforts: vec!["low".into(), "medium".into(), "high".into(), "xhigh".into()],
+                    default_effort: "medium".into(),
+                },
+            ],
         );
     }
 
@@ -136,8 +144,9 @@ mod tests {
         assert!(ids.iter().any(|id| id == "claude-opus-5-5"));
         assert!(ids.iter().any(|id| id == "default"));
         assert!(ids.iter().any(|id| id == "gpt-5.5"));
-        assert!(ids.iter().any(|id| id == "grok-4"));
-        assert_eq!(ids.len(), 4);
+        assert!(ids.iter().any(|id| id == "grok-4.7"));
+        assert!(ids.iter().any(|id| id == "grok-4.7-build-fast"));
+        assert_eq!(ids.len(), 5);
     }
 
     #[test]
